@@ -2,10 +2,10 @@
 # Docs: https://render.com/docs/blueprint-spec
 #
 # After first deploy:
-# 1. Open the service URL → /admin/ → create superuser via Render Shell:
-#      python manage.py createsuperuser
-# 2. Optional: python manage.py seed_site
-# 3. Admin → Webbplatsinställningar → set public_site_url to your https URL
+# 1. Open https://YOUR-SERVICE.onrender.com/admin/
+# 2. Log in with DJANGO_SUPERUSER_USERNAME / DJANGO_SUPERUSER_PASSWORD (see Environment)
+# 3. Set SEED_ON_DEPLOY=false after starter content is loaded
+# 4. Admin → Webbplatsinställningar → set public_site_url to your https URL
 
 databases:
   - name: egentid-db
@@ -42,6 +42,16 @@ services:
       - key: SERVE_MEDIA
         value: "true"
       - key: SECURE_SSL_REDIRECT
+        value: "true"
+      # Admin login without Render Shell — change password after first login.
+      - key: DJANGO_SUPERUSER_USERNAME
+        value: admin
+      - key: DJANGO_SUPERUSER_EMAIL
+        value: admin@egentidsparesurs.se
+      - key: DJANGO_SUPERUSER_PASSWORD
+        generateValue: true
+      # Set to "true" for one deploy to load starter pages, then set back to "false".
+      - key: SEED_ON_DEPLOY
         value: "true"
     disk:
       name: egentid-media
