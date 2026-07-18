@@ -12,6 +12,8 @@ databases:
     databaseName: egentid
     user: egentid
     plan: free
+    # Render default is 18; set explicitly so blueprint matches the dashboard.
+    postgresMajorVersion: "18"
 
 services:
   - type: web

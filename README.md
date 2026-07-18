@@ -48,6 +48,7 @@ This repo includes `render.yaml`, `build.sh`, and `start.sh`.
 
 - Free Render disks may be limited; without a disk, uploaded media can disappear on redeploy. Prefer keeping the disk or later move media to S3/Cloudinary.
 - Never commit real `SECRET_KEY` values; Render generates one via the blueprint.
+- Database: **PostgreSQL 18** (`postgresMajorVersion: "18"` in `render.yaml`). Compatible with Django + `psycopg[binary]>=3.2.9`.
 
 ## Updating content
 
