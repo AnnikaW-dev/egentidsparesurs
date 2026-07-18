@@ -11,6 +11,24 @@ from booking.models import Service, WeeklyAvailability, generate_slots_for_range
 from cms.models import ContentBlock, GalleryImage, SeasonTip, SitePage, SiteSettings
 
 
+def _ensure_webp(image_field):
+    """Write a .webp sibling next to a saved ImageField (for <picture> tags)."""
+    if not image_field or not image_field.name:
+        return
+    path = Path(image_field.path)
+    if not path.exists() or path.suffix.lower() not in {".jpg", ".jpeg", ".png"}:
+        return
+    webp = path.with_suffix(".webp")
+    if webp.exists():
+        return
+    try:
+        from PIL import Image
+
+        Image.open(path).convert("RGB").save(webp, "WEBP", quality=80, method=6)
+    except Exception:
+        pass
+
+
 class Command(BaseCommand):
     help = "Load starter content matching egentidsparesurs.wordpress.com"
 
@@ -31,6 +49,7 @@ class Command(BaseCommand):
             with logo_src.open("rb") as fh:
                 settings.logo.save("logo.jpg", File(fh), save=False)
         settings.save()
+        _ensure_webp(settings.logo)
 
         pages = {
             SitePage.PageKey.HOME: {
@@ -117,6 +136,7 @@ class Command(BaseCommand):
                 if src.exists():
                     with src.open("rb") as fh:
                         page.hero_image.save(data["hero"], File(fh), save=True)
+                    _ensure_webp(page.hero_image)
 
         home = SitePage.objects.get(key=SitePage.PageKey.HOME)
         ContentBlock.objects.filter(page=home).delete()
@@ -134,6 +154,7 @@ class Command(BaseCommand):
         if hand_src.exists():
             with hand_src.open("rb") as fh:
                 hand.image.save("hand-massage.jpg", File(fh), save=True)
+            _ensure_webp(hand.image)
 
         ContentBlock.objects.create(
             page=home,
@@ -193,6 +214,7 @@ class Command(BaseCommand):
                     gi = GalleryImage(title=title, caption=title, sort_order=0)
                     with src.open("rb") as fh:
                         gi.image.save(name, File(fh), save=True)
+                    _ensure_webp(gi.image)
 
         season_defaults = [
             (2, "Februari–april", "Vårda torra vinterhänder och fötter med värmande behandlingar."),
