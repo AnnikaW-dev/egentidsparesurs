@@ -45,6 +45,9 @@ admin.site.site_header = "EGentid Spa & Resurs – Admin"
 admin.site.site_title = "EGentid Admin"
 admin.site.index_title = "Innehåll & bokningar"
 
-if settings.DEBUG:
+# Serve uploaded media in DEBUG or when SERVE_MEDIA=true (Render disk).
+if settings.DEBUG or getattr(settings, "SERVE_MEDIA", False):
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+
+if settings.DEBUG:
     urlpatterns += static(settings.STATIC_URL, document_root=settings.STATICFILES_DIRS[0])

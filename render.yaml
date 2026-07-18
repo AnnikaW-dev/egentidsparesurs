@@ -1,0 +1,49 @@
+# Render Blueprint — EGentid Spa & Resurs
+# Docs: https://render.com/docs/blueprint-spec
+#
+# After first deploy:
+# 1. Open the service URL → /admin/ → create superuser via Render Shell:
+#      python manage.py createsuperuser
+# 2. Optional: python manage.py seed_site
+# 3. Admin → Webbplatsinställningar → set public_site_url to your https URL
+
+databases:
+  - name: egentid-db
+    databaseName: egentid
+    user: egentid
+    plan: free
+
+services:
+  - type: web
+    name: egentidsparesurs
+    runtime: python
+    plan: free
+    buildCommand: "bash build.sh"
+    startCommand: "bash start.sh"
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.9
+      - key: DATABASE_URL
+        fromDatabase:
+          name: egentid-db
+          property: connectionString
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DEBUG
+        value: "false"
+      - key: ALLOWED_HOSTS
+        # Add your custom domain later, e.g. egentidsparesurs.se,.onrender.com
+        value: ".onrender.com"
+      - key: CSRF_TRUSTED_ORIGINS
+        # Set after first deploy to https://YOUR-SERVICE.onrender.com
+        sync: false
+      - key: MEDIA_ROOT
+        value: /var/data/media
+      - key: SERVE_MEDIA
+        value: "true"
+      - key: SECURE_SSL_REDIRECT
+        value: "true"
+    disk:
+      name: egentid-media
+      mountPath: /var/data
+      sizeGB: 1
