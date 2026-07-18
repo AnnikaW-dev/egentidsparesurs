@@ -15,7 +15,10 @@ def _ensure_webp(image_field):
     """Write a .webp sibling next to a saved ImageField (for <picture> tags)."""
     if not image_field or not image_field.name:
         return
-    path = Path(image_field.path)
+    try:
+        path = Path(image_field.path)
+    except Exception:
+        return
     if not path.exists() or path.suffix.lower() not in {".jpg", ".jpeg", ".png"}:
         return
     webp = path.with_suffix(".webp")
@@ -27,6 +30,25 @@ def _ensure_webp(image_field):
         Image.open(path).convert("RGB").save(webp, "WEBP", quality=80, method=6)
     except Exception:
         pass
+
+
+def _file_missing(image_field):
+    """True if the ImageField has no file on disk."""
+    if not image_field or not image_field.name:
+        return True
+    try:
+        return not Path(image_field.path).exists()
+    except Exception:
+        return True
+
+
+def _save_image(field, src_path: Path, dest_name: str):
+    """Copy a static image onto an ImageField and ensure WebP exists."""
+    if not src_path.exists():
+        return
+    with src_path.open("rb") as fh:
+        field.save(dest_name, File(fh), save=True)
+    _ensure_webp(field)
 
 
 class Command(BaseCommand):
@@ -45,9 +67,9 @@ class Command(BaseCommand):
             "En lugn oas för fotvård, handvård och värmande behandlingar."
         )
         logo_src = static_img / "logo.jpg"
-        if logo_src.exists() and not settings.logo:
-            with logo_src.open("rb") as fh:
-                settings.logo.save("logo.jpg", File(fh), save=False)
+        # Always restore logo when missing on disk (common after Render redeploy without disk).
+        if logo_src.exists() and _file_missing(settings.logo):
+            _save_image(settings.logo, logo_src, "logo.jpg")
         settings.save()
         _ensure_webp(settings.logo)
 
@@ -133,9 +155,9 @@ class Command(BaseCommand):
             )
             if data["hero"]:
                 src = static_img / data["hero"]
-                if src.exists():
-                    with src.open("rb") as fh:
-                        page.hero_image.save(data["hero"], File(fh), save=True)
+                if src.exists() and _file_missing(page.hero_image):
+                    _save_image(page.hero_image, src, data["hero"])
+                elif page.hero_image:
                     _ensure_webp(page.hero_image)
 
         home = SitePage.objects.get(key=SitePage.PageKey.HOME)
@@ -151,9 +173,10 @@ class Command(BaseCommand):
             sort_order=1,
         )
         hand_src = static_img / "hand-massage.jpg"
-        if hand_src.exists():
-            with hand_src.open("rb") as fh:
-                hand.image.save("hand-massage.jpg", File(fh), save=True)
+        hand_src = static_img / "hand-massage.jpg"
+        if hand_src.exists() and _file_missing(hand.image):
+            _save_image(hand.image, hand_src, "hand-massage.jpg")
+        elif hand.image:
             _ensure_webp(hand.image)
 
         ContentBlock.objects.create(
@@ -203,17 +226,27 @@ class Command(BaseCommand):
             sort_order=3,
         )
 
+        # Gallery: create rows if empty, otherwise restore missing files.
+        gallery_specs = [
+            ("gallery-1.jpg", "Salongen"),
+            ("hand-massage.jpg", "Handmassage"),
+            ("hero-feet.jpg", "Fotvård"),
+        ]
         if not GalleryImage.objects.exists():
-            for name, title in [
-                ("gallery-1.jpg", "Salongen"),
-                ("hand-massage.jpg", "Handmassage"),
-                ("hero-feet.jpg", "Fotvård"),
-            ]:
+            for name, title in gallery_specs:
                 src = static_img / name
                 if src.exists():
                     gi = GalleryImage(title=title, caption=title, sort_order=0)
-                    with src.open("rb") as fh:
-                        gi.image.save(name, File(fh), save=True)
+                    _save_image(gi.image, src, name)
+        else:
+            for gi in GalleryImage.objects.all():
+                if _file_missing(gi.image):
+                    # Best-effort restore from static by filename.
+                    name = Path(gi.image.name).name if gi.image.name else ""
+                    src = static_img / name
+                    if src.exists():
+                        _save_image(gi.image, src, name)
+                else:
                     _ensure_webp(gi.image)
 
         season_defaults = [

@@ -4,8 +4,9 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
 from django.contrib.sitemaps.views import sitemap
-from django.urls import path
+from django.urls import path, re_path
 from django.views.generic import TemplateView
+from django.views.static import serve
 
 from booking import views as booking_views
 from pages import views as page_views
@@ -45,9 +46,18 @@ admin.site.site_header = "EGentid Spa & Resurs – Admin"
 admin.site.site_title = "EGentid Admin"
 admin.site.index_title = "Innehåll & bokningar"
 
-# Serve uploaded media in DEBUG or when SERVE_MEDIA=true (Render disk).
-if settings.DEBUG or getattr(settings, "SERVE_MEDIA", False):
-    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
-
+# django.conf.urls.static.static() is a no-op when DEBUG=False.
+# On Render we must serve media explicitly when SERVE_MEDIA=true.
 if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
     urlpatterns += static(settings.STATIC_URL, document_root=settings.STATICFILES_DIRS[0])
+elif getattr(settings, "SERVE_MEDIA", False):
+    # Adjust: for larger traffic, move media to S3/Cloudinary instead.
+    media_url = settings.MEDIA_URL.lstrip("/")
+    urlpatterns += [
+        re_path(
+            rf"^{media_url}(?P<path>.*)$",
+            serve,
+            {"document_root": settings.MEDIA_ROOT},
+        ),
+    ]
