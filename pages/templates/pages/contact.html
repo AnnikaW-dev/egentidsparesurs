@@ -1,0 +1,58 @@
+{# pages/contact.html — contact form; intro from CMS SitePage key=contact #}
+{% extends "base.html" %}
+
+{% block title %}{% if page %}{{ page.seo_title }}{% else %}Kontakt{% endif %} – {{ site.site_name }}{% endblock %}
+{% block meta_description %}{% if page %}{% firstof page.seo_description seo_description %}{% else %}{{ seo_description }}{% endif %}{% endblock %}
+{% block og_title %}{% if page %}{{ page.seo_title }}{% else %}Kontakt{% endif %}{% endblock %}
+{% block og_description %}{% if page %}{% firstof page.seo_description seo_description %}{% else %}{{ seo_description }}{% endif %}{% endblock %}
+{% block twitter_title %}{% if page %}{{ page.seo_title }}{% else %}Kontakt{% endif %}{% endblock %}
+{% block twitter_description %}{% if page %}{% firstof page.seo_description seo_description %}{% else %}{{ seo_description }}{% endif %}{% endblock %}
+
+{% block content %}
+<article class="page-article contact-page">
+  <header class="page-header">
+    <h1>{% if page %}{{ page.title }}{% else %}Kontakt{% endif %}</h1>
+    {% if page and page.subtitle %}<p class="lead">{{ page.subtitle }}</p>{% endif %}
+  </header>
+
+  <div class="prose-stack">
+    {% if page %}
+      {% for para in page.body_paragraphs %}
+        <p>{{ para }}</p>
+      {% endfor %}
+    {% else %}
+      <p>Skicka ett meddelande så återkommer vi.</p>
+    {% endif %}
+    <p>Vill du boka en tid direkt? Använd sidan <a href="{% url 'booking' %}">Boka</a>.</p>
+  </div>
+
+  <section class="contact-form-wrap" aria-labelledby="contact-form-heading">
+    <h2 id="contact-form-heading">Skicka meddelande</h2>
+    <form method="post" class="aligned-form" novalidate>
+      {% csrf_token %}
+      {% if form.non_field_errors %}
+        <div class="form-errors" role="alert">{{ form.non_field_errors }}</div>
+      {% endif %}
+      {% for field in form %}
+      <div class="aligned-row{% if field.errors %} has-error{% endif %}">
+        <label for="{{ field.id_for_label }}">
+          {{ field.label }}{% if field.field.required %} <span class="required-marker" aria-hidden="true">*</span><span class="visually-hidden">(obligatoriskt)</span>{% endif %}
+        </label>
+        <div class="aligned-field">
+          {{ field }}
+          {% if field.errors %}
+            <p class="field-error" id="error_{{ field.name }}" role="alert">{{ field.errors|striptags }}</p>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+      <div class="aligned-row aligned-actions">
+        <span class="aligned-label-spacer" aria-hidden="true"></span>
+        <div class="aligned-field">
+          <button type="submit" class="btn">Skicka meddelande</button>
+        </div>
+      </div>
+    </form>
+  </section>
+</article>
+{% endblock %}

@@ -1,0 +1,164 @@
+{% load static %}
+{% load media_extras %}
+{# Base layout: shared header, nav, footer — EU/WCAG a11y + SEO head #}
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{{ site.site_name }} – {{ site.tagline }}{% endblock %}</title>
+  <meta name="description" content="{% block meta_description %}{{ seo_description }}{% endblock %}">
+  <meta name="robots" content="{% block robots %}index, follow{% endblock %}">
+  <link rel="canonical" href="{% block canonical %}{{ canonical_url }}{% endblock %}">
+
+  {# Open Graph / social sharing #}
+  <meta property="og:locale" content="sv_SE">
+  <meta property="og:type" content="{% block og_type %}website{% endblock %}">
+  <meta property="og:site_name" content="{{ site.site_name }}">
+  <meta property="og:title" content="{% block og_title %}{{ site.site_name }}{% endblock %}">
+  <meta property="og:description" content="{% block og_description %}{{ seo_description }}{% endblock %}">
+  <meta property="og:url" content="{% block og_url %}{{ canonical_url }}{% endblock %}">
+  {% block og_image_tags %}
+  {% if og_image_url %}
+  <meta property="og:image" content="{{ og_image_url }}">
+  {% endif %}
+  {% endblock %}
+
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="{% block twitter_title %}{{ site.site_name }}{% endblock %}">
+  <meta name="twitter:description" content="{% block twitter_description %}{{ seo_description }}{% endblock %}">
+
+  <script type="application/ld+json">{{ json_ld_business|safe }}</script>
+  {% block structured_data %}{% endblock %}
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="{% static 'css/style.css' %}">
+  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@400;700&family=Roboto:wght@300;400;500&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+  <noscript>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@400;700&family=Roboto:wght@300;400;500&display=swap">
+  </noscript>
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+  <a class="skip-link" href="#main">Hoppa till innehåll</a>
+
+  <header class="site-header">
+    <div class="header-inner">
+      <a class="brand" href="{% url 'home' %}" aria-label="{{ site.site_name }} – startsida">
+        {% if site.logo %}
+          <picture>
+            <source type="image/webp" srcset="{{ site.logo|as_webp }}">
+            <img class="brand-logo" src="{{ site.logo.url }}" alt="" width="64" height="64" decoding="async">
+          </picture>
+        {% else %}
+          <picture>
+            <source type="image/webp" srcset="{% static 'img/logo.webp' %}">
+            <img class="brand-logo" src="{% static 'img/logo.jpg' %}" alt="" width="64" height="64" decoding="async">
+          </picture>
+        {% endif %}
+        <span class="brand-text">
+          <span class="brand-name">{{ site.site_name }}</span>
+          <span class="brand-tagline">{{ site.tagline }}</span>
+        </span>
+      </a>
+
+      <button
+        class="nav-toggle"
+        type="button"
+        aria-expanded="false"
+        aria-controls="site-nav"
+        aria-label="Visa meny"
+        data-nav-toggle
+      >
+        Meny
+      </button>
+
+      <nav id="site-nav" class="site-nav" aria-label="Huvudmeny">
+        <ul>
+          <li><a href="{% url 'salon' %}" {% if request.resolver_match.url_name == 'salon' %}aria-current="page"{% endif %}>Salongen</a></li>
+          <li><a href="{% url 'treatments' %}" {% if request.resolver_match.url_name == 'treatments' %}aria-current="page"{% endif %}>Behandlingar</a></li>
+          <li><a href="{% url 'seasons' %}" {% if request.resolver_match.url_name == 'seasons' %}aria-current="page"{% endif %}>Året runt</a></li>
+          <li><a href="{% url 'gallery' %}" {% if request.resolver_match.url_name == 'gallery' %}aria-current="page"{% endif %}>Galleri</a></li>
+          <li><a href="{% url 'contact' %}" {% if request.resolver_match.url_name == 'contact' %}aria-current="page"{% endif %}>Kontakt</a></li>
+          <li><a class="nav-cta" href="{% url 'booking' %}" {% if request.resolver_match.url_name == 'booking' %}aria-current="page"{% endif %}>Boka</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  {% if messages %}
+    <div class="flash-wrap" role="status" aria-live="polite">
+      {% for message in messages %}
+        <p class="flash flash-{{ message.tags }}">{{ message }}</p>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  <main id="main" class="site-main" tabindex="-1">
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="site-footer">
+    <div class="footer-inner">
+      <div class="footer-brand">
+        <p class="footer-name">{{ site.site_name }}</p>
+        <p>{{ site.footer_text }}</p>
+      </div>
+      <div class="footer-contact">
+        <p class="footer-label">Kontakt</p>
+        <p><a href="{% url 'contact' %}">Kontaktformulär</a></p>
+        {% if site.email %}<p><a href="mailto:{{ site.email }}">{{ site.email }}</a></p>{% endif %}
+        {% if site.phone %}<p>{{ site.phone }}</p>{% endif %}
+        {% if site.address %}<p class="footer-address">{{ site.address|linebreaksbr }}</p>{% endif %}
+      </div>
+      <div class="footer-hours">
+        {% if site.opening_hours %}
+          <p class="footer-label">Öppettider</p>
+          <p>{{ site.opening_hours|linebreaksbr }}</p>
+        {% endif %}
+      </div>
+      {% if site.facebook_url or site.linkedin_url %}
+      <div class="footer-social">
+        <p class="footer-label" id="social-heading">Följ oss</p>
+        <ul class="social-links" aria-labelledby="social-heading">
+          {% if site.facebook_url %}
+          <li>
+            <a class="social-link" href="{{ site.facebook_url }}" target="_blank" rel="noopener noreferrer">
+              <svg class="social-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path fill="currentColor" d="M22 12c0-5.52-4.48-10-10-10S2 6.48 2 12c0 4.84 3.44 8.87 8 9.8V15H8v-3h2V9.5C10 7.57 11.57 6 13.5 6H16v3h-2c-.55 0-1 .45-1 1v2h3v3h-3v6.95c4.05-.5 8-4.76 8-9.95z"/>
+              </svg>
+              <span class="social-text">Facebook <span class="visually-hidden">(öppnas i ny flik)</span></span>
+            </a>
+          </li>
+          {% endif %}
+          {% if site.linkedin_url %}
+          <li>
+            <a class="social-link" href="{{ site.linkedin_url }}" target="_blank" rel="noopener noreferrer">
+              <svg class="social-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path fill="currentColor" d="M20.45 20.45h-3.55v-5.57c0-1.33-.02-3.04-1.85-3.04-1.85 0-2.14 1.45-2.14 2.94v5.67H9.35V9h3.41v1.56h.05c.47-.9 1.64-1.85 3.37-1.85 3.6 0 4.27 2.37 4.27 5.46v6.28zM5.34 7.43a2.06 2.06 0 1 1-.01-4.12 2.06 2.06 0 0 1 .01 4.12zM7.12 20.45H3.56V9h3.56v11.45zM22.23 0H1.77C.79 0 0 .77 0 1.73v20.54C0 23.23.79 24 1.77 24h20.45c.98 0 1.78-.77 1.78-1.73V1.73C24 .77 23.2 0 22.23 0z"/>
+              </svg>
+              <span class="social-text">LinkedIn <span class="visually-hidden">(öppnas i ny flik)</span></span>
+            </a>
+          </li>
+          {% endif %}
+        </ul>
+      </div>
+      {% endif %}
+    </div>
+    <div class="footer-bottom">
+      <p class="footer-copy">
+        &copy; {% now "Y" %} {{ site.site_name }}
+        · <a href="{% url 'accessibility' %}">Tillgänglighet</a>
+      </p>
+      <p class="footer-credit">
+        Webbplats skapad av
+        <a href="https://awweb.se" target="_blank" rel="noopener noreferrer">awweb.se<span class="visually-hidden"> (öppnas i ny flik)</span></a>
+      </p>
+    </div>
+  </footer>
+
+  <script src="{% static 'js/main.js' %}" defer></script>
+  {% block extra_js %}{% endblock %}
+</body>
+</html>

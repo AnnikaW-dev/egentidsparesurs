@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% load media_extras %}
+{# pages/content_page.html — CMS SitePage body + blocks #}
+
+{% block title %}{{ page.seo_title }} – {{ site.site_name }}{% endblock %}
+{% block meta_description %}{% firstof page.seo_description seo_description %}{% endblock %}
+{% block og_title %}{{ page.seo_title }}{% endblock %}
+{% block og_description %}{% firstof page.seo_description seo_description %}{% endblock %}
+{% block twitter_title %}{{ page.seo_title }}{% endblock %}
+{% block twitter_description %}{% firstof page.seo_description seo_description %}{% endblock %}
+
+{% block og_image_tags %}
+  {% if page.hero_image %}
+  <meta property="og:image" content="{{ request.scheme }}://{{ request.get_host }}{{ page.hero_image.url }}">
+  {% elif og_image_url %}
+  <meta property="og:image" content="{{ og_image_url }}">
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+<article class="page-article">
+  <header class="page-header">
+    <h1>{{ page.title }}</h1>
+    {% if page.subtitle %}<p class="lead">{{ page.subtitle }}</p>{% endif %}
+  </header>
+
+  {% if page.hero_image %}
+    <picture>
+      <source type="image/webp" srcset="{{ page.hero_image|as_webp }}">
+      <img class="page-hero" src="{{ page.hero_image.url }}" alt="{{ page.title }}" loading="eager" decoding="async">
+    </picture>
+  {% endif %}
+
+  <div class="prose-stack">
+    {% for para in page.body_paragraphs %}
+      <p>{{ para }}</p>
+    {% endfor %}
+  </div>
+
+  {% for block in blocks %}
+  <section class="content-block" aria-labelledby="block-{{ block.pk }}">
+    {% if block.image %}
+      <picture>
+        <source type="image/webp" srcset="{{ block.image|as_webp }}">
+        <img class="content-block-image" src="{{ block.image.url }}" alt="" loading="lazy" decoding="async">
+      </picture>
+    {% endif %}
+    <h2 id="block-{{ block.pk }}">{{ block.title }}</h2>
+    {% for para in block.body_paragraphs %}
+      <p>{{ para }}</p>
+    {% endfor %}
+  </section>
+  {% endfor %}
+
+  <p class="hero-actions">
+    <a class="btn" href="{% url 'booking' %}">Boka din behandling</a>
+  </p>
+</article>
+{% endblock %}

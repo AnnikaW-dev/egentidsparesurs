@@ -1,0 +1,8 @@
+{# robots.txt — Adjust Sitemap host when public_site_url is set in production #}
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /dashboard/
+Disallow: /boka/bekraftelse/
+
+Sitemap: {{ request.scheme }}://{{ request.get_host }}/sitemap.xml

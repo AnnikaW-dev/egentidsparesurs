@@ -1,0 +1,56 @@
+---
+description: Short clear docs and comments so code is easy to adjust
+alwaysApply: true
+---
+
+# Documentation & adjustability comments
+
+Every file in this project must be easy to open later and change safely. Prefer short, plain language over long essays.
+
+## Required docs
+
+- **Module / file**: one-line summary at the top (what it is for).
+- **Public class / function / view**: short docstring — purpose, important inputs, what it returns or renders, and any rule that must stay true when editing.
+- **Templates**: a short HTML comment at the top naming the page/partial and which admin/CMS fields feed it (when relevant).
+- **CSS sections**: a short comment before each major block (header, booking slots, dashboard, etc.).
+- **JS**: one-line purpose at the top; comment non-obvious selectors or behavior.
+
+## Comments that help editing
+
+- Mark **tunable values** (hours, prices defaults, colors, slot length, copy keys) with a short note, e.g. `# Adjust: default slot length for new weekly rules`.
+- Explain **why** for non-obvious branches, not what the next line literally does.
+- Point to the **place to change** related behavior (admin model, form field, CSS variable, URL name).
+- Do not narrate obvious code (`# increment i`) or leave stale comments.
+
+## Example (Python)
+
+```python
+# booking/models.py — services, weekly hours, slots, and bookings
+
+def generate_slots_for_range(start_date, end_date):
+    """Create TimeSlot rows from WeeklyAvailability between two dates.
+
+    Skips ClosedDate days; never duplicates existing (start, end) pairs.
+    Returns how many slots were newly created.
+    """
+    # Adjust: change WeeklyAvailability / ClosedDate in admin or /dashboard/
+    ...
+```
+
+## Example (template / CSS)
+
+```django
+{# pages/home.html — start page; title/body/blocks from CMS SitePage key=home #}
+```
+
+```css
+/* Brand colors — match WordPress site; tweak in :root only */
+:root {
+  --bg: #c3b09c; /* Adjust: page background */
+}
+```
+
+## When changing existing code
+
+- Keep or update the docstring/comment if behavior or tunable points change.
+- If you add a new public helper, add the short docstring in the same edit.

@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+
+{% block title %}Bokning bekräftad – {{ site.site_name }}{% endblock %}
+{% block robots %}noindex, nofollow{% endblock %}
+{% block meta_description %}Din bokning hos {{ site.site_name }} är bekräftad.{% endblock %}
+
+{% block content %}
+<article class="page-article">
+  <header class="page-header">
+    <h1>Tack för din bokning!</h1>
+    <p class="lead">Vi har sparat din tid och ser fram emot att ta hand om dig.</p>
+  </header>
+  <dl class="confirm-list">
+    <dt>Behandling</dt>
+    <dd>{{ booking.service.name }}</dd>
+    <dt>Tid</dt>
+    <dd>{{ booking.slot.start|date:"l j F Y, H:i" }}</dd>
+    <dt>Namn</dt>
+    <dd>{{ booking.customer_name }}</dd>
+    <dt>E-post</dt>
+    <dd>{{ booking.customer_email }}</dd>
+  </dl>
+  <p class="hero-actions">
+    <a class="btn" href="{% url 'home' %}">Till startsidan</a>
+  </p>
+</article>
+{% endblock %}

@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+
+{% block title %}Tillgänglighet – {{ site.site_name }}{% endblock %}
+
+{% block content %}
+<article class="page-article dashboard">
+  <header class="page-header">
+    <h1>Tillgänglighet</h1>
+    <p class="lead">Ange öppettider per veckodag, generera sedan luckor för en vecka eller månad.</p>
+    <p><a href="{% url 'dashboard' %}">← Tillbaka till översikt</a></p>
+  </header>
+
+  <section class="dash-panel">
+    <h2>1. Veckoschema</h2>
+    <form method="post" class="stack-form">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="save_week">
+      <p class="form-row">
+        <label for="{{ week_form.slot_minutes.id_for_label }}">{{ week_form.slot_minutes.label }}</label>
+        {{ week_form.slot_minutes }}
+      </p>
+      <table class="week-table">
+        <thead>
+          <tr>
+            <th>Dag</th>
+            <th>Öppen</th>
+            <th>Från</th>
+            <th>Till</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Måndag</td>
+            <td>{{ week_form.day_0_enabled }}</td>
+            <td>{{ week_form.day_0_start }}</td>
+            <td>{{ week_form.day_0_end }}</td>
+          </tr>
+          <tr>
+            <td>Tisdag</td>
+            <td>{{ week_form.day_1_enabled }}</td>
+            <td>{{ week_form.day_1_start }}</td>
+            <td>{{ week_form.day_1_end }}</td>
+          </tr>
+          <tr>
+            <td>Onsdag</td>
+            <td>{{ week_form.day_2_enabled }}</td>
+            <td>{{ week_form.day_2_start }}</td>
+            <td>{{ week_form.day_2_end }}</td>
+          </tr>
+          <tr>
+            <td>Torsdag</td>
+            <td>{{ week_form.day_3_enabled }}</td>
+            <td>{{ week_form.day_3_start }}</td>
+            <td>{{ week_form.day_3_end }}</td>
+          </tr>
+          <tr>
+            <td>Fredag</td>
+            <td>{{ week_form.day_4_enabled }}</td>
+            <td>{{ week_form.day_4_start }}</td>
+            <td>{{ week_form.day_4_end }}</td>
+          </tr>
+          <tr>
+            <td>Lördag</td>
+            <td>{{ week_form.day_5_enabled }}</td>
+            <td>{{ week_form.day_5_start }}</td>
+            <td>{{ week_form.day_5_end }}</td>
+          </tr>
+          <tr>
+            <td>Söndag</td>
+            <td>{{ week_form.day_6_enabled }}</td>
+            <td>{{ week_form.day_6_start }}</td>
+            <td>{{ week_form.day_6_end }}</td>
+          </tr>
+        </tbody>
+      </table>
+      <button type="submit" class="btn">Spara veckoschema</button>
+    </form>
+  </section>
+
+  <section class="dash-panel">
+    <h2>2. Generera tidsluckor</h2>
+    <p>Skapar bokningsbara pass utifrån veckoschemat. Befintliga luckor dubbleras inte.</p>
+    <form method="post" class="stack-form inline-form">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="generate">
+      <p class="form-row">
+        <label for="{{ generate_form.start_date.id_for_label }}">{{ generate_form.start_date.label }}</label>
+        {{ generate_form.start_date }}
+      </p>
+      <p class="form-row">
+        <label for="{{ generate_form.mode.id_for_label }}">{{ generate_form.mode.label }}</label>
+        {{ generate_form.mode }}
+      </p>
+      <button type="submit" class="btn">Generera</button>
+    </form>
+  </section>
+
+  <section class="dash-panel">
+    <h2>Förhandsvisning (14 dagar)</h2>
+    {% if preview %}
+    <ul class="upcoming-list">
+      {% for slot in preview %}
+      <li>
+        {{ slot.start|date:"Y-m-d H:i" }}–{{ slot.end|date:"H:i" }}
+        {% if slot.is_blocked %}<span class="badge">blockerad</span>{% endif %}
+        {% if slot.is_booked %}<span class="badge badge-booked">bokad</span>{% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p>Inga luckor ännu. Spara schema och generera en vecka eller månad.</p>
+    {% endif %}
+  </section>
+</article>
+{% endblock %}

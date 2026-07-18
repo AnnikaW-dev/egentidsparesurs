@@ -1,0 +1,100 @@
+{# booking/book.html — public booking; slots from TimeSlot, services from admin #}
+{% extends "base.html" %}
+
+{% block title %}{% if page %}{{ page.seo_title }}{% else %}Boka tid{% endif %} – {{ site.site_name }}{% endblock %}
+{% block meta_description %}{% if page %}{% firstof page.seo_description seo_description %}{% else %}Boka spa-pedikyr, värmande manikyr eller paraffin – se lediga tider online.{% endif %}{% endblock %}
+{% block og_title %}{% if page %}{{ page.seo_title }}{% else %}Boka tid{% endif %}{% endblock %}
+{% block og_description %}{% if page %}{% firstof page.seo_description seo_description %}{% else %}Boka spa-pedikyr, värmande manikyr eller paraffin – se lediga tider online.{% endif %}{% endblock %}
+{% block twitter_title %}{% if page %}{{ page.seo_title }}{% else %}Boka tid{% endif %}{% endblock %}
+{% block twitter_description %}{% if page %}{% firstof page.seo_description seo_description %}{% else %}Boka spa-pedikyr, värmande manikyr eller paraffin – se lediga tider online.{% endif %}{% endblock %}
+
+{% block content %}
+<article class="page-article booking-page">
+  <header class="page-header">
+    <h1>{% if page %}{{ page.title }}{% else %}Boka tid{% endif %}</h1>
+    {% if page and page.subtitle %}<p class="lead">{{ page.subtitle }}</p>{% endif %}
+    {% if page %}
+      {% for para in page.body_paragraphs %}
+        <p>{{ para }}</p>
+      {% endfor %}
+    {% else %}
+      <p class="lead">Välj en ledig tid och fyll i dina uppgifter. Du får en bekräftelse direkt.</p>
+    {% endif %}
+  </header>
+
+  {% if services %}
+  <section class="service-list" aria-labelledby="services-heading">
+    <h2 id="services-heading">Behandlingar</h2>
+    <ul>
+      {% for service in services %}
+      <li>
+        <strong>{{ service.name }}</strong>
+        <span>{{ service.duration_minutes }} min{% if service.price_sek %} · {{ service.price_sek }} kr{% endif %}</span>
+        {% if service.description %}<span class="muted">{{ service.description }}</span>{% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+  </section>
+  {% endif %}
+
+  {% if not selected_slot %}
+  <section class="slot-picker" aria-labelledby="slots-heading">
+    <h2 id="slots-heading">Lediga tider</h2>
+    {% if slots_by_date %}
+      {% for day, slots in slots_by_date %}
+      <div class="slot-day">
+        <h3 id="day-{{ forloop.counter }}">{{ day|date:"l j F Y" }}</h3>
+        <div class="slot-row" role="list" aria-labelledby="day-{{ forloop.counter }}">
+          {% for slot in slots %}
+            <a
+              class="slot-chip"
+              role="listitem"
+              href="?slot={{ slot.pk }}"
+              aria-label="Boka {{ day|date:'j F Y' }} kl {{ slot.start|date:'H:i' }}"
+            >{{ slot.start|date:"H:i" }}</a>
+          {% endfor %}
+        </div>
+      </div>
+      {% endfor %}
+    {% else %}
+      <p>Inga lediga tider just nu. Titta gärna in snart igen.</p>
+    {% endif %}
+  </section>
+  {% else %}
+  <section class="booking-form-wrap" aria-labelledby="confirm-heading">
+    <h2 id="confirm-heading">Bekräfta bokning</h2>
+    <p class="selected-slot">
+      Vald tid:
+      <strong>{{ selected_slot.start|date:"l j F Y, H:i" }}</strong>
+      <a href="{% url 'booking' %}">Byt tid</a>
+    </p>
+    <form method="post" class="stack-form aligned-form booking-confirm-form">
+      {% csrf_token %}
+      <input type="hidden" name="slot" value="{{ selected_slot.pk }}">
+      {% if form.non_field_errors %}
+        <div class="form-errors" role="alert">{{ form.non_field_errors }}</div>
+      {% endif %}
+      {% for field in form %}
+      <div class="aligned-row{% if field.errors %} has-error{% endif %}">
+        <label for="{{ field.id_for_label }}">
+          {{ field.label }}{% if field.field.required %} <span class="required-marker" aria-hidden="true">*</span><span class="visually-hidden">(obligatoriskt)</span>{% endif %}
+        </label>
+        <div class="aligned-field">
+          {{ field }}
+          {% if field.errors %}
+            <p class="field-error" id="error_{{ field.name }}" role="alert">{{ field.errors|striptags }}</p>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+      <div class="aligned-row aligned-actions">
+        <span class="aligned-label-spacer" aria-hidden="true"></span>
+        <div class="aligned-field">
+          <button type="submit" class="btn">Bekräfta bokning</button>
+        </div>
+      </div>
+    </form>
+  </section>
+  {% endif %}
+</article>
+{% endblock %}

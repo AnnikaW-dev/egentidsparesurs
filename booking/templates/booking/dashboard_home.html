@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block title %}Admin-översikt – {{ site.site_name }}{% endblock %}
+
+{% block content %}
+<article class="page-article dashboard">
+  <header class="page-header">
+    <h1>Admin-översikt</h1>
+    <p class="lead">Uppdatera texter och bilder, eller hantera lediga tider.</p>
+  </header>
+
+  <div class="dash-cards">
+    <a class="dash-card" href="{% url 'admin:index' %}">
+      <h2>Innehåll &amp; bilder</h2>
+      <p>Redigera sidor, galleri, behandlingar och webbplatsinfo i Django-admin.</p>
+    </a>
+    <a class="dash-card" href="{% url 'dashboard_availability' %}">
+      <h2>Tillgänglighet</h2>
+      <p>Sätt veckoschema och generera luckor per vecka eller månad. {{ open_count }} lediga framöver.</p>
+    </a>
+    <a class="dash-card" href="{% url 'admin:booking_booking_changelist' %}">
+      <h2>Bokningar</h2>
+      <p>Se och hantera kundbokningar.</p>
+    </a>
+  </div>
+
+  <section>
+    <h2>Kommande bokningar</h2>
+    {% if upcoming %}
+    <ul class="upcoming-list">
+      {% for b in upcoming %}
+      <li>
+        <strong>{{ b.slot.start|date:"Y-m-d H:i" }}</strong>
+        – {{ b.customer_name }} ({{ b.service.name }})
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p>Inga kommande bokningar.</p>
+    {% endif %}
+  </section>
+</article>
+{% endblock %}

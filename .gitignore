@@ -1,0 +1,21 @@
+# Byte-compiled / cache
+__pycache__/
+*.py[cod]
+*.sqlite3
+db.sqlite3
+
+# Virtual env
+.venv/
+venv/
+
+# Media uploads (keep static seed images)
+media/
+
+# Local / IDE
+.env
+.idea/
+.vscode/
+*.log
+
+# Collected static
+staticfiles/

@@ -1,0 +1,41 @@
+---
+description: EU accessibility (EAA / EN 301 549 / WCAG 2.1 AA) for the whole site
+alwaysApply: true
+---
+
+# EU accessibility
+
+The entire site must be accessible under the **European Accessibility Act** and **EN 301 549**, targeting **WCAG 2.1 Level AA**.
+
+## Must have on every page
+
+- Valid language (`lang` on `<html>`), semantic landmarks (`header`, `nav`, `main`, `footer`).
+- Skip link to main content; visible when focused.
+- Keyboard access for all interactive controls; no keyboard traps.
+- Visible focus styles (never `outline: none` without a clear replacement).
+- Text/UI contrast ≥ 4.5:1 (normal text) and ≥ 3:1 (large text / UI boundaries).
+- Images: meaningful `alt`, or empty `alt=""` only when decorative beside adjacent text.
+- Forms: visible labels (`for`/`id`), errors linked with `aria-describedby`, `aria-invalid` when wrong, useful `autocomplete`.
+- Links/buttons: clear accessible name; external links that open a new tab say so.
+- `prefers-reduced-motion`: no non-essential motion.
+- Status messages: `role="status"` / `aria-live="polite"` (or assertive for errors).
+
+## When changing UI
+
+- Test with keyboard (Tab, Enter, Escape) and a screen-reader path for new flows.
+- Do not rely on colour alone for meaning (errors, selected slots).
+- Keep touch targets roughly ≥ 44×44 px where practical.
+- Update the accessibility statement if you change major access features.
+
+## Example
+
+```html
+<!-- ✅ GOOD -->
+<label for="id_email">E-post</label>
+<input id="id_email" type="email" autocomplete="email" required
+       aria-invalid="true" aria-describedby="id_email_error">
+<p id="id_email_error" class="field-error">Ange en giltig e-postadress.</p>
+
+<!-- ❌ BAD -->
+<input type="email" placeholder="E-post" style="outline:none">
+```

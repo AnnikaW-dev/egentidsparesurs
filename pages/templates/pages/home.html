@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% load static %}
+{% load media_extras %}
+{# pages/home.html — start page; title/body/blocks from CMS SitePage key=home #}
+
+{% block title %}{{ page.seo_title }} – {{ site.site_name }}{% endblock %}
+{% block meta_description %}{% firstof page.seo_description seo_description %}{% endblock %}
+{% block og_title %}{{ page.seo_title }}{% endblock %}
+{% block og_description %}{% firstof page.seo_description seo_description %}{% endblock %}
+{% block twitter_title %}{{ page.seo_title }}{% endblock %}
+{% block twitter_description %}{% firstof page.seo_description seo_description %}{% endblock %}
+
+{% block og_image_tags %}
+  {% if page.hero_image %}
+  <meta property="og:image" content="{{ request.scheme }}://{{ request.get_host }}{{ page.hero_image.url }}">
+  {% elif og_image_url %}
+  <meta property="og:image" content="{{ og_image_url }}">
+  {% endif %}
+{% endblock %}
+
+{% block extra_head %}
+  {% if page.hero_image %}
+    <link rel="preload" as="image" href="{{ page.hero_image|as_webp }}" type="image/webp" fetchpriority="high">
+  {% else %}
+    <link rel="preload" as="image" href="{% static 'img/hero-feet.webp' %}" type="image/webp" fetchpriority="high">
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+<section class="hero" aria-labelledby="home-heading">
+  <h1 id="home-heading">{{ page.title }}</h1>
+  {% if page.hero_image %}
+    <picture>
+      <source type="image/webp" srcset="{{ page.hero_image|as_webp }}">
+      <img
+        class="hero-image"
+        src="{{ page.hero_image.url }}"
+        alt="{{ page.title }}"
+        width="1047"
+        height="1400"
+        fetchpriority="high"
+        decoding="async"
+      >
+    </picture>
+  {% else %}
+    <picture>
+      <source type="image/webp" srcset="{% static 'img/hero-feet.webp' %}">
+      <img
+        class="hero-image"
+        src="{% static 'img/hero-feet.jpg' %}"
+        alt="Spa-pedikyr med fotbad"
+        width="1047"
+        height="1400"
+        fetchpriority="high"
+        decoding="async"
+      >
+    </picture>
+  {% endif %}
+  {% if page.subtitle %}<p class="lead">{{ page.subtitle }}</p>{% endif %}
+  {% for para in page.body_paragraphs %}
+    <p class="prose">{{ para }}</p>
+  {% endfor %}
+  <p class="hero-actions">
+    <a class="btn" href="{% url 'booking' %}">Boka tid</a>
+    <a class="btn btn-ghost" href="{% url 'treatments' %}">Se behandlingar</a>
+  </p>
+</section>
+
+{% for block in blocks %}
+<section class="feature {% cycle 'feature-left' 'feature-right' %}" aria-labelledby="block-{{ block.pk }}">
+  {% if block.image %}
+    <picture>
+      <source type="image/webp" srcset="{{ block.image|as_webp }}">
+      <img class="feature-image" src="{{ block.image.url }}" alt="" width="904" height="601" loading="lazy" decoding="async">
+    </picture>
+  {% elif forloop.first %}
+    <picture>
+      <source type="image/webp" srcset="{% static 'img/hand-massage.webp' %}">
+      <img class="feature-image" src="{% static 'img/hand-massage.jpg' %}" alt="" width="904" height="601" loading="lazy" decoding="async">
+    </picture>
+  {% endif %}
+  <div class="feature-copy">
+    <h2 id="block-{{ block.pk }}">{{ block.title }}</h2>
+    {% for para in block.body_paragraphs %}
+      <p>{{ para }}</p>
+    {% endfor %}
+  </div>
+</section>
+{% endfor %}
+{% endblock %}

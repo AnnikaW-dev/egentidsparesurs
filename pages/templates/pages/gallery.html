@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% load static %}
+{% load media_extras %}
+{# pages/gallery.html — GalleryImage rows from admin #}
+
+{% block title %}{% if page %}{{ page.seo_title }}{% else %}Galleri{% endif %} – {{ site.site_name }}{% endblock %}
+{% block meta_description %}{% if page %}{% firstof page.seo_description seo_description %}{% else %}Bilder från salongen och behandlingarna hos {{ site.site_name }}.{% endif %}{% endblock %}
+{% block og_title %}{% if page %}{{ page.seo_title }}{% else %}Galleri{% endif %}{% endblock %}
+{% block og_description %}{% if page %}{% firstof page.seo_description seo_description %}{% else %}Bilder från salongen och behandlingarna hos {{ site.site_name }}.{% endif %}{% endblock %}
+
+{% block content %}
+<article class="page-article">
+  <header class="page-header">
+    <h1>{% if page %}{{ page.title }}{% else %}Galleri{% endif %}</h1>
+    {% if page and page.subtitle %}<p class="lead">{{ page.subtitle }}</p>{% endif %}
+  </header>
+
+  <div class="gallery-grid">
+    {% for image in images %}
+    <figure class="gallery-item">
+      <picture>
+        <source type="image/webp" srcset="{{ image.image|as_webp }}">
+        <img src="{{ image.image.url }}" alt="{% if image.caption or image.title %}{% else %}Galleribild{% endif %}" loading="lazy" decoding="async" width="658" height="900">
+      </picture>
+      {% if image.caption or image.title %}
+        <figcaption>{{ image.caption|default:image.title }}</figcaption>
+      {% endif %}
+    </figure>
+    {% empty %}
+    <figure class="gallery-item">
+      <picture>
+        <source type="image/webp" srcset="{% static 'img/gallery-1.webp' %}">
+        <img src="{% static 'img/gallery-1.jpg' %}" alt="Salongen" loading="lazy" decoding="async" width="658" height="900">
+      </picture>
+      <figcaption>Från salongen</figcaption>
+    </figure>
+    <figure class="gallery-item">
+      <picture>
+        <source type="image/webp" srcset="{% static 'img/hand-massage.webp' %}">
+        <img src="{% static 'img/hand-massage.jpg' %}" alt="Handmassage" loading="lazy" decoding="async" width="904" height="601">
+      </picture>
+      <figcaption>Handmassage</figcaption>
+    </figure>
+    <figure class="gallery-item">
+      <picture>
+        <source type="image/webp" srcset="{% static 'img/hero-feet.webp' %}">
+        <img src="{% static 'img/hero-feet.jpg' %}" alt="Fotvård" loading="lazy" decoding="async" width="1047" height="1400">
+      </picture>
+      <figcaption>Fotvård</figcaption>
+    </figure>
+    {% endfor %}
+  </div>
+</article>
+{% endblock %}

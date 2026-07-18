@@ -1,0 +1,50 @@
+{# pages/accessibility.html — EU accessibility statement (EAA / WCAG 2.1 AA) #}
+{% extends "base.html" %}
+
+{% block title %}Tillgänglighet – {{ site.site_name }}{% endblock %}
+{% block meta_description %}Tillgänglighetsredogörelse för {{ site.site_name }} enligt EU:s tillgänglighetskrav och WCAG 2.1 AA.{% endblock %}
+{% block robots %}index, follow{% endblock %}
+{% block og_title %}Tillgänglighet – {{ site.site_name }}{% endblock %}
+{% block og_description %}Tillgänglighetsredogörelse för {{ site.site_name }} enligt EU:s tillgänglighetskrav och WCAG 2.1 AA.{% endblock %}
+
+{% block content %}
+<article class="page-article">
+  <header class="page-header">
+    <h1>Tillgänglighetsredogörelse</h1>
+    <p class="lead">Hur vi arbetar för att webbplatsen ska vara tillgänglig enligt EU:s krav.</p>
+  </header>
+
+  <div class="prose-stack a11y-statement">
+    <h2>Ambitionsnivå</h2>
+    <p>
+      Denna webbplats ska uppfylla kraven i den europeiska tillgänglighetslagen
+      (European Accessibility Act) och standarden EN&nbsp;301&nbsp;549, med
+      <strong>WCAG&nbsp;2.1 nivå AA</strong> som riktmärke.
+    </p>
+
+    <h2>Vad vi gör</h2>
+    <ul>
+      <li>Semantisk HTML med tydliga landmärken (sidhuvud, meny, huvudinnehåll, sidfot).</li>
+      <li>Tangentbordsnavigering och synlig fokusmarkering.</li>
+      <li>Hoppa-till-innehåll-länk, formulär med etiketter och felmeddelanden.</li>
+      <li>Tillräcklig kontrast mellan text och bakgrund.</li>
+      <li>Beskrivande länkar och alternativa texter där det behövs.</li>
+    </ul>
+
+    <h2>Kända begränsningar</h2>
+    <p>
+      Innehåll som laddas upp via admin (bilder, fritext) kan ibland sakna alternativtext
+      eller ha otydlig formulering. Vi förbättrar detta löpande.
+    </p>
+
+    <h2>Rapportera problem</h2>
+    <p>
+      Upptäcker du hinder? Kontakta oss via
+      <a href="{% url 'contact' %}">kontaktformuläret</a>{% if site.email %}
+      eller e-post <a href="mailto:{{ site.email }}">{{ site.email }}</a>{% endif %}.
+    </p>
+
+    <p class="muted">Senast uppdaterad: {% now "j F Y" %}.</p>
+  </div>
+</article>
+{% endblock %}
