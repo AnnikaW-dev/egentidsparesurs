@@ -1,0 +1,21 @@
+{# Shown when CMS pages are missing (empty DB) instead of a hard 404. #}
+{% extends "base.html" %}
+
+{% block title %}Konfigurerar webbplatsen – {{ site.site_name }}{% endblock %}
+{% block robots %}noindex{% endblock %}
+
+{% block content %}
+<article class="page-article" style="text-align:center">
+  <header class="page-header">
+    <h1>Webbplatsen förbereds</h1>
+    <p class="lead">Innehåll saknas ännu i databasen.</p>
+  </header>
+  <div class="prose-stack">
+    <p>
+      Logga in i <a href="/admin/">admin</a> eller vänta på att starten kör
+      <code>ensure_site_content</code> / <code>seed_site</code>, och ladda om sidan.
+    </p>
+    <p><a class="btn" href="/">Ladda om</a></p>
+  </div>
+</article>
+{% endblock %}

@@ -1,7 +1,6 @@
 """Public marketing pages driven by CMS SitePage content."""
 
 from django.contrib import messages
-from django.http import Http404
 from django.shortcuts import redirect, render
 from django.views.decorators.http import require_http_methods
 
@@ -11,16 +10,20 @@ from .forms import ContactForm
 
 
 def _get_page(key):
-    """Load a published CMS page by key, or 404."""
-    page = SitePage.objects.filter(key=key, is_published=True).prefetch_related("blocks").first()
-    if not page:
-        raise Http404("Sidan finns inte ännu.")
-    return page
+    """Load a published CMS page by key, or None if missing."""
+    return (
+        SitePage.objects.filter(key=key, is_published=True)
+        .prefetch_related("blocks")
+        .first()
+    )
 
 
 def home(request):
     """Landing page with hero and featured content blocks."""
     page = _get_page(SitePage.PageKey.HOME)
+    if not page:
+        # Avoid hard 404 on fresh deploys before seed finishes / if seed failed.
+        return render(request, "pages/setup_needed.html", status=200)
     blocks = page.blocks.filter(is_visible=True)
     return render(request, "pages/home.html", {"page": page, "blocks": blocks})
 
@@ -28,6 +31,8 @@ def home(request):
 def salon(request):
     """About the salon."""
     page = _get_page(SitePage.PageKey.SALON)
+    if not page:
+        return render(request, "pages/setup_needed.html", status=200)
     return render(
         request,
         "pages/content_page.html",
@@ -38,6 +43,8 @@ def salon(request):
 def treatments(request):
     """Treatments and oils overview."""
     page = _get_page(SitePage.PageKey.TREATMENTS)
+    if not page:
+        return render(request, "pages/setup_needed.html", status=200)
     return render(
         request,
         "pages/content_page.html",

@@ -45,16 +45,16 @@ services:
         value: "true"
       - key: SECURE_SSL_REDIRECT
         value: "true"
-      # Admin login without Render Shell — change password after first login.
       - key: DJANGO_SUPERUSER_USERNAME
         value: admin
       - key: DJANGO_SUPERUSER_EMAIL
         value: admin@egentidsparesurs.se
       - key: DJANGO_SUPERUSER_PASSWORD
         generateValue: true
-      # Set to "true" for one deploy to load starter pages, then set back to "false".
+      # true = force re-seed; content also auto-seeds when homepage is missing
       - key: SEED_ON_DEPLOY
         value: "true"
+    # Remove disk block if your plan has no disks (app falls back to ./media).
     disk:
       name: egentid-media
       mountPath: /var/data
