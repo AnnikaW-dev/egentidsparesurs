@@ -2,13 +2,27 @@
 
 from django.contrib import admin
 
-from .models import ContentBlock, GalleryImage, SeasonTip, SitePage, SiteSettings
+from .models import (
+    ContentBlock,
+    GalleryImage,
+    SeasonTip,
+    SeasonTipItem,
+    SitePage,
+    SiteSettings,
+)
 
 
 class ContentBlockInline(admin.TabularInline):
     model = ContentBlock
     extra = 1
     fields = ("title", "body", "image", "sort_order", "is_visible")
+
+
+class SeasonTipItemInline(admin.TabularInline):
+    model = SeasonTipItem
+    extra = 3
+    fields = ("headline", "description", "sort_order")
+    ordering = ("sort_order", "id")
 
 
 @admin.register(SiteSettings)
@@ -66,5 +80,42 @@ class GalleryImageAdmin(admin.ModelAdmin):
 
 @admin.register(SeasonTip)
 class SeasonTipAdmin(admin.ModelAdmin):
-    list_display = ("month", "title", "is_visible")
-    list_editable = ("is_visible",)
+    list_display = ("month", "title", "is_featured", "is_visible")
+    list_editable = ("is_featured", "is_visible")
+    list_filter = ("is_featured", "is_visible")
+    search_fields = ("title", "closing_body")
+    inlines = [SeasonTipItemInline]
+    fieldsets = (
+        (
+            "Månad på Året runt",
+            {
+                "fields": ("month", "title", "icon", "is_featured", "is_visible"),
+                "description": (
+                    "Fyll i rubrik och tipspunkter (nedan) för varje månad. "
+                    "Kryssa i ”Visas på Året runt” för den månad som ska synas just nu."
+                ),
+            },
+        ),
+        (
+            "Avslutning (Kort sagt)",
+            {
+                "fields": (
+                    "closing_icon",
+                    "closing_label",
+                    "closing_body",
+                    "closing_cta",
+                ),
+                "description": (
+                    "Visas under checklistan, t.ex. "
+                    "💡 Kort sagt: … – boka din behandling nu!"
+                ),
+            },
+        ),
+        (
+            "Övrigt",
+            {
+                "fields": ("body", "image"),
+                "classes": ("collapse",),
+            },
+        ),
+    )

@@ -116,6 +116,10 @@ class SitePage(models.Model):
         """Split body into non-empty paragraphs for templates."""
         return [p.strip() for p in self.body.split("\n\n") if p.strip()]
 
+    def body_lines(self):
+        """Split body into non-empty single lines (checklists)."""
+        return [line.strip() for line in self.body.splitlines() if line.strip()]
+
     def seo_title(self):
         """Title used in <title> and Open Graph."""
         return (self.meta_title or self.title).strip()
@@ -129,6 +133,7 @@ class SitePage(models.Model):
             text = paras[0].replace("\n", " ")
             return text[:157] + ("…" if len(text) > 157 else "")
         return fallback
+
 
 class ContentBlock(models.Model):
     """Optional titled section on a page (e.g. hand treatment highlight)."""
@@ -151,6 +156,10 @@ class ContentBlock(models.Model):
     def body_paragraphs(self):
         return [p.strip() for p in self.body.split("\n\n") if p.strip()]
 
+    def body_lines(self):
+        """Non-empty lines for checklist-style sections."""
+        return [line.strip() for line in self.body.splitlines() if line.strip()]
+
 
 class GalleryImage(models.Model):
     """Gallery photo editable from admin."""
@@ -171,15 +180,74 @@ class GalleryImage(models.Model):
 
 
 class SeasonTip(models.Model):
-    """Monthly / seasonal tip under Året runt."""
+    """One month’s tip block on Året runt. Mark one as featured to show on the site."""
+
+    MONTH_CHOICES = [
+        (1, "Januari"),
+        (2, "Februari"),
+        (3, "Mars"),
+        (4, "April"),
+        (5, "Maj"),
+        (6, "Juni"),
+        (7, "Juli"),
+        (8, "Augusti"),
+        (9, "September"),
+        (10, "Oktober"),
+        (11, "November"),
+        (12, "December"),
+    ]
 
     month = models.PositiveSmallIntegerField(
-        choices=[(i, str(i)) for i in range(1, 13)],
+        choices=MONTH_CHOICES,
         unique=True,
+        help_text="Vilken kalendermånad tipset hör till.",
     )
-    title = models.CharField(max_length=200)
-    body = models.TextField()
+    # Adjust: full heading shown under the intro, e.g. “Mars – Vårens första månad”
+    title = models.CharField(
+        max_length=200,
+        help_text="Rubrik under introtexten, t.ex. Mars – Vårens första månad",
+    )
+    # Adjust: emoji shown left of the month heading (🌱 in the WordPress layout)
+    icon = models.CharField(
+        max_length=8,
+        default="🌱",
+        blank=True,
+        help_text="Emoji eller symbol framför månadsrubriken.",
+    )
+    body = models.TextField(
+        blank=True,
+        help_text="Valfri brödtext ovanför tipspunkterna.",
+    )
+    # Adjust: “Kort sagt …” line under the checklist (see WordPress month tips)
+    closing_icon = models.CharField(
+        max_length=8,
+        default="💡",
+        blank=True,
+        help_text="Emoji framför avslutningen, t.ex. 💡",
+    )
+    closing_label = models.CharField(
+        max_length=40,
+        default="Kort sagt:",
+        blank=True,
+        help_text="Fet stil i början, t.ex. Kort sagt:",
+    )
+    closing_body = models.CharField(
+        max_length=300,
+        blank=True,
+        help_text="Text efter etiketten, före bokningslänken.",
+    )
+    closing_cta = models.CharField(
+        max_length=80,
+        default="boka din behandling nu!",
+        blank=True,
+        help_text="Fet länkad text till Boka-sidan. Tom = ingen länk.",
+    )
     image = models.ImageField(upload_to="seasons/", blank=True)
+    is_featured = models.BooleanField(
+        default=False,
+        verbose_name="Visas på Året runt",
+        help_text="Visa detta tipset på Året runt-sidan. Endast ett kan vara valt.",
+    )
     is_visible = models.BooleanField(default=True)
 
     class Meta:
@@ -189,3 +257,33 @@ class SeasonTip(models.Model):
 
     def __str__(self):
         return self.title
+
+    def save(self, *args, **kwargs):
+        # Rule: at most one featured tip — clearing others when this one is featured.
+        super().save(*args, **kwargs)
+        if self.is_featured:
+            SeasonTip.objects.filter(is_featured=True).exclude(pk=self.pk).update(
+                is_featured=False
+            )
+
+
+class SeasonTipItem(models.Model):
+    """Checklist row under a month tip: bold headline + explanation."""
+
+    tip = models.ForeignKey(
+        SeasonTip,
+        on_delete=models.CASCADE,
+        related_name="items",
+    )
+    # Adjust: bold part before the dash on Året runt
+    headline = models.CharField(max_length=200)
+    description = models.CharField(max_length=300)
+    sort_order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ["sort_order", "id"]
+        verbose_name = "tipspunkt"
+        verbose_name_plural = "tipspunkter"
+
+    def __str__(self):
+        return self.headline

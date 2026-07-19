@@ -2,6 +2,7 @@
 
 from django.contrib import messages
 from django.shortcuts import redirect, render
+from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 
 from cms.models import GalleryImage, SeasonTip, SitePage
@@ -41,22 +42,35 @@ def salon(request):
 
 
 def treatments(request):
-    """Treatments and oils overview."""
+    """Treatments and oils overview — layout matches WordPress Behandlingar page."""
     page = _get_page(SitePage.PageKey.TREATMENTS)
     if not page:
         return render(request, "pages/setup_needed.html", status=200)
     return render(
         request,
-        "pages/content_page.html",
+        "pages/treatments.html",
         {"page": page, "blocks": page.blocks.filter(is_visible=True)},
     )
 
 
 def seasons(request):
-    """Year-round seasonal tips."""
+    """Året runt — intro from CMS page + one featured month tip (chosen in admin)."""
     page = _get_page(SitePage.PageKey.SEASONS)
-    tips = SeasonTip.objects.filter(is_visible=True)
-    return render(request, "pages/seasons.html", {"page": page, "tips": tips})
+    tip = (
+        SeasonTip.objects.filter(is_featured=True, is_visible=True)
+        .prefetch_related("items")
+        .first()
+    )
+    if tip is None:
+        # Fallback: current calendar month, then any visible tip.
+        tip = (
+            SeasonTip.objects.filter(month=timezone.localdate().month, is_visible=True)
+            .prefetch_related("items")
+            .first()
+        ) or (
+            SeasonTip.objects.filter(is_visible=True).prefetch_related("items").first()
+        )
+    return render(request, "pages/seasons.html", {"page": page, "tip": tip})
 
 
 def gallery(request):

@@ -8,7 +8,14 @@ from django.core.management.base import BaseCommand
 from django.utils.text import slugify
 
 from booking.models import Service, WeeklyAvailability, generate_slots_for_range
-from cms.models import ContentBlock, GalleryImage, SeasonTip, SitePage, SiteSettings
+from cms.models import (
+    ContentBlock,
+    GalleryImage,
+    SeasonTip,
+    SeasonTipItem,
+    SitePage,
+    SiteSettings,
+)
 
 
 def _ensure_webp(image_field):
@@ -105,19 +112,27 @@ class Command(BaseCommand):
             },
             SitePage.PageKey.TREATMENTS: {
                 "title": "Varför värmande manikyr och fotvård?",
-                "subtitle": "Värme är inte bara skönt – det är också läkande och avslappnande!",
+                "subtitle": "🌱 Värme är inte bara skönt – det är också läkande och avslappnande!",
                 "body": (
-                    "Ökar blodcirkulationen.\n"
-                    "Mjukar upp stela och ömma leder.\n"
-                    "Lindrar torr hud och sprickor.\n"
-                    "Perfekt vid reumatism, artrit och ledvärk."
+                    "Ökar blodcirkulationen\n"
+                    "Mjukar upp stela och ömma leder\n"
+                    "Lindrar torr hud och sprickor\n"
+                    "Perfekt vid reumatism, artrit och ledvärk"
                 ),
-                "hero": "hand-massage.jpg",
+                "hero": None,
             },
             SitePage.PageKey.SEASONS: {
-                "title": "Året runt",
-                "subtitle": "Tips för händer och fötter genom årstiderna.",
-                "body": "Varje månad har sina behov – här är inspiration för din egentid.",
+                "title": "Välmående fötter och händer – året runt!",
+                "subtitle": "",
+                "body": (
+                    "Många tror att en spa-pedikyr på våren räcker för sommaren, men fötterna "
+                    "och händerna behöver regelbunden omsorg. Kyla, värme och torr luft "
+                    "påverkar huden året om, och utan vård kan förhårdnader, sprickor och "
+                    "nariga händer uppstå.\n\n"
+                    "Genom att unna dig en behandling var 6:e–8:e vecka håller du både fötter "
+                    "och händer mjuka och friska – oavsett säsong. Läs vidare för att se "
+                    "varför spa-pedikyr och värmande manikyr alltid är en bra idé!"
+                ),
                 "hero": None,
             },
             SitePage.PageKey.GALLERY: {
@@ -173,7 +188,6 @@ class Command(BaseCommand):
             sort_order=1,
         )
         hand_src = static_img / "hand-massage.jpg"
-        hand_src = static_img / "hand-massage.jpg"
         if hand_src.exists() and _file_missing(hand.image):
             _save_image(hand.image, hand_src, "hand-massage.jpg")
         elif hand.image:
@@ -191,12 +205,17 @@ class Command(BaseCommand):
         )
 
         treatments = SitePage.objects.get(key=SitePage.PageKey.TREATMENTS)
+        # Clear old hero if present — Behandlingar page is text-first like WordPress.
+        if treatments.hero_image:
+            treatments.hero_image.delete(save=False)
+            treatments.hero_image = None
+            treatments.save(update_fields=["hero_image"])
         ContentBlock.objects.filter(page=treatments).delete()
         ContentBlock.objects.create(
             page=treatments,
             title="Paraffin",
             body=(
-                "Passar dig som:\n"
+                "❤️ Passar dig som:\n"
                 "Har torra händer och fötter\n"
                 "Har värk i leder och muskler\n"
                 "Vill ha en avslappnande lyxig behandling"
@@ -205,25 +224,44 @@ class Command(BaseCommand):
         )
         ContentBlock.objects.create(
             page=treatments,
-            title="Olja nr 1 – För känslig och mycket torr hud (från 5 år)",
-            body=(
-                "Återfuktar på djupet och stärker hudens skyddsbarriär.\n"
-                "Lugnar eksem och irriterad hud.\n"
-                "Perfekt för känslig hud och extra torr hud.\n"
-                "Passar både barn och vuxna."
-            ),
+            title="Vilken olja passar dig?",
+            body="",
             sort_order=2,
         )
         ContentBlock.objects.create(
             page=treatments,
-            title="Olja nr 2 – Lyxig & rogivande för normal hud",
+            title="🌱 Olja nr 1 – För känslig och mycket torr hud (Från 5 år)",
             body=(
-                "Näringsboost för huden med extra lyster.\n"
-                "Stärker elasticitet och stimulerar cellförnyelse.\n"
-                "Lyxig och rogivande behandling med härliga dofter.\n\n"
-                "Innehåll: Vitamin E, Vitamin A, Omega-9, Omega-6 och Zink."
+                "💡 Fördelar:\n"
+                "Återfuktar på djupet och stärker hudens skyddsbarriär\n"
+                "Lugnar eksem och irriterad hud\n"
+                "Perfekt för känslig hud och extra torr hud\n"
+                "Passar både barn och vuxna"
             ),
             sort_order=3,
+        )
+        ContentBlock.objects.create(
+            page=treatments,
+            title="✨ Olja nr 2 – Lyxig & rogivande för normal hud",
+            body=(
+                "💡 Fördelar:\n"
+                "Ha en näringsboost för huden och ge den extra lyster\n"
+                "Stärka hudens elasticitet och stimulera cellförnyelse\n"
+                "Ha en lyxig och rogivande behandling med härliga dofter"
+            ),
+            sort_order=4,
+        )
+        ContentBlock.objects.create(
+            page=treatments,
+            title="🌿 Innehåll:",
+            body=(
+                "Vitamin E – Skyddar huden mot fria radikaler och bevarar fukt\n"
+                "Vitamin A – Främjar hudens förnyelse och håller den smidig\n"
+                "Omega-9 (Oljesyra) – Återfuktar och gör huden elastisk\n"
+                "Omega-6 (Linolsyra) – Stärker hudens barriär och lugnar irritation\n"
+                "Zink – Lugnar irriterad hud och stödjer hudens läkning"
+            ),
+            sort_order=5,
         )
 
         # Gallery: create rows if empty, otherwise restore missing files.
@@ -249,22 +287,98 @@ class Command(BaseCommand):
                 else:
                     _ensure_webp(gi.image)
 
+        # Året runt: full month copy editable in admin; featured = April by default.
+        SeasonTip.objects.update(is_featured=False)
         season_defaults = [
-            (2, "Februari–april", "Vårda torra vinterhänder och fötter med värmande behandlingar."),
-            (5, "Maj – Förbered dig för sommaren!", "Mjuka upp fötter inför öppna skor och sommarvärme."),
-            (6, "Juni", "Spa-pedikyr och värmande manikyr håller händer och fötter i form."),
-            (7, "Juli", "Återfukta efter sol och bad – unna dig en lugn stund."),
-            (8, "Augusti", "Fortsätt vårda huden när sommaren går mot höst."),
-            (9, "September", "Bygg upp fuktbarriären inför svalare dagar."),
-            (10, "Oktober", "Värmande paraffin mot stelhet och torrhet."),
-            (11, "November", "Extra omsorg när kylan tar ut sin rätt."),
-            (12, "December", "Ge dig själv egentid mitt i julruschen."),
+            (
+                4,
+                "April – Vår på riktigt",
+                "🌸",
+                True,
+                [
+                    (
+                        "Dags att ta fram sandalerna!",
+                        "Ge fötterna en fräsch start",
+                    ),
+                    (
+                        "Mildare luft = Fortfarande torr hud",
+                        "Huden vänjer sig långsamt vid förändringar",
+                    ),
+                    (
+                        "Boost för huden",
+                        "Värmebehandlingar ger ökad cirkulation och mjukar upp huden",
+                    ),
+                ],
+                {
+                    "closing_icon": "💡",
+                    "closing_label": "Kort sagt:",
+                    "closing_body": "Ge din hud och dina fötter en nystart efter vintern –",
+                    "closing_cta": "boka din behandling nu!",
+                },
+            ),
+            (
+                3,
+                "Mars – Vårens första månad",
+                "🌱",
+                False,
+                [
+                    (
+                        "Dags att vakna upp huden",
+                        "Efter en lång vinter behöver huden näring och fukt",
+                    ),
+                    (
+                        "Förbered fötterna för öppna skor",
+                        "Bort med torr hud och ge naglarna vårkänsla",
+                    ),
+                    (
+                        "Vårtrötthet?",
+                        "En avslappnande behandling ger ny energi",
+                    ),
+                ],
+                {
+                    "closing_icon": "💡",
+                    "closing_label": "Kort sagt:",
+                    "closing_body": "Ge händer och fötter en vårstart –",
+                    "closing_cta": "boka din behandling nu!",
+                },
+            ),
+            (1, "Januari – Nytt år, mjuka fötter", "❄️", False, [], {}),
+            (2, "Februari – Vintervård", "❄️", False, [], {}),
+            (5, "Maj – Förbered dig för sommaren!", "☀️", False, [], {}),
+            (6, "Juni – Sommarfötter", "☀️", False, [], {}),
+            (7, "Juli – Sol och bad", "☀️", False, [], {}),
+            (8, "Augusti – Sensommar", "🍂", False, [], {}),
+            (9, "September – Hösten börjar", "🍂", False, [], {}),
+            (10, "Oktober – Värmande omsorg", "🍂", False, [], {}),
+            (11, "November – Mot kylan", "❄️", False, [], {}),
+            (12, "December – Egentid i julruschen", "❄️", False, [], {}),
         ]
-        for month, title, body in season_defaults:
-            SeasonTip.objects.update_or_create(
+        for month, title, icon, featured, items, closing in season_defaults:
+            tip, _ = SeasonTip.objects.update_or_create(
                 month=month,
-                defaults={"title": title, "body": body, "is_visible": True},
+                defaults={
+                    "title": title,
+                    "icon": icon,
+                    "body": "",
+                    "is_featured": featured,
+                    "is_visible": True,
+                    "closing_icon": closing.get("closing_icon", "💡"),
+                    "closing_label": closing.get("closing_label", "Kort sagt:"),
+                    "closing_body": closing.get("closing_body", ""),
+                    "closing_cta": closing.get(
+                        "closing_cta", "boka din behandling nu!"
+                    ),
+                },
             )
+            if items:
+                tip.items.all().delete()
+                for order, (headline, description) in enumerate(items):
+                    SeasonTipItem.objects.create(
+                        tip=tip,
+                        headline=headline,
+                        description=description,
+                        sort_order=order,
+                    )
 
         services = [
             ("Spa-pedikyr", 75, 695, "Avkopplande fotvård som återfuktar och mjukar upp."),
