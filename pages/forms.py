@@ -48,7 +48,6 @@ def configure_phone_field(field, *, required=False):
             "type": "tel",
             "inputmode": "numeric",
             "autocomplete": "tel",
-            "pattern": "[0-9]*",
             "title": PHONE_DIGITS_MSG,
             "data-digits-only": "true",
         }
