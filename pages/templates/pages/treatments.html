@@ -24,31 +24,28 @@
   {% endif %}
 
   {% for block in blocks %}
-  {% if not block.body %}
+  {% if block.title == "Prislista" or not block.body and "Prislista" in block.title %}
+  <section class="treatments-section treatments-section-major" aria-labelledby="block-{{ block.pk }}">
+    <h2 id="block-{{ block.pk }}" class="treatments-heading treatments-heading-major treatments-pricelist-title">{{ block.title }}</h2>
+  </section>
+  {% elif block.price_label %}
+  <section class="treatments-section treatments-price-item" aria-labelledby="block-{{ block.pk }}">
+    <h3 id="block-{{ block.pk }}" class="treatments-heading treatments-heading-sub">{{ block.title }}</h3>
+    {% if block.price_intro %}
+    <p class="treatments-price-intro">{{ block.price_intro }}</p>
+    {% endif %}
+    {% if block.price_bullets %}
+    <ul class="check-list treatments-price-bullets">
+      {% for line in block.price_bullets %}
+      <li>{{ line }}</li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+    <p class="treatments-price">{{ block.price_label }}</p>
+  </section>
+  {% elif not block.body %}
   <section class="treatments-section treatments-section-major" aria-labelledby="block-{{ block.pk }}">
     <h2 id="block-{{ block.pk }}" class="treatments-heading treatments-heading-major">{{ block.title }}</h2>
-  </section>
-  {% elif "Olja" in block.title or "Innehåll" in block.title %}
-  <section class="treatments-section treatments-section-sub" aria-labelledby="block-{{ block.pk }}">
-    <h3 id="block-{{ block.pk }}" class="treatments-heading treatments-heading-sub">{{ block.title }}</h3>
-    {% with lines=block.body_lines %}
-      {% if lines %}
-        {% if "Fördelar" in lines.0 %}
-        <p class="treatments-subhead">{{ lines.0 }}</p>
-        <ul class="check-list">
-          {% for line in lines|slice:"1:" %}
-          <li>{{ line }}</li>
-          {% endfor %}
-        </ul>
-        {% else %}
-        <ul class="check-list">
-          {% for line in lines %}
-          <li>{{ line }}</li>
-          {% endfor %}
-        </ul>
-        {% endif %}
-      {% endif %}
-    {% endwith %}
   </section>
   {% else %}
   <section class="treatments-section treatments-section-topic" aria-labelledby="block-{{ block.pk }}">

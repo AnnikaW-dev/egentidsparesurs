@@ -163,6 +163,34 @@ class ContentBlock(models.Model):
         """Non-empty lines for checklist-style sections."""
         return [line.strip() for line in self.body.splitlines() if line.strip()]
 
+    def price_label(self):
+        """Last body line starting with ‘Pris:’ for prislista blocks, else empty."""
+        for line in reversed(self.body_lines()):
+            if line.lower().startswith("pris:"):
+                return line
+        return ""
+
+    def price_body_lines(self):
+        """Body lines excluding the trailing Pris: line (for bullets / copy)."""
+        lines = self.body_lines()
+        if lines and lines[-1].lower().startswith("pris:"):
+            return lines[:-1]
+        return lines
+
+    def price_intro(self):
+        """First non-bullet paragraph before checklist lines on a prislista item."""
+        lines = self.price_body_lines()
+        if not lines:
+            return ""
+        # Lines after a blank-separated intro are bullets; first chunk is intro.
+        # Simpler: first line is intro if more follow, or whole text if one line.
+        return lines[0]
+
+    def price_bullets(self):
+        """Checklist lines under a prislista item (everything after the intro)."""
+        lines = self.price_body_lines()
+        return lines[1:] if len(lines) > 1 else []
+
 
 class GalleryImage(models.Model):
     """Gallery photo editable from admin."""

@@ -613,6 +613,47 @@ h1 {
   padding-top: 0.25rem;
 }
 
+.treatments-pricelist-title {
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+  max-width: none;
+}
+
+.treatments-price-item {
+  margin-top: 1.75rem;
+  padding-top: 0;
+  text-align: left;
+  max-width: 36rem;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.treatments-price-item .treatments-heading {
+  margin-left: 0;
+  margin-right: 0;
+  text-align: left;
+  max-width: none;
+}
+
+.treatments-price-intro {
+  margin: 0 0 0.65rem;
+  line-height: 1.5;
+  text-align: left;
+}
+
+.treatments-price-bullets {
+  margin-left: 0;
+  margin-right: 0;
+  width: 100%;
+}
+
+.treatments-price {
+  margin: 0.75rem 0 0;
+  font-weight: 700;
+  color: var(--ink-strong);
+  text-align: right;
+}
+
 .gallery-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));

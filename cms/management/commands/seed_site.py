@@ -224,45 +224,63 @@ class Command(BaseCommand):
         )
         ContentBlock.objects.create(
             page=treatments,
-            title="Vilken olja passar dig?",
+            title="Prislista",
             body="",
             sort_order=2,
         )
-        ContentBlock.objects.create(
-            page=treatments,
-            title="🌱 Olja nr 1 – För känslig och mycket torr hud (Från 5 år)",
-            body=(
-                "💡 Fördelar:\n"
-                "Återfuktar på djupet och stärker hudens skyddsbarriär\n"
-                "Lugnar eksem och irriterad hud\n"
-                "Perfekt för känslig hud och extra torr hud\n"
-                "Passar både barn och vuxna"
+        # Adjust: prislista copy — edit blocks in admin under Sida “Behandlingar”
+        price_blocks = [
+            (
+                "Evig Lycka Spa Pedikyr",
+                "En avkopplande spa-pedikyr där naglar klipps och filas, fötterna mjukas upp "
+                "och behandlingen avslutas med vårdande kräm.\n"
+                "Pris: 425 kr",
             ),
-            sort_order=3,
-        )
-        ContentBlock.objects.create(
-            page=treatments,
-            title="✨ Olja nr 2 – Lyxig & rogivande för normal hud",
-            body=(
-                "💡 Fördelar:\n"
-                "Ha en näringsboost för huden och ge den extra lyster\n"
-                "Stärka hudens elasticitet och stimulera cellförnyelse\n"
-                "Ha en lyxig och rogivande behandling med härliga dofter"
+            (
+                "Gyllene Beröring Paraffin Pedikyr",
+                "Klassisk spa-pedikyr med nagelvård och fotfilning, följt av värmande paraffin som:\n"
+                "mjukar upp torr hud\n"
+                "ger djup återfuktning\n"
+                "lindrar stelhet och frusna fötter\n"
+                "Pris: 499 kr",
             ),
-            sort_order=4,
-        )
-        ContentBlock.objects.create(
-            page=treatments,
-            title="🌿 Innehåll:",
-            body=(
-                "Vitamin E – Skyddar huden mot fria radikaler och bevarar fukt\n"
-                "Vitamin A – Främjar hudens förnyelse och håller den smidig\n"
-                "Omega-9 (Oljesyra) – Återfuktar och gör huden elastisk\n"
-                "Omega-6 (Linolsyra) – Stärker hudens barriär och lugnar irritation\n"
-                "Zink – Lugnar irriterad hud och stödjer hudens läkning"
+            (
+                "Lugnande Händer Manikyr med Lack av Naglar",
+                "Vårdande manikyr med fokus på nagelband, handmassage och formning av naglar. "
+                "Avslutas med lack om så önskas.\n"
+                "Pris: 350–400 kr",
             ),
-            sort_order=5,
-        )
+            (
+                "Ren Omsorg Paraffin Manikyr",
+                "Lyxig manikyr med nagelbandsvård och handmassage, följt av värmande paraffin:\n"
+                "återfuktar torra händer\n"
+                "mjukar upp huden\n"
+                "ger avslappning och behaglig värme\n"
+                "Pris: 499 kr",
+            ),
+            (
+                "Kunglig Avkoppling Kombo",
+                "En exklusiv behandling med både pedikyr och manikyr, värmande paraffin för "
+                "händer och fötter samt massage av både händer och fötter. En komplett stund "
+                "för återhämtning och lyx.\n"
+                "Pris: 800 kr",
+            ),
+            (
+                "Lugnande Stund – Hand- eller Fotmassage",
+                "Lyxigt Avkopplingsbad med Massage\n"
+                "Fot- eller handbad: max 5 minuter för värme och avkoppling\n"
+                "Massage: Händer och underarmar eller Fötter och underben, ca 15 minuter\n"
+                "Ingen nagel- eller fotvård – helt fokus på avslappning och välmående\n"
+                "Pris: 250 kr",
+            ),
+        ]
+        for order, (title, body) in enumerate(price_blocks, start=3):
+            ContentBlock.objects.create(
+                page=treatments,
+                title=title,
+                body=body,
+                sort_order=order,
+            )
 
         # Gallery: create rows if empty, otherwise restore missing files.
         gallery_specs = [
@@ -381,11 +399,52 @@ class Command(BaseCommand):
                     )
 
         services = [
-            ("Spa-pedikyr", 75, 695, "Avkopplande fotvård som återfuktar och mjukar upp."),
-            ("Värmande manikyr", 60, 595, "Handvård med massage och närande produkter."),
-            ("Paraffinbehandling", 45, 450, "Värmande paraffin för torra händer eller fötter."),
+            (
+                "Evig Lycka Spa Pedikyr",
+                60,
+                425,
+                "Naglar klipps och filas, fötterna mjukas upp, avslutas med vårdande kräm.",
+            ),
+            (
+                "Gyllene Beröring Paraffin Pedikyr",
+                75,
+                499,
+                "Spa-pedikyr med nagelvård och fotfilning, följt av värmande paraffin.",
+            ),
+            (
+                "Lugnande Händer Manikyr med Lack",
+                45,
+                375,
+                "Nagelband, handmassage och formning. Lack om så önskas (350–400 kr).",
+            ),
+            (
+                "Ren Omsorg Paraffin Manikyr",
+                60,
+                499,
+                "Nagelbandsvård, handmassage och värmande paraffin.",
+            ),
+            (
+                "Kunglig Avkoppling Kombo",
+                120,
+                800,
+                "Pedikyr och manikyr med paraffin och massage för händer och fötter.",
+            ),
+            (
+                "Lugnande Stund – Hand- eller Fotmassage",
+                30,
+                250,
+                "Bad max 5 min + massage ca 15 min. Fokus på avslappning, ingen nagelvård.",
+            ),
         ]
-        for name, mins, price, desc in services:
+        # Deactivate old seed services that no longer match the prislista.
+        Service.objects.filter(
+            slug__in=[
+                "spa-pedikyr",
+                "varmande-manikyr",
+                "paraffinbehandling",
+            ]
+        ).update(is_active=False)
+        for order, (name, mins, price, desc) in enumerate(services):
             Service.objects.update_or_create(
                 slug=slugify(name),
                 defaults={
@@ -394,6 +453,7 @@ class Command(BaseCommand):
                     "price_sek": price,
                     "description": desc,
                     "is_active": True,
+                    "sort_order": order,
                 },
             )
 
