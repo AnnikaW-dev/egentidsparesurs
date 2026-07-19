@@ -113,9 +113,19 @@
         {% if site.address %}<p class="footer-address">{{ site.address|linebreaksbr }}</p>{% endif %}
       </div>
       <div class="footer-hours">
+        <p class="footer-label" id="footer-hours-heading">Öppettider</p>
+        {% if footer_week_hours %}
+        <ul class="footer-week-hours" aria-labelledby="footer-hours-heading">
+          {% for row in footer_week_hours %}
+          <li{% if not row.is_open %} class="is-closed"{% endif %}>
+            <span class="footer-week-day">{{ row.label }}</span>
+            <span class="footer-week-time">{{ row.hours }}</span>
+          </li>
+          {% endfor %}
+        </ul>
+        {% endif %}
         {% if site.opening_hours %}
-          <p class="footer-label">Öppettider</p>
-          <p>{{ site.opening_hours|linebreaksbr }}</p>
+          <p class="footer-hours-note">{{ site.opening_hours|linebreaksbr }}</p>
         {% endif %}
       </div>
       {% if site.facebook_url or site.linkedin_url %}

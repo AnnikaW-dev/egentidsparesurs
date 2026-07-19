@@ -69,7 +69,7 @@ class Command(BaseCommand):
         settings.email = "info@egentidsparesurs.se"
         settings.phone = ""
         settings.address = "Egen ingång på nedervåningen"
-        settings.opening_hours = "Enligt bokning\nVardagar efter överenskommelse"
+        settings.opening_hours = "Bokning krävs – se lediga tider under Boka."
         settings.footer_text = (
             "En lugn oas för fotvård, handvård och värmande behandlingar."
         )

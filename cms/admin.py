@@ -29,7 +29,20 @@ class SeasonTipItemInline(admin.TabularInline):
 class SiteSettingsAdmin(admin.ModelAdmin):
     fieldsets = (
         ("Varumärke", {"fields": ("site_name", "tagline", "logo")}),
-        ("Kontakt", {"fields": ("email", "phone", "address", "opening_hours")}),
+        ("Kontakt", {"fields": ("email", "phone", "address")}),
+        (
+            "Öppettider i sidfot",
+            {
+                "fields": ("opening_hours",),
+                "description": (
+                    "Veckans tider (måndag–söndag) redigeras under "
+                    "Bokning → Veckoschema / öppettider. "
+                    "De syns automatiskt under Öppettider i sidfoten. "
+                    "Fältet nedan är valfri extratext under schemat "
+                    "(t.ex. ”Bokning krävs”)."
+                ),
+            },
+        ),
         (
             "Sidfot",
             {

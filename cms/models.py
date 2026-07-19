@@ -17,7 +17,10 @@ class SiteSettings(models.Model):
     address = models.TextField(blank=True)
     opening_hours = models.TextField(
         blank=True,
-        help_text="Visas i sidfoten. En rad per dag eller fritext.",
+        help_text=(
+            "Valfri extratext under veckoschemat i sidfoten "
+            "(t.ex. ”Bokning krävs”). Själva tiderna kommer från Veckoschema."
+        ),
     )
     footer_text = models.TextField(
         blank=True,

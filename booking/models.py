@@ -28,7 +28,7 @@ class Service(models.Model):
 
 
 class WeeklyAvailability(models.Model):
-    """Recurring weekday hours used to generate bookable slots."""
+    """Recurring weekday hours for booking slots and the footer Öppettider list."""
 
     WEEKDAYS = [
         (0, "Måndag"),
@@ -40,23 +40,56 @@ class WeeklyAvailability(models.Model):
         (6, "Söndag"),
     ]
 
-    weekday = models.PositiveSmallIntegerField(choices=WEEKDAYS)
-    start_time = models.TimeField()
-    end_time = models.TimeField()
+    weekday = models.PositiveSmallIntegerField(
+        choices=WEEKDAYS,
+        verbose_name="Veckodag",
+    )
+    start_time = models.TimeField(verbose_name="Öppnar")
+    end_time = models.TimeField(verbose_name="Stänger")
     slot_minutes = models.PositiveIntegerField(
         default=60,
-        help_text="Längd per bokningsbart pass i minuter.",
+        verbose_name="Passlängd (min)",
+        help_text="Längd per bokningsbart pass i minuter (påverkar Boka, inte sidfotens text).",
     )
-    is_active = models.BooleanField(default=True)
+    is_active = models.BooleanField(
+        default=True,
+        verbose_name="Aktiv",
+        help_text="Avmarkera för att dölja dagen i sidfoten och vid luckgenerering.",
+    )
 
     class Meta:
         ordering = ["weekday", "start_time"]
-        verbose_name = "veckoschema"
-        verbose_name_plural = "veckoschema"
+        verbose_name = "veckoschema / öppettider"
+        verbose_name_plural = "veckoschema / öppettider"
         unique_together = [("weekday", "start_time", "end_time")]
 
     def __str__(self):
         return f"{self.get_weekday_display()} {self.start_time:%H:%M}–{self.end_time:%H:%M}"
+
+    @classmethod
+    def footer_week_rows(cls):
+        """Week schedule for the site footer: one row per weekday (open hours or Stängt).
+
+        Adjust hours in admin under Veckoschema or /dashboard/.
+        """
+        active = cls.objects.filter(is_active=True).order_by("weekday", "start_time")
+        ranges_by_day = {weekday: [] for weekday, _ in cls.WEEKDAYS}
+        for rule in active:
+            ranges_by_day[rule.weekday].append(
+                f"{rule.start_time:%H:%M}–{rule.end_time:%H:%M}"
+            )
+        rows = []
+        for weekday, label in cls.WEEKDAYS:
+            ranges = ranges_by_day[weekday]
+            rows.append(
+                {
+                    "weekday": weekday,
+                    "label": label,
+                    "hours": ", ".join(ranges) if ranges else "Stängt",
+                    "is_open": bool(ranges),
+                }
+            )
+        return rows
 
 
 class ClosedDate(models.Model):

@@ -936,6 +936,42 @@ h1 {
   color: var(--ink-strong);
 }
 
+/* Öppettider — week schedule from WeeklyAvailability */
+.footer-week-hours {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 0.65rem;
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+
+.footer-week-hours li {
+  display: grid;
+  grid-template-columns: 5.5rem 1fr;
+  gap: 0.35rem 0.75rem;
+  margin: 0.15rem 0;
+}
+
+.footer-week-day {
+  font-weight: 500;
+  color: var(--ink-strong);
+}
+
+.footer-week-time {
+  color: var(--ink);
+}
+
+.footer-week-hours li.is-closed .footer-week-time {
+  color: var(--ink-muted);
+}
+
+.footer-hours-note {
+  margin: 0.5rem 0 0;
+  font-size: 0.88rem;
+  color: var(--ink-muted);
+  line-height: 1.4;
+}
+
 .footer-bottom {
   max-width: 1200px;
   margin: 1.5rem auto 0;
