@@ -31,3 +31,30 @@ class ContactFormTests(TestCase):
         msg = ContactMessage.objects.get()
         self.assertEqual(msg.name, "Anna Test")
         self.assertEqual(msg.status, ContactMessage.Status.NEW)
+
+    def test_contact_rejects_invalid_email(self):
+        response = self.client.post(
+            reverse("contact"),
+            {
+                "name": "Anna Test",
+                "email": "inte-en-epost",
+                "message": "Hej",
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(ContactMessage.objects.count(), 0)
+        self.assertContains(response, "giltig e-postadress")
+
+    def test_contact_rejects_non_digit_phone(self):
+        response = self.client.post(
+            reverse("contact"),
+            {
+                "name": "Anna Test",
+                "email": "anna@example.com",
+                "phone": "070-abc",
+                "message": "Hej",
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(ContactMessage.objects.count(), 0)
+        self.assertContains(response, "bara innehålla siffror")

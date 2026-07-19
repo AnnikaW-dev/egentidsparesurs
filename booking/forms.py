@@ -1,6 +1,14 @@
 """Forms for public booking and staff availability tools."""
 
 from django import forms
+from django.core.validators import EmailValidator
+
+from pages.forms import (
+    EMAIL_INVALID_MSG,
+    clean_digits_only,
+    configure_email_field,
+    configure_phone_field,
+)
 
 from .models import Booking, Service, WeeklyAvailability
 
@@ -32,8 +40,9 @@ class BookingForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         self.fields["service"].queryset = Service.objects.filter(is_active=True)
         self.fields["customer_name"].required = True
-        self.fields["customer_email"].required = True
         self.fields["service"].required = True
+        configure_email_field(self.fields["customer_email"])
+        configure_phone_field(self.fields["customer_phone"], required=False)
         for name, field in self.fields.items():
             field.widget.attrs["class"] = "form-control"
             if field.required:
@@ -42,6 +51,16 @@ class BookingForm(forms.ModelForm):
             if self.is_bound and self.errors.get(name):
                 field.widget.attrs["aria-invalid"] = "true"
                 field.widget.attrs["aria-describedby"] = f"error_{name}"
+
+    def clean_customer_email(self):
+        """Normalize and re-check e-post format with a clear Swedish error."""
+        email = (self.cleaned_data.get("customer_email") or "").strip()
+        EmailValidator(message=EMAIL_INVALID_MSG)(email)
+        return email
+
+    def clean_customer_phone(self):
+        """Telefon: digits only (optional field)."""
+        return clean_digits_only(self.cleaned_data.get("customer_phone"), required=False)
 
 
 class AvailabilityGenerateForm(forms.Form):
