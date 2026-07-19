@@ -11,6 +11,12 @@ EMAIL_REQUIRED_MSG = "Ange en e-postadress."
 PHONE_DIGITS_MSG = "Telefonnummer får bara innehålla siffror."
 
 
+class TelInput(forms.TextInput):
+    """Telephone field — single type=tel (avoids type=text + type=tel duplicate)."""
+
+    input_type = "tel"
+
+
 def configure_email_field(field):
     """Restrict to valid e-post and show Swedish messages when rules fail."""
     field.required = True
@@ -24,11 +30,11 @@ def configure_email_field(field):
     ]
     field.widget.attrs.update(
         {
-            "type": "email",
             "inputmode": "email",
             "autocomplete": "email",
             "spellcheck": "false",
             "title": EMAIL_INVALID_MSG,
+            "data-validate-email": "true",
         }
     )
 
@@ -45,7 +51,6 @@ def configure_phone_field(field, *, required=False):
     ]
     field.widget.attrs.update(
         {
-            "type": "tel",
             "inputmode": "numeric",
             "autocomplete": "tel",
             "title": PHONE_DIGITS_MSG,
@@ -85,7 +90,7 @@ class ContactForm(forms.ModelForm):
         widgets = {
             "name": forms.TextInput(attrs={"autocomplete": "name"}),
             "email": forms.EmailInput(attrs={"autocomplete": "email"}),
-            "phone": forms.TextInput(attrs={"autocomplete": "tel"}),
+            "phone": TelInput(attrs={"autocomplete": "tel"}),
             "subject": forms.TextInput(attrs={"autocomplete": "off"}),
             "message": forms.Textarea(attrs={"rows": 5, "autocomplete": "off"}),
         }

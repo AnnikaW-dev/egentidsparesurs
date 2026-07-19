@@ -128,7 +128,13 @@ STORAGES = {
         "BACKEND": "django.core.files.storage.FileSystemStorage",
     },
     "staticfiles": {
-        "BACKEND": "whitenoise.storage.CompressedStaticFilesStorage",
+        # Production: hashed filenames so browsers load new JS/CSS after deploy.
+        # Local DEBUG: plain storage (no manifest required before collectstatic).
+        "BACKEND": (
+            "django.contrib.staticfiles.storage.StaticFilesStorage"
+            if DEBUG
+            else "whitenoise.storage.CompressedManifestStaticFilesStorage"
+        ),
     },
 }
 WHITENOISE_MAX_AGE = 60 * 60 * 24 * 365

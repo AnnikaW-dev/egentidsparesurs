@@ -446,8 +446,16 @@ h1 {
 .form-errors {
   margin: 0.35rem 0 0;
   color: var(--flash-err);
-  font-size: 0.9rem;
+  font-size: 0.95rem;
+  font-weight: 600;
   text-align: center;
+}
+
+.form-errors {
+  margin-bottom: 0.85rem;
+  padding: 0.55rem 0.75rem;
+  background: #f8e8e8;
+  border: 1px solid var(--flash-err);
 }
 
 .aligned-row.has-error .form-control,

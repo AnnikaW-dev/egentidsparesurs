@@ -5,6 +5,7 @@ from django.core.validators import EmailValidator
 
 from pages.forms import (
     EMAIL_INVALID_MSG,
+    TelInput,
     clean_digits_only,
     configure_email_field,
     configure_phone_field,
@@ -32,7 +33,7 @@ class BookingForm(forms.ModelForm):
         widgets = {
             "customer_name": forms.TextInput(attrs={"autocomplete": "name"}),
             "customer_email": forms.EmailInput(attrs={"autocomplete": "email"}),
-            "customer_phone": forms.TextInput(attrs={"autocomplete": "tel"}),
+            "customer_phone": TelInput(attrs={"autocomplete": "tel"}),
             "notes": forms.Textarea(attrs={"rows": 3, "autocomplete": "off"}),
         }
 
