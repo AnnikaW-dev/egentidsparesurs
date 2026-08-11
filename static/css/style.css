@@ -404,7 +404,7 @@ h1 {
 /* Why choose — checkmarks + double underline under “spa”; Adjust list copy in home.html */
 .why-choose {
   max-width: 40rem;
-  margin: 2rem auto 0.5rem;
+  margin: 2rem auto 1.75rem; /* Adjust: space above Boka / Se behandlingar buttons */
   text-align: center;
 }
 
