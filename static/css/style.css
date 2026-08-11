@@ -367,10 +367,14 @@ h1 {
   margin: 0.5rem auto 1rem;
 }
 
-/* Home subtitle — Adjust: bold emphasis under the hero */
-.hero .lead {
+/* Home subtitle + intro — Adjust: bold emphasis under the hero */
+.hero .lead,
+.hero .prose {
+  font-size: 1.05rem;
   font-weight: 700;
   color: var(--ink-strong);
+  max-width: 40rem;
+  margin: 0.5rem auto 1rem;
 }
 
 .prose,

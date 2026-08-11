@@ -35,11 +35,11 @@ class Command(BaseCommand):
         pages = {
             SitePage.PageKey.HOME: {
                 "title": "Skönhet & avkoppling med en värmande touch!",
-                "subtitle": "",
+                "subtitle": "Unna dig en stund av värme, lugn och omtanke.",
                 "body": (
-                    "Ge dina fötter den omsorg de förtjänar! Unna dig en avkopplande "
-                    "spa-pedikyr som återfuktar, mjukar upp och ger ny energi till trötta fötter. "
-                    "Perfekt för alla årstider!"
+                    "Mjuka händer. Lätta fötter. Ett lugnare sinne.\n\n"
+                    "Välkommen till en stund där du får släppa vardagens stress och bara njuta. "
+                    "Mina behandlingar återfuktar huden, värmer stela leder och ger både kropp och själ ny energi."
                 ),
                 "hero": "hero-feet.jpg",
             },
