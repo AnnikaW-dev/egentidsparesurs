@@ -58,8 +58,8 @@
   {% endif %}
   {% if page.subtitle %}<p class="lead">{{ page.subtitle }}</p>{% endif %}
   {% for para in page.body_paragraphs %}
-    {# First body line stays bold like the subtitle; following intro text is regular weight #}
-    <p class="{% if forloop.first %}lead{% else %}prose{% endif %}">{{ para }}</p>
+    {# Order: prose, bold tagline (2nd), prose — Adjust body paragraphs in Admin → Startsida #}
+    <p class="{% if forloop.counter == 2 %}lead{% else %}prose{% endif %}">{{ para }}</p>
   {% endfor %}
   <p class="hero-actions">
     <a class="btn" href="{% url 'booking' %}">Boka tid</a>
