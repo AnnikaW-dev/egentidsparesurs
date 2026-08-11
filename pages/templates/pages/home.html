@@ -67,6 +67,21 @@
   </p>
 </section>
 
+{# Why-choose checklist — Adjust copy here or later move to CMS ContentBlock #}
+<section class="why-choose" aria-labelledby="why-choose-heading">
+  <h2 id="why-choose-heading" class="why-choose-title">
+    Varför välja Egentid
+    <span class="why-choose-spa">spa</span>
+    &amp; Service
+  </h2>
+  <ul class="why-choose-list">
+    <li>Lugn hemmasalong med egen ingång</li>
+    <li>Personliga behandlingar</li>
+    <li>Värmande paraffin som mjukar upp händer och fötter</li>
+    <li>Fokus på avkoppling och välmående</li>
+  </ul>
+</section>
+
 {% for block in blocks %}
 <section class="feature {% cycle 'feature-left' 'feature-right' %}" aria-labelledby="block-{{ block.pk }}">
   {% if block.image %}

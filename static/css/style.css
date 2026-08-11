@@ -401,6 +401,56 @@ h1 {
   margin-top: 1.5rem;
 }
 
+/* Why choose — checkmarks + double underline under “spa”; Adjust list copy in home.html */
+.why-choose {
+  max-width: 40rem;
+  margin: 2.5rem auto 2rem;
+  text-align: left;
+}
+
+.why-choose-title {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 700;
+  font-size: clamp(1.35rem, 3vw, 1.75rem);
+  text-align: left;
+  margin: 0 0 1.1rem;
+  color: var(--ink-strong);
+}
+
+.why-choose-spa {
+  /* Double line under “spa” — Adjust colour to match brand accent */
+  border-bottom: 3px double var(--focus);
+  padding-bottom: 0.05em;
+}
+
+.why-choose-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.why-choose-list li {
+  position: relative;
+  padding-left: 1.75rem;
+  color: var(--ink);
+  font-size: 1.02rem;
+  line-height: 1.45;
+}
+
+.why-choose-list li::before {
+  content: "✓";
+  position: absolute;
+  left: 0;
+  top: 0;
+  color: var(--ink-strong);
+  font-weight: 700;
+  speak: never;
+}
+
 .btn {
   display: inline-block;
   border: 1px solid var(--ink-strong);
