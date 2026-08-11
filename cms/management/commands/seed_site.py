@@ -140,11 +140,17 @@ class Command(BaseCommand):
                     "is_published": True,
                 },
             )
-            if data["hero"]:
+            # Only attach hero once — re-saving creates Django name suffixes and breaks WebP pairs.
+            if data["hero"] and not page.hero_image:
                 src = static_img / data["hero"]
                 if src.exists():
                     with src.open("rb") as fh:
                         page.hero_image.save(data["hero"], File(fh), save=True)
+                    webp_src = src.with_suffix(".webp")
+                    if webp_src.exists() and page.hero_image:
+                        Path(page.hero_image.path).with_suffix(".webp").write_bytes(
+                            webp_src.read_bytes()
+                        )
 
         home = SitePage.objects.get(key=SitePage.PageKey.HOME)
         ContentBlock.objects.filter(page=home).delete()
@@ -162,6 +168,11 @@ class Command(BaseCommand):
         if hand_src.exists():
             with hand_src.open("rb") as fh:
                 hand.image.save("hand-massage.jpg", File(fh), save=True)
+            # Keep WebP companion next to the saved upload name.
+            webp_src = hand_src.with_suffix(".webp")
+            if webp_src.exists() and hand.image:
+                dest_webp = Path(hand.image.path).with_suffix(".webp")
+                dest_webp.write_bytes(webp_src.read_bytes())
 
         ContentBlock.objects.create(
             page=home,

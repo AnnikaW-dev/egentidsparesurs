@@ -65,14 +65,30 @@ def mirror_to_media() -> None:
             print("mirrored", dest_rel)
 
 
+def ensure_media_webp() -> None:
+    """Create .webp next to any media JPEG that is missing a companion."""
+    media = ROOT / "media"
+    if not media.exists():
+        return
+    for jpg in list(media.rglob("*.jpg")) + list(media.rglob("*.jpeg")):
+        webp = jpg.with_suffix(".webp")
+        if webp.exists():
+            continue
+        img = Image.open(jpg).convert("RGB")
+        img.save(webp, "WEBP", quality=80, method=6)
+        print("webp", webp.relative_to(ROOT))
+
+
 def main():
     for rel, max_edge, quality in TARGETS:
         optimize(ROOT / rel, max_edge, quality)
     mirror_to_media()
+    ensure_media_webp()
     # Drop leftover huge Django upload variants (same content, different names).
     for pattern in ("media/pages/hero-feet_*.jpg", "media/pages/gallery-1_*.jpg", "media/pages/hand-massage_*.jpg", "media/blocks/hand-massage_*.jpg"):
         for p in ROOT.glob(pattern):
             p.unlink(missing_ok=True)
+            p.with_suffix(".webp").unlink(missing_ok=True)
             print("removed", p.relative_to(ROOT))
 
 
