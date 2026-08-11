@@ -61,25 +61,26 @@
     {# Order: prose, bold tagline (2nd), prose — Adjust body paragraphs in Admin → Startsida #}
     <p class="{% if forloop.counter == 2 %}lead{% else %}prose{% endif %}">{{ para }}</p>
   {% endfor %}
+
+  {# Why-choose checklist — above CTAs; Adjust copy here or later move to CMS ContentBlock #}
+  <section class="why-choose" aria-labelledby="why-choose-heading">
+    <h2 id="why-choose-heading" class="why-choose-title">
+      Varför välja Egentid
+      <span class="why-choose-spa">spa</span>
+      &amp; Service
+    </h2>
+    <ul class="why-choose-list">
+      <li>Lugn hemmasalong med egen ingång</li>
+      <li>Personliga behandlingar</li>
+      <li>Värmande paraffin som mjukar upp händer och fötter</li>
+      <li>Fokus på avkoppling och välmående</li>
+    </ul>
+  </section>
+
   <p class="hero-actions">
     <a class="btn" href="{% url 'booking' %}">Boka tid</a>
     <a class="btn btn-ghost" href="{% url 'treatments' %}">Se behandlingar</a>
   </p>
-</section>
-
-{# Why-choose checklist — Adjust copy here or later move to CMS ContentBlock #}
-<section class="why-choose" aria-labelledby="why-choose-heading">
-  <h2 id="why-choose-heading" class="why-choose-title">
-    Varför välja Egentid
-    <span class="why-choose-spa">spa</span>
-    &amp; Service
-  </h2>
-  <ul class="why-choose-list">
-    <li>Lugn hemmasalong med egen ingång</li>
-    <li>Personliga behandlingar</li>
-    <li>Värmande paraffin som mjukar upp händer och fötter</li>
-    <li>Fokus på avkoppling och välmående</li>
-  </ul>
 </section>
 
 {% for block in blocks %}

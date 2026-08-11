@@ -404,8 +404,8 @@ h1 {
 /* Why choose — checkmarks + double underline under “spa”; Adjust list copy in home.html */
 .why-choose {
   max-width: 40rem;
-  margin: 2.5rem auto 2rem;
-  text-align: left;
+  margin: 2rem auto 0.5rem;
+  text-align: center;
 }
 
 .why-choose-title {
@@ -413,7 +413,7 @@ h1 {
   font-style: italic;
   font-weight: 700;
   font-size: clamp(1.35rem, 3vw, 1.75rem);
-  text-align: left;
+  text-align: center;
   margin: 0 0 1.1rem;
   color: var(--ink-strong);
 }
@@ -426,11 +426,13 @@ h1 {
 
 .why-choose-list {
   list-style: none;
-  margin: 0;
+  margin: 0 auto;
   padding: 0;
-  display: flex;
+  display: inline-flex;
   flex-direction: column;
+  align-items: flex-start;
   gap: 0.65rem;
+  text-align: left;
 }
 
 .why-choose-list li {
@@ -448,7 +450,6 @@ h1 {
   top: 0;
   color: var(--ink-strong);
   font-weight: 700;
-  speak: never;
 }
 
 .btn {
