@@ -92,10 +92,10 @@
             </button>
             <ul id="nav-behandlingar" class="nav-submenu">
               <li>
-                <a href="{% url 'seasons' %}" {% if request.resolver_match.url_name == 'seasons' %}aria-current="page"{% endif %}>Året runt</a>
+                <a href="{% url 'treatments' %}" {% if request.resolver_match.url_name == 'treatments' %}aria-current="page"{% endif %}>Behandlingar</a>
               </li>
               <li>
-                <a href="{% url 'treatments' %}" {% if request.resolver_match.url_name == 'treatments' %}aria-current="page"{% endif %}>Behandlingar</a>
+                <a href="{% url 'seasons' %}" {% if request.resolver_match.url_name == 'seasons' %}aria-current="page"{% endif %}>Året runt</a>
               </li>
               <li>
                 <a href="{% url 'warming' %}" {% if request.resolver_match.url_name == 'warming' %}aria-current="page"{% endif %}>Värmande behandlingar</a>
