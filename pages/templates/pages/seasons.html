@@ -27,7 +27,9 @@
         <img src="{{ tip.image.url }}" alt="">
       {% endif %}
       <h2>{{ tip.title }}</h2>
-      <p>{{ tip.body }}</p>
+      <div class="season-card-body">
+        {% include "cms/season_tip_body.html" with tip=tip %}
+      </div>
     </article>
     {% empty %}
     <p>Säsongstips läggs till i admin under Säsongstips.</p>

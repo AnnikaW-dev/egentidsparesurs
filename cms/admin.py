@@ -68,12 +68,5 @@ class GalleryImageAdmin(admin.ModelAdmin):
 class SeasonTipAdmin(admin.ModelAdmin):
     list_display = ("month", "title", "is_visible")
     list_editable = ("is_visible",)
+    ordering = ("month",)
     fields = ("month", "title", "body", "image", "is_visible")
-
-    def get_form(self, request, obj=None, **kwargs):
-        form = super().get_form(request, obj, **kwargs)
-        form.base_fields["body"].help_text = (
-            "Visas under knapparna på startsidan för vald månad. "
-            "Använd ### Rubrik för underrubriker och ✔ för checklistpunkter."
-        )
-        return form

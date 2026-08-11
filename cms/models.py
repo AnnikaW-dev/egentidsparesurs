@@ -174,22 +174,41 @@ class GalleryImage(models.Model):
 
 
 class SeasonTip(models.Model):
-    """Monthly / seasonal tip under Året runt.
+    """Monthly tip — shown on home as “Månadens tips” and on Året runt.
 
-    Body format for structured home display (blank lines optional):
-      Intro paragraph.
-      ### Section heading
-      ✔ Checklist item
-      Another paragraph.
-    Adjust monthly in Admin → Säsongstips.
+    Edit the tip for the current calendar month in Admin → Säsongstips.
+    Body formatting (easy to reuse each month):
+      ## Rubrik
+      ✔ punkt i lista
+      Vanlig text som stycke (tom rad = nytt stycke).
     """
 
-    month = models.PositiveSmallIntegerField(
-        choices=[(i, str(i)) for i in range(1, 13)],
-        unique=True,
+    MONTHS = [
+        (1, "Januari"),
+        (2, "Februari"),
+        (3, "Mars"),
+        (4, "April"),
+        (5, "Maj"),
+        (6, "Juni"),
+        (7, "Juli"),
+        (8, "Augusti"),
+        (9, "September"),
+        (10, "Oktober"),
+        (11, "November"),
+        (12, "December"),
+    ]
+
+    month = models.PositiveSmallIntegerField(choices=MONTHS, unique=True)
+    title = models.CharField(
+        max_length=200,
+        help_text="T.ex. “Juli – Ge händer och fötter lite extra sommaromsorg”.",
     )
-    title = models.CharField(max_length=200)
-    body = models.TextField()
+    body = models.TextField(
+        help_text=(
+            "Månadens innehåll. Använd ## för underrubrik, ✔ för checklista, "
+            "och tom rad mellan stycken. Byt text varje månad här."
+        ),
+    )
     image = models.ImageField(upload_to="seasons/", blank=True)
     is_visible = models.BooleanField(default=True)
 
@@ -199,27 +218,31 @@ class SeasonTip(models.Model):
         verbose_name_plural = "säsongstips"
 
     def __str__(self):
-        return self.title
+        return f"{self.get_month_display()}: {self.title}"
 
-    def body_blocks(self):
-        """Parse body into paragraphs, ### headings, and ✔ checklists for templates."""
-        blocks = []
-        current_list = None
+    def body_sections(self):
+        """Parse body into heading / paragraph / checklist blocks for templates."""
+        sections = []
+        checklist = []
+
+        def flush_list():
+            nonlocal checklist
+            if checklist:
+                sections.append({"type": "list", "items": checklist})
+                checklist = []
+
         for raw in self.body.splitlines():
             line = raw.strip()
             if not line:
-                current_list = None
+                flush_list()
                 continue
-            if line.startswith("### "):
-                current_list = None
-                blocks.append({"type": "h", "text": line[4:].strip()})
-            elif line[:1] in ("✔", "✓"):
-                text = line.lstrip("✔✓ ").strip()
-                if current_list is None:
-                    current_list = {"type": "ul", "items": []}
-                    blocks.append(current_list)
-                current_list["items"].append(text)
+            if line.startswith(("✔", "✓")):
+                checklist.append(line.lstrip("✔✓").strip())
+                continue
+            flush_list()
+            if line.startswith("## "):
+                sections.append({"type": "heading", "text": line[3:].strip()})
             else:
-                current_list = None
-                blocks.append({"type": "p", "text": line})
-        return blocks
+                sections.append({"type": "para", "text": line})
+        flush_list()
+        return sections

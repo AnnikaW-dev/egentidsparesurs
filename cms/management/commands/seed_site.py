@@ -235,22 +235,22 @@ class Command(BaseCommand):
                     with src.open("rb") as fh:
                         gi.image.save(name, File(fh), save=True)
 
-        # Full monthly tip bodies use ### headings and ✔ items (see SeasonTip.body_blocks).
-        # Adjust: edit each month in Admin → Säsongstips.
-        summer_care_body = (
+        # Rich monthly tips — home shows the tip for the current calendar month.
+        # Adjust: edit Admin → Säsongstips; use ## for headings and ✔ for checklist lines.
+        july_body = (
             "Sommaren är en perfekt tid att ge händer och fötter lite extra uppmärksamhet. "
             "När du är ledig och barfota ute – passa på att träna rörlighet och cirkulation "
             "på ett enkelt och naturligt sätt.\n\n"
-            "### Ge fötterna sommarträning\n"
+            "## Ge fötterna sommarträning\n"
             "✔ Gå barfota i gräs, sand eller på en filt och låt fötterna känna olika underlag.\n"
             "✔ Böj och sträck tårna flera gånger.\n"
             "✔ Försök att greppa en handduk eller lite gräs med tårna och släpp igen.\n\n"
             "Det hjälper till att väcka små muskler i fötterna och hålla dem rörliga.\n\n"
-            "### Ge händerna lite kärlek\n"
+            "## Ge händerna lite kärlek\n"
             "✔ Låt tummen möta ett finger i taget – pekfinger, långfinger, ringfinger och lillfinger.\n"
             "✔ Sträck ut fingrarna och slappna av.\n\n"
             "En liten stund varje dag kan göra stor skillnad för hur händerna känns.\n\n"
-            "### Mitt tips:\n"
+            "## Mitt tips:\n"
             "Gör dina rörelser när du sitter på stranden, i trädgården eller på balkongen. "
             "Några minuter av egen tid kan vara en enkel väg till mer välmående."
         )
@@ -261,12 +261,12 @@ class Command(BaseCommand):
             (
                 7,
                 "Juli – Ge händer och fötter lite extra sommaromsorg",
-                summer_care_body,
+                july_body,
             ),
             (
                 8,
                 "Augusti – Ge händer och fötter lite extra sommaromsorg",
-                summer_care_body,
+                july_body,
             ),
             (9, "September", "Bygg upp fuktbarriären inför svalare dagar."),
             (10, "Oktober", "Värmande paraffin mot stelhet och torrhet."),

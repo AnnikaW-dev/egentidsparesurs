@@ -23,12 +23,14 @@ def _get_page(key):
 def home(request):
     """Landing page with hero, monthly tip, and featured content blocks.
 
-    Month tip: Admin → Säsongstips for the current calendar month.
+    Monthly tip: Admin → Säsongstips → row for the current month.
     """
     page = _get_page(SitePage.PageKey.HOME)
     blocks = page.blocks.filter(is_visible=True)
-    month = timezone.localdate().month
-    month_tip = SeasonTip.objects.filter(month=month, is_visible=True).first()
+    month_tip = SeasonTip.objects.filter(
+        month=timezone.localdate().month,
+        is_visible=True,
+    ).first()
     return render(
         request,
         "pages/home.html",
