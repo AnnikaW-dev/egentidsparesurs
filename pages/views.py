@@ -3,6 +3,7 @@
 from django.contrib import messages
 from django.http import Http404
 from django.shortcuts import redirect, render
+from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 
 from booking.models import Service
@@ -20,10 +21,19 @@ def _get_page(key):
 
 
 def home(request):
-    """Landing page with hero and featured content blocks."""
+    """Landing page with hero, monthly tip, and featured content blocks.
+
+    Month tip: Admin → Säsongstips for the current calendar month.
+    """
     page = _get_page(SitePage.PageKey.HOME)
     blocks = page.blocks.filter(is_visible=True)
-    return render(request, "pages/home.html", {"page": page, "blocks": blocks})
+    month = timezone.localdate().month
+    month_tip = SeasonTip.objects.filter(month=month, is_visible=True).first()
+    return render(
+        request,
+        "pages/home.html",
+        {"page": page, "blocks": blocks, "month_tip": month_tip},
+    )
 
 
 def salon(request):

@@ -83,6 +83,34 @@
   </p>
 </section>
 
+{% if month_tip %}
+{# Månadens tips — content from Admin → Säsongstips (current month) #}
+<section class="month-tip" aria-labelledby="month-tip-heading">
+  <header class="month-tip-header">
+    <p class="month-tip-eyebrow">Månadens tips – ta hand om händer &amp; fötter hemma</p>
+    <h2 id="month-tip-heading" class="month-tip-title">{{ month_tip.title }}</h2>
+  </header>
+  <div class="month-tip-body">
+    {% for block in month_tip.body_blocks %}
+      {% if block.type == "h" %}
+        <h3 class="month-tip-sub">{{ block.text }}</h3>
+      {% elif block.type == "ul" %}
+        <ul class="month-tip-list">
+          {% for item in block.items %}
+            <li>{{ item }}</li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p>{{ block.text }}</p>
+      {% endif %}
+    {% endfor %}
+  </div>
+  <p class="month-tip-more">
+    <a href="{% url 'seasons' %}">Fler tips året runt</a>
+  </p>
+</section>
+{% endif %}
+
 {% for block in blocks %}
 <section class="feature {% cycle 'feature-left' 'feature-right' %}" aria-labelledby="block-{{ block.pk }}">
   {% if block.image %}

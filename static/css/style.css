@@ -452,6 +452,86 @@ h1 {
   font-weight: 700;
 }
 
+/* Månadens tips — under home CTAs; copy from Admin → Säsongstips */
+.month-tip {
+  max-width: 40rem;
+  margin: 2.5rem auto 2rem;
+  padding: 1.5rem 1.25rem;
+  background: var(--bg-panel);
+  border: 1px solid var(--line);
+  text-align: center;
+}
+
+.month-tip-eyebrow {
+  margin: 0 0 0.5rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--ink-strong);
+}
+
+.month-tip-title {
+  font-family: var(--font-display);
+  font-size: clamp(1.25rem, 2.8vw, 1.55rem);
+  font-weight: 700;
+  margin: 0 0 1rem;
+  text-align: center;
+  color: var(--ink-strong);
+}
+
+.month-tip-body {
+  text-align: left;
+  max-width: 36rem;
+  margin: 0 auto;
+}
+
+.month-tip-body > p {
+  margin: 0 0 0.85rem;
+  color: var(--ink);
+}
+
+.month-tip-sub {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin: 1.25rem 0 0.55rem;
+  text-align: left;
+  color: var(--ink-strong);
+}
+
+.month-tip-list {
+  list-style: none;
+  margin: 0 0 0.85rem;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.month-tip-list li {
+  position: relative;
+  padding-left: 1.75rem;
+  color: var(--ink);
+  line-height: 1.45;
+}
+
+.month-tip-list li::before {
+  content: "✓";
+  position: absolute;
+  left: 0;
+  top: 0;
+  color: var(--ink-strong);
+  font-weight: 700;
+}
+
+.month-tip-more {
+  margin: 1.25rem 0 0;
+  text-align: center;
+}
+
+.month-tip-more a {
+  font-weight: 500;
+}
+
 .btn {
   display: inline-block;
   border: 1px solid var(--ink-strong);

@@ -174,7 +174,15 @@ class GalleryImage(models.Model):
 
 
 class SeasonTip(models.Model):
-    """Monthly / seasonal tip under Året runt."""
+    """Monthly / seasonal tip under Året runt.
+
+    Body format for structured home display (blank lines optional):
+      Intro paragraph.
+      ### Section heading
+      ✔ Checklist item
+      Another paragraph.
+    Adjust monthly in Admin → Säsongstips.
+    """
 
     month = models.PositiveSmallIntegerField(
         choices=[(i, str(i)) for i in range(1, 13)],
@@ -192,3 +200,26 @@ class SeasonTip(models.Model):
 
     def __str__(self):
         return self.title
+
+    def body_blocks(self):
+        """Parse body into paragraphs, ### headings, and ✔ checklists for templates."""
+        blocks = []
+        current_list = None
+        for raw in self.body.splitlines():
+            line = raw.strip()
+            if not line:
+                current_list = None
+                continue
+            if line.startswith("### "):
+                current_list = None
+                blocks.append({"type": "h", "text": line[4:].strip()})
+            elif line[:1] in ("✔", "✓"):
+                text = line.lstrip("✔✓ ").strip()
+                if current_list is None:
+                    current_list = {"type": "ul", "items": []}
+                    blocks.append(current_list)
+                current_list["items"].append(text)
+            else:
+                current_list = None
+                blocks.append({"type": "p", "text": line})
+        return blocks
