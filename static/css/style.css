@@ -239,6 +239,92 @@ h1 {
   font-weight: 500;
 }
 
+/* Behandlingar submenu — keyboard disclosure; hover as progressive enhancement */
+.nav-item.has-submenu {
+  position: relative;
+}
+
+.nav-submenu-toggle {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  font-size: 0.95rem;
+  color: var(--ink);
+  padding: 0.2rem 0;
+  cursor: pointer;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.nav-submenu-toggle::after {
+  content: "";
+  width: 0.4rem;
+  height: 0.4rem;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: rotate(45deg);
+  margin-top: -0.15rem;
+}
+
+.nav-submenu-toggle[aria-expanded="true"]::after {
+  transform: rotate(-135deg);
+  margin-top: 0.15rem;
+}
+
+.nav-submenu-toggle:hover,
+.nav-submenu-toggle:focus-visible,
+.nav-item.has-submenu:focus-within > .nav-submenu-toggle {
+  color: var(--ink-strong);
+  text-decoration: underline;
+}
+
+.nav-submenu {
+  list-style: none;
+  margin: 0;
+  padding: 0.4rem 0;
+  min-width: 14rem;
+  background: var(--bg-panel);
+  border: 1px solid var(--line);
+  box-shadow: 0 8px 20px rgba(40, 30, 20, 0.08);
+  z-index: 30;
+  display: none;
+}
+
+.nav-submenu.is-open {
+  display: block;
+}
+
+.nav-submenu a {
+  display: block;
+  padding: 0.55rem 0.9rem;
+  min-height: 44px;
+  box-sizing: border-box;
+}
+
+@media (min-width: 761px) {
+  .nav-submenu {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    margin-top: 0.35rem;
+  }
+
+  /* Progressive enhancement: open on hover/focus without trapping keyboard */
+  .nav-item.has-submenu:hover > .nav-submenu,
+  .nav-item.has-submenu:focus-within > .nav-submenu {
+    display: block;
+  }
+
+  .nav-item.has-submenu:hover > .nav-submenu-toggle,
+  .nav-item.has-submenu:focus-within > .nav-submenu-toggle {
+    color: var(--ink-strong);
+  }
+}
+
+
 .flash-wrap {
   position: sticky;
   top: 0;
@@ -781,6 +867,18 @@ h1 {
     gap: 0.65rem;
     padding: 0.5rem 0 0.25rem;
   }
+
+  .nav-submenu {
+    position: static;
+    width: 100%;
+    margin: 0.25rem 0 0.35rem;
+    box-shadow: none;
+    border: 0;
+    border-left: 2px solid var(--line);
+    padding: 0.15rem 0 0.15rem 0.75rem;
+    background: transparent;
+  }
+
 
   .feature,
   .feature-right {

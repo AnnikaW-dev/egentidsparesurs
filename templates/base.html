@@ -76,12 +76,47 @@
 
       <nav id="site-nav" class="site-nav" aria-label="Huvudmeny">
         <ul>
-          <li><a href="{% url 'salon' %}" {% if request.resolver_match.url_name == 'salon' %}aria-current="page"{% endif %}>Salongen</a></li>
-          <li><a href="{% url 'treatments' %}" {% if request.resolver_match.url_name == 'treatments' %}aria-current="page"{% endif %}>Behandlingar</a></li>
-          <li><a href="{% url 'seasons' %}" {% if request.resolver_match.url_name == 'seasons' %}aria-current="page"{% endif %}>Året runt</a></li>
-          <li><a href="{% url 'gallery' %}" {% if request.resolver_match.url_name == 'gallery' %}aria-current="page"{% endif %}>Galleri</a></li>
-          <li><a href="{% url 'contact' %}" {% if request.resolver_match.url_name == 'contact' %}aria-current="page"{% endif %}>Kontakt</a></li>
-          <li><a class="nav-cta" href="{% url 'booking' %}" {% if request.resolver_match.url_name == 'booking' %}aria-current="page"{% endif %}>Boka</a></li>
+          <li>
+            <a href="{% url 'home' %}" {% if request.resolver_match.url_name == 'home' %}aria-current="page"{% endif %}>Hem</a>
+          </li>
+          <li class="nav-item has-submenu">
+            {# Disclosure: button opens submenu; links inside are the destinations #}
+            <button
+              type="button"
+              class="nav-submenu-toggle"
+              aria-expanded="false"
+              aria-controls="nav-behandlingar"
+              data-submenu-toggle
+            >
+              Behandlingar
+            </button>
+            <ul id="nav-behandlingar" class="nav-submenu">
+              <li>
+                <a href="{% url 'seasons' %}" {% if request.resolver_match.url_name == 'seasons' %}aria-current="page"{% endif %}>Året runt</a>
+              </li>
+              <li>
+                <a href="{% url 'treatments' %}" {% if request.resolver_match.url_name == 'treatments' %}aria-current="page"{% endif %}>Behandlingar</a>
+              </li>
+              <li>
+                <a href="{% url 'warming' %}" {% if request.resolver_match.url_name == 'warming' %}aria-current="page"{% endif %}>Värmande behandlingar</a>
+              </li>
+              <li>
+                <a href="{% url 'prices' %}" {% if request.resolver_match.url_name == 'prices' %}aria-current="page"{% endif %}>Prislista</a>
+              </li>
+            </ul>
+          </li>
+          <li>
+            <a class="nav-cta" href="{% url 'booking' %}" {% if request.resolver_match.url_name == 'booking' %}aria-current="page"{% endif %}>Boka</a>
+          </li>
+          <li>
+            <a href="{% url 'about' %}" {% if request.resolver_match.url_name == 'about' or request.resolver_match.url_name == 'salon' %}aria-current="page"{% endif %}>Om</a>
+          </li>
+          <li>
+            <a href="{% url 'contact' %}" {% if request.resolver_match.url_name == 'contact' %}aria-current="page"{% endif %}>Kontakt</a>
+          </li>
+          <li>
+            <a href="{% url 'service' %}" {% if request.resolver_match.url_name == 'service' %}aria-current="page"{% endif %}>Service</a>
+          </li>
         </ul>
       </nav>
     </div>

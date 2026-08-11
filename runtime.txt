@@ -1,0 +1,2 @@
+# Python version for Render
+3.12.9

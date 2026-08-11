@@ -75,12 +75,15 @@ class SitePage(models.Model):
 
     class PageKey(models.TextChoices):
         HOME = "home", "Startsida"
-        SALON = "salon", "Salongen"
+        SALON = "salon", "Om"  # About / salongen — Adjust: nav label "Om"
         TREATMENTS = "treatments", "Behandlingar"
+        WARMING = "warming", "Värmande behandlingar"
+        PRICES = "prices", "Prislista"
         SEASONS = "seasons", "Året runt"
         GALLERY = "gallery", "Galleri"
         BOOKING = "booking", "Boka"
         CONTACT = "contact", "Kontakt"
+        SERVICE = "service", "Service"
 
     key = models.CharField(max_length=32, choices=PageKey.choices, unique=True)
     title = models.CharField(max_length=200)

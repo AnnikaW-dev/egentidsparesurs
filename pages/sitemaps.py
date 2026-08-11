@@ -14,12 +14,15 @@ class StaticViewSitemap(Sitemap):
     # (url name, priority) — Adjust priorities if a page becomes more important.
     PAGES = (
         ("home", 1.0),
-        ("salon", 0.8),
+        ("about", 0.8),
         ("treatments", 0.9),
+        ("warming", 0.8),
+        ("prices", 0.8),
         ("seasons", 0.6),
         ("gallery", 0.5),
         ("booking", 0.9),
         ("contact", 0.7),
+        ("service", 0.7),
         ("accessibility", 0.3),
     )
 

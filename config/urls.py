@@ -19,10 +19,14 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     path("", page_views.home, name="home"),
     path("salongen/", page_views.salon, name="salon"),
+    path("om/", page_views.salon, name="about"),  # Same CMS page as salongen
     path("behandlingar/", page_views.treatments, name="treatments"),
+    path("varmande-behandlingar/", page_views.warming, name="warming"),
+    path("prislista/", page_views.prices, name="prices"),
     path("aret-runt/", page_views.seasons, name="seasons"),
     path("galleri/", page_views.gallery, name="gallery"),
     path("kontakt/", page_views.contact, name="contact"),
+    path("service/", page_views.service_page, name="service"),
     path("tillganglighet/", page_views.accessibility, name="accessibility"),
     path("boka/", booking_views.booking_page, name="booking"),
     path("boka/bekraftelse/<int:pk>/", booking_views.booking_success, name="booking_success"),
@@ -45,6 +49,9 @@ admin.site.site_header = "EGentid Spa & Resurs – Admin"
 admin.site.site_title = "EGentid Admin"
 admin.site.index_title = "Innehåll & bokningar"
 
-if settings.DEBUG:
+# Serve uploaded media in DEBUG or when SERVE_MEDIA=true (Render disk).
+if settings.DEBUG or getattr(settings, "SERVE_MEDIA", False):
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+
+if settings.DEBUG:
     urlpatterns += static(settings.STATIC_URL, document_root=settings.STATICFILES_DIRS[0])

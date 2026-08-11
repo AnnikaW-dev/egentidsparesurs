@@ -5,6 +5,7 @@ from django.http import Http404
 from django.shortcuts import redirect, render
 from django.views.decorators.http import require_http_methods
 
+from booking.models import Service
 from cms.models import GalleryImage, SeasonTip, SitePage
 
 from .forms import ContactForm
@@ -26,7 +27,7 @@ def home(request):
 
 
 def salon(request):
-    """About the salon."""
+    """About the salon (nav label: Om)."""
     page = _get_page(SitePage.PageKey.SALON)
     return render(
         request,
@@ -38,6 +39,44 @@ def salon(request):
 def treatments(request):
     """Treatments and oils overview."""
     page = _get_page(SitePage.PageKey.TREATMENTS)
+    return render(
+        request,
+        "pages/content_page.html",
+        {"page": page, "blocks": page.blocks.filter(is_visible=True)},
+    )
+
+
+def warming(request):
+    """Warming treatments (värmande behandlingar) CMS page."""
+    page = _get_page(SitePage.PageKey.WARMING)
+    return render(
+        request,
+        "pages/content_page.html",
+        {"page": page, "blocks": page.blocks.filter(is_visible=True)},
+    )
+
+
+def prices(request):
+    """Price list — CMS intro plus active bookable services.
+
+    Services: Admin → Behandlingar (booking.Service). CMS key=prices for intro.
+    """
+    page = SitePage.objects.filter(key=SitePage.PageKey.PRICES, is_published=True).first()
+    services = Service.objects.filter(is_active=True)
+    return render(
+        request,
+        "pages/prices.html",
+        {
+            "page": page,
+            "services": services,
+            "blocks": page.blocks.filter(is_visible=True) if page else [],
+        },
+    )
+
+
+def service_page(request):
+    """Resource / administrative service offering (CMS key=service)."""
+    page = _get_page(SitePage.PageKey.SERVICE)
     return render(
         request,
         "pages/content_page.html",

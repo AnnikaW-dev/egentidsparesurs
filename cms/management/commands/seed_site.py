@@ -63,15 +63,31 @@ class Command(BaseCommand):
                 "hero": "gallery-1.jpg",
             },
             SitePage.PageKey.TREATMENTS: {
-                "title": "Varför värmande manikyr och fotvård?",
+                "title": "Behandlingar",
+                "subtitle": "Fotvård, handvård och oljor anpassade efter din hud.",
+                "body": (
+                    "Här hittar du behandlingar för händer och fötter – från spa-pedikyr "
+                    "till paraffin och närande oljor. Välj det som passar dig, eller "
+                    "fråga mig så hjälper jag dig hitta rätt."
+                ),
+                "hero": "hand-massage.jpg",
+            },
+            SitePage.PageKey.WARMING: {
+                "title": "Värmande behandlingar",
                 "subtitle": "Värme är inte bara skönt – det är också läkande och avslappnande!",
                 "body": (
-                    "Ökar blodcirkulationen.\n"
-                    "Mjukar upp stela och ömma leder.\n"
-                    "Lindrar torr hud och sprickor.\n"
+                    "Ökar blodcirkulationen.\n\n"
+                    "Mjukar upp stela och ömma leder.\n\n"
+                    "Lindrar torr hud och sprickor.\n\n"
                     "Perfekt vid reumatism, artrit och ledvärk."
                 ),
                 "hero": "hand-massage.jpg",
+            },
+            SitePage.PageKey.PRICES: {
+                "title": "Prislista",
+                "subtitle": "Aktuella priser för behandlingar.",
+                "body": "Alla tider bokas online. Priserna kan justeras – hör av dig om du har frågor.",
+                "hero": None,
             },
             SitePage.PageKey.SEASONS: {
                 "title": "Året runt",
@@ -97,6 +113,18 @@ class Command(BaseCommand):
                 "body": (
                     "Har du frågor om behandlingar, öppettider eller hur jag kan hjälpa dig "
                     "som resurs? Skicka ett meddelande via formuläret."
+                ),
+                "hero": None,
+            },
+            SitePage.PageKey.SERVICE: {
+                "title": "Service",
+                "subtitle": "Mer än behandling – hjälp som sparar din tid och energi.",
+                "body": (
+                    "Behöver du avlastning med administrativa uppgifter eller en lugn stund "
+                    "för att prata igenom vad som tar tid och kraft i vardagen?\n\n"
+                    "Här kan du släppa stressen och låta mig ta hand om det som ger dig mer "
+                    "egentid. Hör av dig via kontaktformuläret så hittar vi en lösning "
+                    "tillsammans."
                 ),
                 "hero": None,
             },

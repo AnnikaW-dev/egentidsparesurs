@@ -1,0 +1,13 @@
+---
+description: Automatically git-commit after each completed change
+alwaysApply: true
+---
+
+# Auto-commit after each change
+
+After finishing a discrete code change (feature, fix, or refactor), **create a git commit** using the standard commit protocol (status → diff → log → stage → commit → verify). Do not wait to be asked.
+
+- Never push unless the user asks.
+- Never commit secrets (`.env`, credentials, keys).
+- Prefer one commit per completed change; split unrelated pending work when practical.
+- Follow the repo’s existing commit message style.
