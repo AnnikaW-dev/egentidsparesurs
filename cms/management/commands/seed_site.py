@@ -39,7 +39,9 @@ class Command(BaseCommand):
                 "body": (
                     "Mjuka händer. Lätta fötter. Ett lugnare sinne.\n\n"
                     "Välkommen till en stund där du får släppa vardagens stress och bara njuta. "
-                    "Mina behandlingar återfuktar huden, värmer stela leder och ger både kropp och själ ny energi."
+                    "Mina behandlingar återfuktar huden, värmer stela leder och ger både kropp och själ ny energi.\n\n"
+                    "Låt mig ta hand om dina händer och fötter med avkopplande behandlingar som mjukar upp huden, "
+                    "ökar välmåendet och ger ny energi. Här får du en paus från vardagen – bara för dig."
                 ),
                 "hero": "hero-feet.jpg",
             },
