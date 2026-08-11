@@ -239,7 +239,7 @@ h1 {
   font-weight: 500;
 }
 
-/* Behandlingar submenu — keyboard disclosure; hover as progressive enhancement */
+/* Behandlingar submenu — open state is JS-only (.is-open) so it can collapse */
 .nav-item.has-submenu {
   position: relative;
 }
@@ -275,8 +275,7 @@ h1 {
 }
 
 .nav-submenu-toggle:hover,
-.nav-submenu-toggle:focus-visible,
-.nav-item.has-submenu:focus-within > .nav-submenu-toggle {
+.nav-submenu-toggle:focus-visible {
   color: var(--ink-strong);
   text-decoration: underline;
 }
@@ -310,17 +309,6 @@ h1 {
     top: 100%;
     left: 0;
     margin-top: 0.35rem;
-  }
-
-  /* Progressive enhancement: open on hover/focus without trapping keyboard */
-  .nav-item.has-submenu:hover > .nav-submenu,
-  .nav-item.has-submenu:focus-within > .nav-submenu {
-    display: block;
-  }
-
-  .nav-item.has-submenu:hover > .nav-submenu-toggle,
-  .nav-item.has-submenu:focus-within > .nav-submenu-toggle {
-    color: var(--ink-strong);
   }
 }
 

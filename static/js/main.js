@@ -24,7 +24,7 @@
   });
 })();
 
-/* Nav disclosure submenu (Behandlingar) — click/keyboard; Escape closes. */
+/* Nav disclosure submenu (Behandlingar) — click toggles; outside click / Escape closes. */
 (function () {
   var toggles = document.querySelectorAll("[data-submenu-toggle]");
   if (!toggles.length) return;
@@ -44,7 +44,8 @@
   }
 
   toggles.forEach(function (btn) {
-    btn.addEventListener("click", function () {
+    btn.addEventListener("click", function (event) {
+      event.stopPropagation();
       var willOpen = btn.getAttribute("aria-expanded") !== "true";
       closeAll(btn);
       setSubmenu(btn, willOpen);
@@ -59,6 +60,7 @@
     openBtn.focus();
   });
 
+  // Close when clicking anywhere outside the open submenu item.
   document.addEventListener("click", function (event) {
     if (event.target.closest(".has-submenu")) return;
     closeAll(null);
