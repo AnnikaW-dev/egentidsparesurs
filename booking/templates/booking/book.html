@@ -112,6 +112,9 @@
         </label>
         <div class="aligned-field">
           {{ field }}
+          {% if field.name == "customer_phone" %}
+            <p id="phone_hint" class="field-hint muted">Endast siffror, t.ex. 0701234567</p>
+          {% endif %}
           {% if field.errors %}
             <p class="field-error" id="error_{{ field.name }}" role="alert">{{ field.errors|striptags }}</p>
           {% endif %}

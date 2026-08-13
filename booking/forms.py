@@ -1,6 +1,9 @@
 """Forms for public booking and staff availability tools."""
 
+import re
+
 from django import forms
+from django.core.exceptions import ValidationError
 
 from .models import Booking, Service, WeeklyAvailability
 
@@ -23,7 +26,14 @@ class BookingForm(forms.ModelForm):
                 attrs={"autocomplete": "name", "placeholder": "För- och efternamn"}
             ),
             "customer_phone": forms.TextInput(
-                attrs={"autocomplete": "tel", "placeholder": "07X XXX XX XX", "inputmode": "tel"}
+                attrs={
+                    "autocomplete": "tel",
+                    "placeholder": "0701234567",
+                    "inputmode": "numeric",
+                    "pattern": "[0-9]+",
+                    "title": "Endast siffror, inga mellanslag eller bindestreck.",
+                    "data-phone-digits-only": "",
+                }
             ),
         }
 
@@ -38,7 +48,26 @@ class BookingForm(forms.ModelForm):
             field.widget.attrs["required"] = True
             if self.is_bound and self.errors.get(name):
                 field.widget.attrs["aria-invalid"] = "true"
-                field.widget.attrs["aria-describedby"] = f"error_{name}"
+                if name == "customer_phone":
+                    field.widget.attrs["aria-describedby"] = "phone_hint error_customer_phone"
+                else:
+                    field.widget.attrs["aria-describedby"] = f"error_{name}"
+        if "customer_phone" in self.fields and not self.errors.get("customer_phone"):
+            self.fields["customer_phone"].widget.attrs.setdefault(
+                "aria-describedby", "phone_hint"
+            )
+
+    def clean_customer_phone(self):
+        """Accept digits only — strip anything pasted with spaces or dashes."""
+        raw = self.cleaned_data.get("customer_phone", "")
+        digits = re.sub(r"\D", "", raw)
+        if not digits:
+            raise ValidationError("Ange ett telefonnummer med endast siffror.")
+        if len(digits) < 7:
+            raise ValidationError("Telefonnumret måste vara minst 7 siffror.")
+        if len(digits) > 15:
+            raise ValidationError("Telefonnumret får vara högst 15 siffror.")
+        return digits
 
 
 class AvailabilityGenerateForm(forms.Form):
