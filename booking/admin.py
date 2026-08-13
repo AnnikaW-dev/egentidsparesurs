@@ -56,6 +56,9 @@ class BookingAdmin(admin.ModelAdmin):
         "service",
         "slot",
         "customer_email",
+        "customer_phone",
+        "notify_email",
+        "notify_sms",
         "status",
         "created_at",
     )

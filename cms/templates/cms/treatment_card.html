@@ -1,0 +1,35 @@
+{% load media_extras %}
+{# cms/treatment_card.html — one CMS ContentBlock: image beside title/price/body, optional book CTA #}
+<section
+  class="treatment-card{% if block.image %} treatment-card--split{% endif %}{% if not block.shows_book_cta %} treatment-card--info{% endif %}"
+  aria-labelledby="treatment-{{ block.pk }}"
+>
+  {% if block.image %}
+    <div class="treatment-card-media">
+      <picture>
+        <source type="image/webp" srcset="{{ block.image|as_webp }}">
+        <img
+          class="treatment-card-image"
+          src="{{ block.image.url }}"
+          alt=""
+          loading="lazy"
+          decoding="async"
+        >
+      </picture>
+    </div>
+  {% endif %}
+  <div class="treatment-card-copy">
+    <h2 id="treatment-{{ block.pk }}" class="treatment-card-title">{{ block.title }}</h2>
+    {% if block.price_meta %}
+      <p class="treatment-card-meta">{{ block.price_meta }}</p>
+    {% endif %}
+    <div class="treatment-card-body">
+      {% include "cms/body_sections.html" with sections=block.body_sections %}
+    </div>
+    {% if block.shows_book_cta and block.book_service_slug %}
+      <p class="treatment-card-action">
+        <a class="btn" href="{% url 'booking' %}?service={{ block.book_service_slug }}">{{ block.book_label }}</a>
+      </p>
+    {% endif %}
+  </div>
+</section>

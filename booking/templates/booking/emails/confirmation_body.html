@@ -1,0 +1,49 @@
+{# booking/emails/confirmation_body.html — customer booking confirmation email #}
+<!DOCTYPE html>
+<html lang="sv">
+  <head>
+    <meta charset="utf-8">
+    <title>Bokningsbekräftelse</title>
+  </head>
+  <body style="font-family: Georgia, 'Times New Roman', serif; line-height: 1.6; color: #2c2419; background: #f5f0ea; margin: 0; padding: 24px;">
+    <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="max-width: 560px; margin: 0 auto; background: #ffffff; border: 1px solid #d8cfc3;">
+      <tr>
+        <td style="padding: 28px 32px;">
+          <h1 style="margin: 0 0 8px; font-size: 24px; font-weight: normal;">Tack för din bokning!</h1>
+          <p style="margin: 0 0 24px;">Hej {{ booking.customer_name }}, vi har bekräftat din tid hos {{ site.site_name }}.</p>
+
+          <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="margin: 0 0 24px;">
+            <tr>
+              <th scope="row" align="left" style="padding: 8px 12px 8px 0; font-weight: bold; vertical-align: top;">Behandling</th>
+              <td style="padding: 8px 0;">{{ booking.service.name }}</td>
+            </tr>
+            <tr>
+              <th scope="row" align="left" style="padding: 8px 12px 8px 0; font-weight: bold; vertical-align: top;">Datum och tid</th>
+              <td style="padding: 8px 0;">{{ slot_local|date:"l j F Y, H:i" }}</td>
+            </tr>
+            <tr>
+              <th scope="row" align="left" style="padding: 8px 12px 8px 0; font-weight: bold; vertical-align: top;">Telefon</th>
+              <td style="padding: 8px 0;">{{ booking.customer_phone }}</td>
+            </tr>
+            {% if booking.service.price_sek %}
+            <tr>
+              <th scope="row" align="left" style="padding: 8px 12px 8px 0; font-weight: bold; vertical-align: top;">Pris</th>
+              <td style="padding: 8px 0;">{{ booking.service.price_sek }} kr</td>
+            </tr>
+            {% endif %}
+          </table>
+
+          <p style="margin: 0 0 16px;">
+            Om du behöver ändra eller avboka, hör av dig till oss
+            {% if site.email %}på <a href="mailto:{{ site.email }}">{{ site.email }}</a>{% endif %}{% if site.phone %}{% if site.email %} eller {% endif %}{{ site.phone }}{% endif %}.
+          </p>
+
+          <p style="margin: 0;">Vänliga hälsningar,<br>{{ site.site_name }}</p>
+          {% if site.address %}
+          <p style="margin: 16px 0 0; font-size: 14px; color: #5c5348;">{{ site.address|linebreaksbr }}</p>
+          {% endif %}
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>

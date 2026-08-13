@@ -9,7 +9,22 @@ from .models import Booking, Service, WeeklyAvailability
 
 
 class BookingForm(forms.ModelForm):
-    """Step 3: name, email, and phone for a pre-selected service and slot."""
+    """Step 3: name, email, phone, and how to send the confirmation."""
+
+    CONFIRM_CHOICES = (
+        ("email", "E-post"),
+        ("sms", "SMS"),
+    )
+
+    confirm_via = forms.MultipleChoiceField(
+        label="Hur vill du få din bekräftelse?",
+        choices=CONFIRM_CHOICES,
+        widget=forms.CheckboxSelectMultiple,
+        initial=["email", "sms"],
+        required=True,
+        error_messages={"required": "Välj e-post, SMS eller båda."},
+        help_text="Välj minst ett alternativ. Du kan få bekräftelsen på e-post, som SMS, eller båda.",
+    )
 
     class Meta:
         model = Booking
@@ -49,7 +64,10 @@ class BookingForm(forms.ModelForm):
         self.fields["customer_name"].required = True
         self.fields["customer_email"].required = True
         self.fields["customer_phone"].required = True
+        self.fields["confirm_via"].widget.attrs["class"] = "confirm-via-list"
         for name, field in self.fields.items():
+            if name == "confirm_via":
+                continue
             field.widget.attrs["class"] = "form-control"
             field.widget.attrs["aria-required"] = "true"
             field.widget.attrs["required"] = True
@@ -63,6 +81,13 @@ class BookingForm(forms.ModelForm):
             self.fields["customer_phone"].widget.attrs.setdefault(
                 "aria-describedby", "phone_hint"
             )
+        described_by = ["confirm_via_hint"]
+        if self.is_bound and self.errors.get("confirm_via"):
+            described_by.append("error_confirm_via")
+        self.fields["confirm_via"].widget.attrs["aria-describedby"] = " ".join(described_by)
+        self.fields["confirm_via"].widget.attrs["aria-invalid"] = (
+            "true" if self.is_bound and self.errors.get("confirm_via") else "false"
+        )
 
     def clean_customer_phone(self):
         """Accept digits only — strip anything pasted with spaces or dashes."""
@@ -75,6 +100,16 @@ class BookingForm(forms.ModelForm):
         if len(digits) > 15:
             raise ValidationError("Telefonnumret får vara högst 15 siffror.")
         return digits
+
+    def save(self, commit=True):
+        """Copy confirm_via checkboxes onto notify_email / notify_sms."""
+        booking = super().save(commit=False)
+        chosen = set(self.cleaned_data.get("confirm_via") or [])
+        booking.notify_email = "email" in chosen
+        booking.notify_sms = "sms" in chosen
+        if commit:
+            booking.save()
+        return booking
 
 
 class AvailabilityGenerateForm(forms.Form):

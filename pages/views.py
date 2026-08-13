@@ -49,12 +49,22 @@ def salon(request):
 
 
 def treatments(request):
-    """Treatments and oils overview."""
-    page = _get_page(SitePage.PageKey.TREATMENTS)
+    """Treatments overview — CMS intro plus content blocks on SitePage key=treatments.
+
+    Edit treatments: Admin → Sidor → Behandlingar → Innehållsblock.
+    """
+    page = SitePage.objects.filter(
+        key=SitePage.PageKey.TREATMENTS, is_published=True
+    ).prefetch_related("blocks").first()
+    if not page:
+        raise Http404("Sidan finns inte ännu.")
     return render(
         request,
-        "pages/content_page.html",
-        {"page": page, "blocks": page.blocks.filter(is_visible=True)},
+        "pages/treatments.html",
+        {
+            "page": page,
+            "blocks": page.blocks.filter(is_visible=True),
+        },
     )
 
 

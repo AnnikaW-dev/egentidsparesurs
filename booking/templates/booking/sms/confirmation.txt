@@ -1,0 +1,2 @@
+{# booking/sms/confirmation.txt — short SMS body; keep around 160 characters #}
+{{ site.site_name }}: Din bokning {{ slot_local|date:"j M H:i" }}, {{ booking.service.name }} är bekräftad.{% if site.phone %} Vid frågor: {{ site.phone }}.{% elif site.email %} Vid frågor: {{ site.email }}.{% endif %}

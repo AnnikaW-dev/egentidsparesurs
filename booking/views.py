@@ -14,6 +14,7 @@ from cms.models import SitePage
 
 from .forms import AvailabilityGenerateForm, BookingForm, QuickWeekForm
 from .models import Booking, Service, TimeSlot, WeeklyAvailability, generate_slots_for_range
+from .notifications import send_booking_notifications
 
 
 def _booking_query(request):
@@ -72,10 +73,22 @@ def booking_page(request):
                 booking.service = selected_service
                 booking.status = Booking.Status.CONFIRMED
                 booking.save()
+            notify = send_booking_notifications(booking)
+            request.session["booking_notify"] = notify
             messages.success(
                 request,
                 f"Tack {booking.customer_name}! Din tid {timezone.localtime(slot.start):%Y-%m-%d %H:%M} är bokad.",
             )
+            if notify.get("email") is False:
+                messages.warning(
+                    request,
+                    "Bokningen sparades men bekräftelsemejlet kunde inte skickas.",
+                )
+            if notify.get("sms") is False:
+                messages.warning(
+                    request,
+                    "Bokningen sparades men bekräftelse-SMS kunde inte skickas.",
+                )
             return redirect("booking_success", pk=booking.pk)
     elif selected_service and selected_slot:
         form = BookingForm(service=selected_service)
@@ -98,7 +111,16 @@ def booking_page(request):
 def booking_success(request, pk):
     """Confirmation page after a successful booking."""
     booking = get_object_or_404(Booking, pk=pk)
-    return render(request, "booking/success.html", {"booking": booking})
+    notify = request.session.pop("booking_notify", {})
+    return render(
+        request,
+        "booking/success.html",
+        {
+            "booking": booking,
+            "email_sent": notify.get("email"),
+            "sms_sent": notify.get("sms"),
+        },
+    )
 
 
 @staff_member_required

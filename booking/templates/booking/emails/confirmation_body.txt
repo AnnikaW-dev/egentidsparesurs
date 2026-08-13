@@ -1,0 +1,15 @@
+Hej {{ booking.customer_name }},
+
+Tack för din bokning hos {{ site.site_name }}!
+
+Behandling: {{ booking.service.name }}
+Datum och tid: {{ slot_local|date:"l j F Y, H:i" }}
+Telefon: {{ booking.customer_phone }}
+
+Vi ser fram emot att ta hand om dig. Om du behöver ändra eller avboka, hör av dig till oss{% if site.email %} på {{ site.email }}{% endif %}{% if site.phone %} eller {{ site.phone }}{% endif %}.
+
+Vänliga hälsningar,
+{{ site.site_name }}
+{% if site.address %}
+{{ site.address }}
+{% endif %}

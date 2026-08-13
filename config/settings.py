@@ -141,6 +141,36 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 LOGIN_URL = "/admin/login/"
 LOGIN_REDIRECT_URL = "/dashboard/"
 
+# Email — Adjust: set SMTP vars on Render for production delivery.
+# Local DEBUG defaults to console backend (prints to runserver terminal).
+_default_email_backend = (
+    "django.core.mail.backends.console.EmailBackend"
+    if DEBUG
+    else "django.core.mail.backends.smtp.EmailBackend"
+)
+EMAIL_BACKEND = os.environ.get("EMAIL_BACKEND", _default_email_backend)
+DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "info@egentidsparesurs.se")
+SERVER_EMAIL = os.environ.get("SERVER_EMAIL", DEFAULT_FROM_EMAIL)
+EMAIL_HOST = os.environ.get("EMAIL_HOST", "")
+EMAIL_PORT = int(os.environ.get("EMAIL_PORT", "587"))
+EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "")
+EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD", "")
+EMAIL_USE_TLS = env_bool("EMAIL_USE_TLS", default=True)
+EMAIL_USE_SSL = env_bool("EMAIL_USE_SSL", default=False)
+EMAIL_TIMEOUT = int(os.environ.get("EMAIL_TIMEOUT", "30"))
+
+# SMS — Adjust: set Twilio or 46elks on Render. Local DEBUG defaults to console.
+# SMS_BACKEND: console | locmem | twilio | 46elks | auto
+_default_sms_backend = "console" if DEBUG else "auto"
+SMS_BACKEND = os.environ.get("SMS_BACKEND", _default_sms_backend)
+SMS_TIMEOUT = int(os.environ.get("SMS_TIMEOUT", "20"))
+TWILIO_ACCOUNT_SID = os.environ.get("TWILIO_ACCOUNT_SID", "")
+TWILIO_AUTH_TOKEN = os.environ.get("TWILIO_AUTH_TOKEN", "")
+TWILIO_FROM_NUMBER = os.environ.get("TWILIO_FROM_NUMBER", "")
+ELKS_USERNAME = os.environ.get("ELKS_USERNAME", "")
+ELKS_PASSWORD = os.environ.get("ELKS_PASSWORD", "")
+ELKS_FROM = os.environ.get("ELKS_FROM", "EGentid")
+
 # HTTPS / cookies when not in DEBUG (Render terminates TLS at the proxy).
 if not DEBUG:
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")

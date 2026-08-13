@@ -9,6 +9,8 @@ class ContentBlockInline(admin.TabularInline):
     model = ContentBlock
     extra = 1
     fields = ("title", "body", "image", "sort_order", "is_visible")
+    verbose_name = "behandling / innehållsblock"
+    verbose_name_plural = "behandlingar / innehållsblock"
 
 
 @admin.register(SiteSettings)
@@ -47,21 +49,30 @@ class SitePageAdmin(admin.ModelAdmin):
     inlines = [ContentBlockInline]
 
     def get_fieldsets(self, request, obj=None):
-        """Extra note on Startsida: monthly tip is edited under Säsongstips."""
+        """Extra notes for Startsida and Behandlingar/Prislista content blocks."""
         home_note = ""
+        block_note = ""
         if obj and obj.key == SitePage.PageKey.HOME:
             home_note = (
                 "Månadens tips under knapparna på startsidan redigeras inte här. "
                 "Gå till CMS → Säsongstips och öppna raden för rätt månad "
                 "(sajten visar automatiskt innevarande månad)."
             )
+        if obj and obj.key in (SitePage.PageKey.TREATMENTS, SitePage.PageKey.PRICES):
+            block_note = (
+                "Behandlingar redigeras som Innehållsblock nedan. "
+                "Första raden i brödtext = pris (t.ex. 425 kr | ca 60 min). "
+                "Använd ## för underrubrik, ✔ för checklista, tom rad mellan stycken. "
+                "Ladda upp bild per block om du vill visa en bild ovanför texten."
+            )
+        content_description = " ".join(part for part in (home_note, block_note) if part)
         return (
             (None, {"fields": ("key", "title", "subtitle", "is_published")}),
             (
                 "Innehåll",
                 {
                     "fields": ("body", "hero_image"),
-                    "description": home_note,
+                    "description": content_description,
                 },
             ),
             (

@@ -59,6 +59,51 @@ class WeeklyAvailability(models.Model):
         return f"{self.get_weekday_display()} {self.start_time:%H:%M}–{self.end_time:%H:%M}"
 
 
+def footer_opening_hours():
+    """Weekday hours for the site footer, grouped when consecutive days match.
+
+    Closed days are skipped. Returns a list of {label, hours} dicts, e.g.
+    [{'label': 'Måndag–fredag', 'hours': '09:00–16:00'}].
+    Edit times in admin WeeklyAvailability or /dashboard/.
+    """
+    from collections import defaultdict
+
+    by_day = defaultdict(list)
+    for rule in WeeklyAvailability.objects.filter(is_active=True).order_by(
+        "weekday", "start_time"
+    ):
+        by_day[rule.weekday].append(f"{rule.start_time:%H:%M}–{rule.end_time:%H:%M}")
+
+    labels = dict(WeeklyAvailability.WEEKDAYS)
+    groups = []
+    current = None
+    for day in range(7):
+        hours = ", ".join(by_day.get(day, []))
+        if not hours:
+            if current:
+                groups.append(current)
+                current = None
+            continue
+        if current and current["hours"] == hours and current["end"] == day - 1:
+            current["end"] = day
+        else:
+            if current:
+                groups.append(current)
+            current = {"start": day, "end": day, "hours": hours}
+    if current:
+        groups.append(current)
+
+    rows = []
+    for group in groups:
+        start_label = labels[group["start"]]
+        if group["start"] == group["end"]:
+            label = start_label
+        else:
+            label = f"{start_label}–{labels[group['end']].lower()}"
+        rows.append({"label": label, "hours": group["hours"]})
+    return rows
+
+
 class ClosedDate(models.Model):
     """Dates when no slots should be offered (holiday, vacation)."""
 
@@ -120,6 +165,9 @@ class Booking(models.Model):
     customer_name = models.CharField(max_length=120)
     customer_email = models.EmailField()
     customer_phone = models.CharField(max_length=40)
+    # Adjust: customer picks email and/or SMS on the booking form.
+    notify_email = models.BooleanField(default=True)
+    notify_sms = models.BooleanField(default=True)
     notes = models.TextField(blank=True)
     status = models.CharField(
         max_length=20,

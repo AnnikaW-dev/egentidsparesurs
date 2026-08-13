@@ -1,0 +1,1 @@
+Bokningsbekräftelse – {{ site.site_name }}

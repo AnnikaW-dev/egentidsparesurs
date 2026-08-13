@@ -148,9 +148,21 @@
         {% if site.address %}<p class="footer-address">{{ site.address|linebreaksbr }}</p>{% endif %}
       </div>
       <div class="footer-hours">
+        <p class="footer-label" id="hours-heading">Öppettider</p>
+        {% if footer_hours %}
+        <ul class="footer-hours-list" aria-labelledby="hours-heading">
+          {% for row in footer_hours %}
+            <li>
+              <span class="footer-day">{{ row.label }}</span>
+              <span class="footer-time">{{ row.hours }}</span>
+            </li>
+          {% endfor %}
+        </ul>
+        {% endif %}
         {% if site.opening_hours %}
-          <p class="footer-label">Öppettider</p>
-          <p>{{ site.opening_hours|linebreaksbr }}</p>
+          <p class="footer-hours-note">{{ site.opening_hours|linebreaksbr }}</p>
+        {% elif not footer_hours %}
+          <p class="footer-hours-note">Enligt bokning</p>
         {% endif %}
       </div>
       {% if site.facebook_url or site.linkedin_url %}
