@@ -1,14 +1,2 @@
 {# cms/season_tip_body.html — render SeasonTip body (## headings, ✔ lists, paragraphs) #}
-{% for section in tip.body_sections %}
-  {% if section.type == "heading" %}
-    <h3 class="month-tip-subheading">{{ section.text }}</h3>
-  {% elif section.type == "list" %}
-    <ul class="month-tip-checks">
-      {% for item in section.items %}
-        <li>{{ item }}</li>
-      {% endfor %}
-    </ul>
-  {% else %}
-    <p>{{ section.text }}</p>
-  {% endif %}
-{% endfor %}
+{% include "cms/body_sections.html" with sections=tip.body_sections %}

@@ -87,8 +87,11 @@ class Command(BaseCommand):
             },
             SitePage.PageKey.PRICES: {
                 "title": "Prislista",
-                "subtitle": "Aktuella priser för behandlingar.",
-                "body": "Alla tider bokas online. Priserna kan justeras – hör av dig om du har frågor.",
+                "subtitle": "Unna dig en stund av värme, lugn och omtanke.",
+                "body": (
+                    "Här hittar du behandlingar för händer och fötter med fokus på avkoppling, "
+                    "mjukgörande vård och välmående."
+                ),
                 "hero": None,
             },
             SitePage.PageKey.SEASONS: {
@@ -223,6 +226,117 @@ class Command(BaseCommand):
             sort_order=3,
         )
 
+        prices_page = SitePage.objects.get(key=SitePage.PageKey.PRICES)
+        ContentBlock.objects.filter(page=prices_page).delete()
+        price_blocks = [
+            (
+                "Evig Lycka – Spa-pedikyr",
+                1,
+                (
+                    "425 kr | ca 60 min\n\n"
+                    "Ge dina fötter en välförtjänt paus.\n"
+                    "En avkopplande spa-pedikyr där naglar klipps och filas, fötterna mjukas upp "
+                    "och behandlingen avslutas med vårdande kräm.\n\n"
+                    "## Passar dig som:\n"
+                    "✔ få mjukare fötter\n"
+                    "✔ vårda torra fötter\n"
+                    "✔ njuta av en lugn stund för dig själv"
+                ),
+            ),
+            (
+                "Gyllene Beröring – Värmande paraffinpedikyr",
+                2,
+                (
+                    "499 kr | ca 75 min\n\n"
+                    "En extra varm och vårdande behandling där spa-pedikyr kombineras med värmande paraffin.\n"
+                    "Fötterna får först omsorg med nagelvård och uppmjukning, därefter får de njuta av "
+                    "den behagliga värmen från paraffin som omsluter huden och ger en härlig känsla av "
+                    "mjukhet och avslappning.\n\n"
+                    "## Passar dig som:\n"
+                    "✔ har torra fötter och vill ge huden extra fukt\n"
+                    "✔ ofta fryser om fötterna\n"
+                    "✔ känner dig stel och uppskattar värmande behandlingar\n"
+                    "✔ vill unna dig en lugn stund med fokus på välmående\n\n"
+                    "Paraffin kan hjälpa huden att kännas mjukare och smidigare, samtidigt som värmen "
+                    "ger en skön och avslappnande upplevelse."
+                ),
+            ),
+            (
+                "Lugnande Händer – Manikyr med lack",
+                3,
+                (
+                    "350–400 kr | ca 45 min\n\n"
+                    "Välvårdade händer med en stund av avkoppling.\n"
+                    "Behandlingen innehåller nagelbandsvård, formning av naglar, handmassage och lack om du önskar."
+                ),
+            ),
+            (
+                "Ren Omsorg – Värmande paraffinmanikyr",
+                4,
+                (
+                    "499 kr | ca 60 min\n\n"
+                    "En mjuk och värmande behandling för torra och trötta händer.\n"
+                    "Med handmassage och paraffin får händerna:\n"
+                    "✔ extra fukt\n"
+                    "✔ mjukare hud\n"
+                    "✔ en avslappnande stund"
+                ),
+            ),
+            (
+                "Kunglig Avkoppling – Kombo behandling",
+                5,
+                (
+                    "800 kr | ca 120 min\n\n"
+                    "En komplett stund för dig som vill njuta lite extra.\n"
+                    "Spa-pedikyr och manikyr kombineras med värmande paraffin och massage för både händer och fötter."
+                ),
+            ),
+            (
+                "Lugnande Stund – Hand- eller fotmassage",
+                6,
+                (
+                    "250 kr | ca 30 min\n\n"
+                    "En enkel behandling med fokus på avkoppling och välbefinnande."
+                ),
+            ),
+            (
+                "Varför värmande behandlingar?",
+                7,
+                (
+                    "Värme är inte bara skönt – det ger en härlig känsla av avslappning.\n"
+                    "Paraffinbehandling används ofta för att:\n"
+                    "✔ mjuka upp torr hud\n"
+                    "✔ ge händer och fötter extra fukt\n"
+                    "✔ skapa en behaglig värme\n"
+                    "✔ hjälpa kroppen att slappna av"
+                ),
+            ),
+            (
+                "Olja nr 1 – För känslig och mycket torr hud (från 5 år)",
+                8,
+                (
+                    "Återfuktar på djupet och stärker hudens skyddsbarriär. Lugnar eksem och irriterad hud. "
+                    "Perfekt för känslig hud och extra torr hud. Passar både barn och vuxna."
+                ),
+            ),
+            (
+                "Olja nr 2 – Lyxig & rogivande för normal hud",
+                9,
+                (
+                    "Näringsboost för huden med extra lyster. Stärker elasticitet och stimulerar cellförnyelse. "
+                    "Lyxig och rogivande behandling med härliga dofter.\n\n"
+                    "Innehåll: Vitamin E, Vitamin A, Omega-9, Omega-6 och Zink."
+                ),
+            ),
+        ]
+        for title, order, body in price_blocks:
+            ContentBlock.objects.create(
+                page=prices_page,
+                title=title,
+                body=body,
+                sort_order=order,
+            )
+
         if not GalleryImage.objects.exists():
             for name, title in [
                 ("gallery-1.jpg", "Salongen"),
@@ -280,11 +394,14 @@ class Command(BaseCommand):
             )
 
         services = [
-            ("Spa-pedikyr", 75, 695, "Avkopplande fotvård som återfuktar och mjukar upp."),
-            ("Värmande manikyr", 60, 595, "Handvård med massage och närande produkter."),
-            ("Paraffinbehandling", 45, 450, "Värmande paraffin för torra händer eller fötter."),
+            ("Evig Lycka – Spa-pedikyr", 60, 425, "Avkopplande spa-pedikyr med nagelvård och vårdande kräm."),
+            ("Gyllene Beröring – Värmande paraffinpedikyr", 75, 499, "Spa-pedikyr med värmande paraffin."),
+            ("Lugnande Händer – Manikyr med lack", 45, 375, "Manikyr med nagelbandsvård, massage och lack."),
+            ("Ren Omsorg – Värmande paraffinmanikyr", 60, 499, "Värmande paraffinmanikyr med handmassage."),
+            ("Kunglig Avkoppling – Kombo behandling", 120, 800, "Spa-pedikyr och manikyr med paraffin och massage."),
+            ("Lugnande Stund – Hand- eller fotmassage", 30, 250, "Massage med fokus på avkoppling."),
         ]
-        for name, mins, price, desc in services:
+        for order, (name, mins, price, desc) in enumerate(services, start=1):
             Service.objects.update_or_create(
                 slug=slugify(name),
                 defaults={
@@ -293,8 +410,13 @@ class Command(BaseCommand):
                     "price_sek": price,
                     "description": desc,
                     "is_active": True,
+                    "sort_order": order,
                 },
             )
+        # Deactivate legacy service names if they remain from older seeds.
+        Service.objects.filter(
+            slug__in=["spa-pedikyr", "varmande-manikyr", "paraffinbehandling"]
+        ).update(is_active=False)
 
         if not WeeklyAvailability.objects.exists():
             for weekday in range(0, 5):  # Mon–Fri

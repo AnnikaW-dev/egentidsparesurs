@@ -2,6 +2,8 @@
 
 from django.db import models
 
+from .text_format import parse_body_sections
+
 
 class SiteSettings(models.Model):
     """Singleton row for brand, contact, and footer text editable in admin."""
@@ -133,6 +135,7 @@ class SitePage(models.Model):
             return text[:157] + ("…" if len(text) > 157 else "")
         return fallback
 
+
 class ContentBlock(models.Model):
     """Optional titled section on a page (e.g. hand treatment highlight)."""
 
@@ -153,6 +156,31 @@ class ContentBlock(models.Model):
 
     def body_paragraphs(self):
         return [p.strip() for p in self.body.split("\n\n") if p.strip()]
+
+    def price_meta(self):
+        """First paragraph when it looks like a price line (Prislista blocks)."""
+        paras = self.body_paragraphs()
+        if paras and "kr" in paras[0].lower():
+            return paras[0]
+        return ""
+
+    def body_sections(self):
+        """Structured sections; skips leading price line when present."""
+        body = self.body
+        meta = self.price_meta()
+        if meta:
+            body = "\n\n".join(self.body_paragraphs()[1:])
+        return parse_body_sections(body)
+
+    def book_label(self):
+        """CTA label for bookable treatments — Adjust: title before en-dash."""
+        if self.title.startswith("Olja ") or self.title.startswith("Varför "):
+            return ""
+        short = self.title.split(" – ")[0].split(" - ")[0].strip()
+        return f"Boka {short}" if short else ""
+
+    def shows_book_cta(self):
+        return bool(self.book_label())
 
 
 class GalleryImage(models.Model):
@@ -221,28 +249,4 @@ class SeasonTip(models.Model):
         return f"{self.get_month_display()}: {self.title}"
 
     def body_sections(self):
-        """Parse body into heading / paragraph / checklist blocks for templates."""
-        sections = []
-        checklist = []
-
-        def flush_list():
-            nonlocal checklist
-            if checklist:
-                sections.append({"type": "list", "items": checklist})
-                checklist = []
-
-        for raw in self.body.splitlines():
-            line = raw.strip()
-            if not line:
-                flush_list()
-                continue
-            if line.startswith(("✔", "✓")):
-                checklist.append(line.lstrip("✔✓").strip())
-                continue
-            flush_list()
-            if line.startswith("## "):
-                sections.append({"type": "heading", "text": line[3:].strip()})
-            else:
-                sections.append({"type": "para", "text": line})
-        flush_list()
-        return sections
+        return parse_body_sections(self.body)

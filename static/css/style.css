@@ -436,7 +436,8 @@ h1 {
   color: var(--ink);
 }
 
-.month-tip-subheading {
+.month-tip-subheading,
+.body-section-heading {
   font-family: var(--font-display);
   font-size: 1.05rem;
   font-weight: 700;
@@ -445,7 +446,8 @@ h1 {
   text-align: left;
 }
 
-.month-tip-checks {
+.month-tip-checks,
+.body-section-checks {
   list-style: none;
   margin: 0 0 0.85rem;
   padding: 0;
@@ -454,14 +456,16 @@ h1 {
   gap: 0.45rem;
 }
 
-.month-tip-checks li {
+.month-tip-checks li,
+.body-section-checks li {
   position: relative;
   padding-left: 1.65rem;
   color: var(--ink);
   line-height: 1.45;
 }
 
-.month-tip-checks li::before {
+.month-tip-checks li::before,
+.body-section-checks li::before {
   content: "✔";
   position: absolute;
   left: 0;
@@ -728,6 +732,49 @@ h1 {
   gap: 0.15rem;
   padding: 0.75rem 0;
   border-bottom: 1px solid var(--line);
+}
+
+/* Prislista — treatment cards from CMS blocks on SitePage key=prices */
+.prices-page .prices-lead {
+  font-weight: 700;
+  color: var(--ink-strong);
+}
+
+.prices-intro {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.price-card {
+  margin: 0 0 2rem;
+  padding: 1.25rem 0 0;
+  border-top: 1px solid var(--line);
+}
+
+.price-card-title {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin: 0 0 0.35rem;
+  color: var(--ink-strong);
+}
+
+.price-card-meta {
+  font-weight: 500;
+  color: var(--ink-muted);
+  margin: 0 0 0.85rem;
+}
+
+.price-card-body p {
+  margin: 0 0 0.85rem;
+}
+
+.price-card--info .price-card-title {
+  font-size: 1.15rem;
+}
+
+.price-card-action {
+  margin: 1rem 0 0;
 }
 
 .muted {

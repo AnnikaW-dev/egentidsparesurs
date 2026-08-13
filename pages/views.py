@@ -69,19 +69,19 @@ def warming(request):
 
 
 def prices(request):
-    """Price list — CMS intro plus active bookable services.
+    """Price list — CMS intro plus content blocks on SitePage key=prices.
 
-    Services: Admin → Behandlingar (booking.Service). CMS key=prices for intro.
+    Edit treatments: Admin → Sidor → Prislista → Innehållsblock.
     """
-    page = SitePage.objects.filter(key=SitePage.PageKey.PRICES, is_published=True).first()
-    services = Service.objects.filter(is_active=True)
+    page = SitePage.objects.filter(key=SitePage.PageKey.PRICES, is_published=True).prefetch_related("blocks").first()
+    if not page:
+        raise Http404("Sidan finns inte ännu.")
     return render(
         request,
         "pages/prices.html",
         {
             "page": page,
-            "services": services,
-            "blocks": page.blocks.filter(is_visible=True) if page else [],
+            "blocks": page.blocks.filter(is_visible=True),
         },
     )
 

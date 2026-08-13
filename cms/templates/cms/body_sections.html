@@ -1,0 +1,14 @@
+{# cms/body_sections.html — render ## headings, ✔ lists, paragraphs from body_sections #}
+{% for section in sections %}
+  {% if section.type == "heading" %}
+    <h3 class="body-section-heading">{{ section.text }}</h3>
+  {% elif section.type == "list" %}
+    <ul class="body-section-checks">
+      {% for item in section.items %}
+        <li>{{ item }}</li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p>{{ section.text }}</p>
+  {% endif %}
+{% endfor %}
