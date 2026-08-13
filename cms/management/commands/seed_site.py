@@ -111,13 +111,31 @@ class Command(BaseCommand):
                 "hero": "gallery-1.jpg",
             },
             SitePage.PageKey.TREATMENTS: {
-                "title": "Varför värmande manikyr och fotvård?",
-                "subtitle": "🌱 Värme är inte bara skönt – det är också läkande och avslappnande!",
+                "title": "Behandlingar",
+                "subtitle": "Unna dig en stund av värme, lugn och omtanke.",
                 "body": (
-                    "Ökar blodcirkulationen\n"
-                    "Mjukar upp stela och ömma leder\n"
-                    "Lindrar torr hud och sprickor\n"
-                    "Perfekt vid reumatism, artrit och ledvärk"
+                    "Här hittar du behandlingar för händer och fötter med fokus på avkoppling, "
+                    "mjukgörande vård och välmående."
+                ),
+                "hero": "hand-massage.jpg",
+            },
+            SitePage.PageKey.WARMING: {
+                "title": "Värmande behandlingar",
+                "subtitle": "Värme är inte bara skönt – det är också läkande och avslappnande!",
+                "body": (
+                    "Ökar blodcirkulationen.\n\n"
+                    "Mjukar upp stela och ömma leder.\n\n"
+                    "Lindrar torr hud och sprickor.\n\n"
+                    "Perfekt vid reumatism, artrit och ledvärk."
+                ),
+                "hero": "hand-massage.jpg",
+            },
+            SitePage.PageKey.PRICES: {
+                "title": "Prislista",
+                "subtitle": "Unna dig en stund av värme, lugn och omtanke.",
+                "body": (
+                    "Här hittar du behandlingar för händer och fötter med fokus på avkoppling, "
+                    "mjukgörande vård och välmående."
                 ),
                 "hero": None,
             },
@@ -153,6 +171,18 @@ class Command(BaseCommand):
                 "body": (
                     "Har du frågor om behandlingar, öppettider eller hur jag kan hjälpa dig "
                     "som resurs? Skicka ett meddelande via formuläret."
+                ),
+                "hero": None,
+            },
+            SitePage.PageKey.SERVICE: {
+                "title": "Service",
+                "subtitle": "Mer än behandling – hjälp som sparar din tid och energi.",
+                "body": (
+                    "Behöver du avlastning med administrativa uppgifter eller en lugn stund "
+                    "för att prata igenom vad som tar tid och kraft i vardagen?\n\n"
+                    "Här kan du släppa stressen och låta mig ta hand om det som ger dig mer "
+                    "egentid. Hör av dig via kontaktformuläret så hittar vi en lösning "
+                    "tillsammans."
                 ),
                 "hero": None,
             },
@@ -205,78 +235,112 @@ class Command(BaseCommand):
         )
 
         treatments = SitePage.objects.get(key=SitePage.PageKey.TREATMENTS)
-        # Clear old hero if present — Behandlingar page is text-first like WordPress.
-        if treatments.hero_image:
-            treatments.hero_image.delete(save=False)
-            treatments.hero_image = None
-            treatments.save(update_fields=["hero_image"])
         ContentBlock.objects.filter(page=treatments).delete()
-        ContentBlock.objects.create(
-            page=treatments,
-            title="Paraffin",
-            body=(
-                "❤️ Passar dig som:\n"
-                "Har torra händer och fötter\n"
-                "Har värk i leder och muskler\n"
-                "Vill ha en avslappnande lyxig behandling"
-            ),
-            sort_order=1,
-        )
-        ContentBlock.objects.create(
-            page=treatments,
-            title="Prislista",
-            body="",
-            sort_order=2,
-        )
-        # Adjust: prislista copy — edit blocks in admin under Sida “Behandlingar”
-        price_blocks = [
+        treatment_blocks = [
             (
-                "Evig Lycka Spa Pedikyr",
-                "En avkopplande spa-pedikyr där naglar klipps och filas, fötterna mjukas upp "
-                "och behandlingen avslutas med vårdande kräm.\n"
-                "Pris: 425 kr",
+                "Evig Lycka – Spa-pedikyr",
+                1,
+                (
+                    "425 kr | ca 60 min\n\n"
+                    "Ge dina fötter en välförtjänt paus.\n"
+                    "En avkopplande spa-pedikyr där naglar klipps och filas, fötterna mjukas upp "
+                    "och behandlingen avslutas med vårdande kräm.\n\n"
+                    "## Passar dig som:\n"
+                    "✔ få mjukare fötter\n"
+                    "✔ vårda torra fötter\n"
+                    "✔ njuta av en lugn stund för dig själv"
+                ),
+                "hero-feet.jpg",
             ),
             (
-                "Gyllene Beröring Paraffin Pedikyr",
-                "Klassisk spa-pedikyr med nagelvård och fotfilning, följt av värmande paraffin som:\n"
-                "mjukar upp torr hud\n"
-                "ger djup återfuktning\n"
-                "lindrar stelhet och frusna fötter\n"
-                "Pris: 499 kr",
+                "Gyllene Beröring – Värmande paraffinpedikyr",
+                2,
+                (
+                    "499 kr | ca 75 min\n\n"
+                    "En extra varm och vårdande behandling där spa-pedikyr kombineras med värmande paraffin.\n"
+                    "Fötterna får först omsorg med nagelvård och uppmjukning, därefter får de njuta av "
+                    "den behagliga värmen från paraffin.\n\n"
+                    "## Passar dig som:\n"
+                    "✔ har torra fötter och vill ge huden extra fukt\n"
+                    "✔ ofta fryser om fötterna\n"
+                    "✔ känner dig stel och uppskattar värmande behandlingar\n"
+                    "✔ vill unna dig en lugn stund med fokus på välmående"
+                ),
+                "hero-feet.jpg",
             ),
             (
-                "Lugnande Händer Manikyr med Lack av Naglar",
-                "Vårdande manikyr med fokus på nagelband, handmassage och formning av naglar. "
-                "Avslutas med lack om så önskas.\n"
-                "Pris: 350–400 kr",
+                "Lugnande Händer – Manikyr med lack",
+                3,
+                (
+                    "350–400 kr | ca 45 min\n\n"
+                    "Välvårdade händer med en stund av avkoppling.\n"
+                    "Behandlingen innehåller nagelbandsvård, formning av naglar, handmassage och lack om du önskar."
+                ),
+                "hand-massage.jpg",
             ),
             (
-                "Ren Omsorg Paraffin Manikyr",
-                "Lyxig manikyr med nagelbandsvård och handmassage, följt av värmande paraffin:\n"
-                "återfuktar torra händer\n"
-                "mjukar upp huden\n"
-                "ger avslappning och behaglig värme\n"
-                "Pris: 499 kr",
+                "Ren Omsorg – Värmande paraffinmanikyr",
+                4,
+                (
+                    "499 kr | ca 60 min\n\n"
+                    "En mjuk och värmande behandling för torra och trötta händer.\n"
+                    "Med handmassage och paraffin får händerna:\n"
+                    "✔ extra fukt\n"
+                    "✔ mjukare hud\n"
+                    "✔ en avslappnande stund"
+                ),
+                "hand-massage.jpg",
             ),
             (
-                "Kunglig Avkoppling Kombo",
-                "En exklusiv behandling med både pedikyr och manikyr, värmande paraffin för "
-                "händer och fötter samt massage av både händer och fötter. En komplett stund "
-                "för återhämtning och lyx.\n"
-                "Pris: 800 kr",
+                "Kunglig Avkoppling – Kombo behandling",
+                5,
+                (
+                    "800 kr | ca 120 min\n\n"
+                    "En komplett stund för dig som vill njuta lite extra.\n"
+                    "Spa-pedikyr och manikyr kombineras med värmande paraffin och massage för både händer och fötter."
+                ),
+                "hand-massage.jpg",
             ),
             (
-                "Lugnande Stund – Hand- eller Fotmassage",
-                "Lyxigt Avkopplingsbad med Massage\n"
-                "Fot- eller handbad: max 5 minuter för värme och avkoppling\n"
-                "Massage: Händer och underarmar eller Fötter och underben, ca 15 minuter\n"
-                "Ingen nagel- eller fotvård – helt fokus på avslappning och välmående\n"
-                "Pris: 250 kr",
+                "Lugnande Stund – Hand- eller fotmassage",
+                6,
+                (
+                    "250 kr | ca 30 min\n\n"
+                    "En enkel behandling med fokus på avkoppling och välbefinnande."
+                ),
+                "hand-massage.jpg",
+            ),
+            (
+                "Varför värmande behandlingar?",
+                7,
+                (
+                    "Värme är inte bara skönt – det ger en härlig känsla av avslappning.\n"
+                    "Paraffinbehandling används ofta för att:\n"
+                    "✔ mjuka upp torr hud\n"
+                    "✔ ge händer och fötter extra fukt\n"
+                    "✔ skapa en behaglig värme\n"
+                    "✔ hjälpa kroppen att slappna av"
+                ),
+                "",
             ),
         ]
-        for order, (title, body) in enumerate(price_blocks, start=3):
-            ContentBlock.objects.create(
+        for title, order, body, image_name in treatment_blocks:
+            block = ContentBlock.objects.create(
                 page=treatments,
+                title=title,
+                body=body,
+                sort_order=order,
+            )
+            if image_name:
+                src = static_img / image_name
+                if src.exists():
+                    _save_image(block.image, src, image_name)
+
+        prices_page = SitePage.objects.get(key=SitePage.PageKey.PRICES)
+        ContentBlock.objects.filter(page=prices_page).delete()
+        for title, order, body, _image in treatment_blocks:
+            ContentBlock.objects.create(
+                page=prices_page,
                 title=title,
                 body=body,
                 sort_order=order,
@@ -400,40 +464,40 @@ class Command(BaseCommand):
 
         services = [
             (
-                "Evig Lycka Spa Pedikyr",
+                "Evig Lycka – Spa-pedikyr",
                 60,
                 425,
                 "Naglar klipps och filas, fötterna mjukas upp, avslutas med vårdande kräm.",
             ),
             (
-                "Gyllene Beröring Paraffin Pedikyr",
+                "Gyllene Beröring – Värmande paraffinpedikyr",
                 75,
                 499,
                 "Spa-pedikyr med nagelvård och fotfilning, följt av värmande paraffin.",
             ),
             (
-                "Lugnande Händer Manikyr med Lack",
+                "Lugnande Händer – Manikyr med lack",
                 45,
                 375,
                 "Nagelband, handmassage och formning. Lack om så önskas (350–400 kr).",
             ),
             (
-                "Ren Omsorg Paraffin Manikyr",
+                "Ren Omsorg – Värmande paraffinmanikyr",
                 60,
                 499,
                 "Nagelbandsvård, handmassage och värmande paraffin.",
             ),
             (
-                "Kunglig Avkoppling Kombo",
+                "Kunglig Avkoppling – Kombo behandling",
                 120,
                 800,
                 "Pedikyr och manikyr med paraffin och massage för händer och fötter.",
             ),
             (
-                "Lugnande Stund – Hand- eller Fotmassage",
+                "Lugnande Stund – Hand- eller fotmassage",
                 30,
                 250,
-                "Bad max 5 min + massage ca 15 min. Fokus på avslappning, ingen nagelvård.",
+                "Massage med fokus på avkoppling och välbefinnande.",
             ),
         ]
         # Deactivate old seed services that no longer match the prislista.

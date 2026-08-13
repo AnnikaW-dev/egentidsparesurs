@@ -16,6 +16,9 @@ python manage.py ensure_superuser || true
 
 # Seed when empty OR when SEED_ON_DEPLOY=true (idempotent update_or_create).
 echo "Ensuring starter content if needed..."
-python manage.py ensure_site_content || true
+if ! python manage.py ensure_site_content; then
+  echo "WARNING: ensure_site_content failed — pages may show 'Webbplatsen förbereds'."
+  echo "Fix: open Render Shell and run: python manage.py seed_site"
+fi
 
 exec gunicorn config.wsgi:application --bind "0.0.0.0:${PORT:-8000}"
