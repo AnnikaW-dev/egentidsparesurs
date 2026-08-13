@@ -6,39 +6,36 @@ from .models import Booking, Service, WeeklyAvailability
 
 
 class BookingForm(forms.ModelForm):
-    """Customer booking details for a selected time slot.
+    """Step 3: customer name and phone for a pre-selected service and slot.
 
-    Adjust: keep autocomplete and required flags in sync with book.html.
+    Service is fixed before the form is shown; adjust labels in book.html.
     """
 
     class Meta:
         model = Booking
-        fields = ("service", "customer_name", "customer_email", "customer_phone", "notes")
+        fields = ("customer_name", "customer_phone")
         labels = {
-            "service": "Behandling",
-            "customer_name": "Namn",
-            "customer_email": "E-post",
-            "customer_phone": "Telefon",
-            "notes": "Meddelande (valfritt)",
+            "customer_name": "Fullständigt namn",
+            "customer_phone": "Telefonnummer",
         }
         widgets = {
-            "customer_name": forms.TextInput(attrs={"autocomplete": "name"}),
-            "customer_email": forms.EmailInput(attrs={"autocomplete": "email"}),
-            "customer_phone": forms.TextInput(attrs={"autocomplete": "tel"}),
-            "notes": forms.Textarea(attrs={"rows": 3, "autocomplete": "off"}),
+            "customer_name": forms.TextInput(
+                attrs={"autocomplete": "name", "placeholder": "För- och efternamn"}
+            ),
+            "customer_phone": forms.TextInput(
+                attrs={"autocomplete": "tel", "placeholder": "07X XXX XX XX", "inputmode": "tel"}
+            ),
         }
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, service=None, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields["service"].queryset = Service.objects.filter(is_active=True)
+        self.service = service
         self.fields["customer_name"].required = True
-        self.fields["customer_email"].required = True
-        self.fields["service"].required = True
+        self.fields["customer_phone"].required = True
         for name, field in self.fields.items():
             field.widget.attrs["class"] = "form-control"
-            if field.required:
-                field.widget.attrs["aria-required"] = "true"
-                field.widget.attrs["required"] = True
+            field.widget.attrs["aria-required"] = "true"
+            field.widget.attrs["required"] = True
             if self.is_bound and self.errors.get(name):
                 field.widget.attrs["aria-invalid"] = "true"
                 field.widget.attrs["aria-describedby"] = f"error_{name}"

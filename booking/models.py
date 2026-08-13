@@ -118,8 +118,8 @@ class Booking(models.Model):
     slot = models.OneToOneField(TimeSlot, on_delete=models.CASCADE, related_name="booking")
     service = models.ForeignKey(Service, on_delete=models.PROTECT, related_name="bookings")
     customer_name = models.CharField(max_length=120)
-    customer_email = models.EmailField()
-    customer_phone = models.CharField(max_length=40, blank=True)
+    customer_email = models.EmailField(blank=True)
+    customer_phone = models.CharField(max_length=40)
     notes = models.TextField(blank=True)
     status = models.CharField(
         max_length=20,

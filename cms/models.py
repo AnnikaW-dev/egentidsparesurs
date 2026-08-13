@@ -182,6 +182,13 @@ class ContentBlock(models.Model):
     def shows_book_cta(self):
         return bool(self.book_label())
 
+    def book_service_slug(self):
+        """Slug for booking step 1 link — matches booking.Service by title."""
+        from booking.models import Service
+
+        service = Service.objects.filter(name=self.title, is_active=True).first()
+        return service.slug if service else ""
+
 
 class GalleryImage(models.Model):
     """Gallery photo editable from admin."""

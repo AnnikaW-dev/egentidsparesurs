@@ -17,8 +17,12 @@
     <dd>{{ booking.slot.start|date:"l j F Y, H:i" }}</dd>
     <dt>Namn</dt>
     <dd>{{ booking.customer_name }}</dd>
+    <dt>Telefon</dt>
+    <dd>{{ booking.customer_phone }}</dd>
+    {% if booking.customer_email %}
     <dt>E-post</dt>
     <dd>{{ booking.customer_email }}</dd>
+    {% endif %}
   </dl>
   <p class="hero-actions">
     <a class="btn" href="{% url 'home' %}">Till startsidan</a>

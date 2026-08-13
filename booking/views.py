@@ -7,7 +7,6 @@ from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
 from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect, render
-from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 
@@ -17,44 +16,60 @@ from .forms import AvailabilityGenerateForm, BookingForm, QuickWeekForm
 from .models import Booking, Service, TimeSlot, WeeklyAvailability, generate_slots_for_range
 
 
+def _booking_query(request):
+    """Read selected service/slot from GET or POST."""
+    service_slug = request.GET.get("service") or request.POST.get("service")
+    slot_id = request.GET.get("slot") or request.POST.get("slot")
+    return service_slug, slot_id
+
+
 def booking_page(request):
-    """Show open slots and accept a booking for a selected slot."""
+    """Three-step booking: 1) treatment 2) time slot 3) name + phone."""
     page = SitePage.objects.filter(key=SitePage.PageKey.BOOKING, is_published=True).first()
     services = Service.objects.filter(is_active=True)
+    service_slug, slot_id = _booking_query(request)
+
+    selected_service = None
+    if service_slug:
+        selected_service = get_object_or_404(Service, slug=service_slug, is_active=True)
+
+    selected_slot = None
+    if slot_id and selected_service:
+        selected_slot = get_object_or_404(TimeSlot, pk=slot_id)
+        if not selected_slot.is_open:
+            messages.error(request, "Den tiden är inte längre ledig. Välj en annan lucka.")
+            return redirect(f"{request.path}?service={selected_service.slug}")
+
     now = timezone.now()
     horizon = now + timedelta(days=60)
-
     open_slots = (
         TimeSlot.objects.filter(start__gte=now, start__lte=horizon, is_blocked=False)
         .exclude(booking__status=Booking.Status.CONFIRMED)
         .order_by("start")
     )
-
-    # Group by local date for the template calendar feel.
     by_date = {}
     for slot in open_slots:
         local = timezone.localtime(slot.start)
         by_date.setdefault(local.date(), []).append(slot)
 
     form = None
-    selected_slot = None
-    slot_id = request.GET.get("slot") or request.POST.get("slot")
-    if slot_id:
-        selected_slot = get_object_or_404(TimeSlot, pk=slot_id)
-        if not selected_slot.is_open:
-            messages.error(request, "Den tiden är inte längre ledig. Välj en annan lucka.")
-            return redirect("booking")
+    booking_step = 1
+    if selected_service and selected_slot:
+        booking_step = 3
+    elif selected_service:
+        booking_step = 2
 
-    if request.method == "POST" and selected_slot:
-        form = BookingForm(request.POST)
+    if request.method == "POST" and selected_service and selected_slot:
+        form = BookingForm(request.POST, service=selected_service)
         if form.is_valid():
             with transaction.atomic():
                 slot = TimeSlot.objects.select_for_update().get(pk=selected_slot.pk)
                 if not slot.is_open:
                     messages.error(request, "Den tiden just bokades av någon annan.")
-                    return redirect("booking")
+                    return redirect(f"{request.path}?service={selected_service.slug}")
                 booking = form.save(commit=False)
                 booking.slot = slot
+                booking.service = selected_service
                 booking.status = Booking.Status.CONFIRMED
                 booking.save()
             messages.success(
@@ -62,8 +77,8 @@ def booking_page(request):
                 f"Tack {booking.customer_name}! Din tid {timezone.localtime(slot.start):%Y-%m-%d %H:%M} är bokad.",
             )
             return redirect("booking_success", pk=booking.pk)
-    elif selected_slot:
-        form = BookingForm()
+    elif selected_service and selected_slot:
+        form = BookingForm(service=selected_service)
 
     return render(
         request,
@@ -71,9 +86,11 @@ def booking_page(request):
         {
             "page": page,
             "services": services,
+            "selected_service": selected_service,
             "slots_by_date": sorted(by_date.items()),
             "form": form,
             "selected_slot": selected_slot,
+            "booking_step": booking_step,
         },
     )
 
@@ -137,7 +154,6 @@ def dashboard_availability(request):
                 else:
                     last = monthrange(start.year, start.month)[1]
                     end = date(start.year, start.month, last)
-                    # If start is mid-month, still fill through month end.
                 created = generate_slots_for_range(start, end)
                 messages.success(
                     request,
@@ -145,7 +161,6 @@ def dashboard_availability(request):
                 )
                 return redirect("dashboard_availability")
 
-    # Preview next 14 days of open slots
     now = timezone.now()
     preview = (
         TimeSlot.objects.filter(start__gte=now, start__lte=now + timedelta(days=14))

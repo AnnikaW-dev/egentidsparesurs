@@ -601,6 +601,111 @@ h1 {
   max-width: 860px;
 }
 
+/* Boka — 3 steps: behandling → tid → namn + telefon */
+.booking-steps {
+  margin: 1.5rem auto 2rem;
+  max-width: 36rem;
+}
+
+.booking-steps ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem 1.25rem;
+}
+
+.booking-steps li {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.95rem;
+  color: var(--ink-muted);
+}
+
+.booking-steps li[aria-current="step"] {
+  color: var(--ink-strong);
+  font-weight: 500;
+}
+
+.booking-step-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.65rem;
+  height: 1.65rem;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  font-size: 0.85rem;
+  font-weight: 700;
+  background: var(--bg-panel);
+}
+
+.booking-steps li[aria-current="step"] .booking-step-num {
+  background: var(--ink-strong);
+  color: #fff;
+  border-color: var(--ink-strong);
+}
+
+.booking-step {
+  max-width: 36rem;
+  margin: 0 auto;
+}
+
+.booking-summary {
+  text-align: center;
+  margin: 0 0 1.25rem;
+  font-size: 0.98rem;
+}
+
+.booking-summary a {
+  margin-left: 0.35rem;
+}
+
+.service-pick-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.service-pick-card {
+  display: grid;
+  gap: 0.2rem;
+  padding: 1rem 1.1rem;
+  border: 1px solid var(--line);
+  background: var(--bg-panel);
+  text-decoration: none;
+  color: inherit;
+  min-height: 44px;
+  transition: background 180ms ease;
+}
+
+.service-pick-card:hover {
+  background: var(--bg-soft);
+}
+
+.service-pick-name {
+  font-family: var(--font-display);
+  font-weight: 700;
+  color: var(--ink-strong);
+  font-size: 1.05rem;
+}
+
+.service-pick-meta {
+  font-size: 0.92rem;
+  color: var(--ink-muted);
+}
+
+.service-pick-desc {
+  font-size: 0.9rem;
+}
+
+
 /* Kontakt: center all page content (copy, heading, form) */
 .contact-page {
   text-align: center;

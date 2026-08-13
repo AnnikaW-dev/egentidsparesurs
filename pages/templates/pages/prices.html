@@ -34,7 +34,7 @@
     </div>
     {% if block.shows_book_cta %}
       <p class="price-card-action">
-        <a class="btn" href="{% url 'booking' %}">{{ block.book_label }}</a>
+        <a class="btn" href="{% url 'booking' %}?service={{ block.book_service_slug }}">{{ block.book_label }}</a>
       </p>
     {% endif %}
   </section>
