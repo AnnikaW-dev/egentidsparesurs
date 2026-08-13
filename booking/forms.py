@@ -9,21 +9,26 @@ from .models import Booking, Service, WeeklyAvailability
 
 
 class BookingForm(forms.ModelForm):
-    """Step 3: customer name and phone for a pre-selected service and slot.
-
-    Service is fixed before the form is shown; adjust labels in book.html.
-    """
+    """Step 3: name, email, and phone for a pre-selected service and slot."""
 
     class Meta:
         model = Booking
-        fields = ("customer_name", "customer_phone")
+        fields = ("customer_name", "customer_email", "customer_phone")
         labels = {
             "customer_name": "Fullständigt namn",
+            "customer_email": "E-post",
             "customer_phone": "Telefonnummer",
         }
         widgets = {
             "customer_name": forms.TextInput(
                 attrs={"autocomplete": "name", "placeholder": "För- och efternamn"}
+            ),
+            "customer_email": forms.EmailInput(
+                attrs={
+                    "autocomplete": "email",
+                    "placeholder": "namn@example.com",
+                    "inputmode": "email",
+                }
             ),
             "customer_phone": forms.TextInput(
                 attrs={
@@ -41,6 +46,7 @@ class BookingForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         self.service = service
         self.fields["customer_name"].required = True
+        self.fields["customer_email"].required = True
         self.fields["customer_phone"].required = True
         for name, field in self.fields.items():
             field.widget.attrs["class"] = "form-control"
