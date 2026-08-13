@@ -785,6 +785,12 @@ h1 {
   text-align: center;
 }
 
+.field-hint {
+  margin: 0.35rem 0 0;
+  font-size: 0.88rem;
+  text-align: center;
+}
+
 .aligned-row.has-error .form-control,
 .aligned-row.has-error input,
 .aligned-row.has-error textarea {
