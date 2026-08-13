@@ -1,5 +1,6 @@
 {# booking/book.html — 3-step booking: treatment → time slot → name + phone #}
 {% extends "base.html" %}
+{% load static %}
 
 {% block title %}{% if page %}{{ page.seo_title }}{% else %}Boka tid{% endif %} – {{ site.site_name }}{% endblock %}
 {% block meta_description %}{% if page %}{% firstof page.seo_description seo_description %}{% else %}Boka spa-pedikyr, värmande manikyr eller paraffin – se lediga tider online.{% endif %}{% endblock %}
@@ -131,4 +132,10 @@
   </section>
   {% endif %}
 </article>
+{% endblock %}
+
+{% block extra_js %}
+  {% if booking_step == 3 %}
+    <script src="{% static 'js/booking-phone.js' %}" defer></script>
+  {% endif %}
 {% endblock %}

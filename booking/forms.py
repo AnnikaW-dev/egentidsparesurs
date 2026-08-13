@@ -35,9 +35,10 @@ class BookingForm(forms.ModelForm):
                     "autocomplete": "tel",
                     "placeholder": "0701234567",
                     "inputmode": "numeric",
+                    "type": "text",
                     "pattern": "[0-9]+",
                     "title": "Endast siffror, inga mellanslag eller bindestreck.",
-                    "data-phone-digits-only": "",
+                    "data-phone-digits-only": "true",
                 }
             ),
         }

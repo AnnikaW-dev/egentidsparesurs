@@ -66,19 +66,3 @@
     closeAll(null);
   });
 })();
-
-/* Booking phone — digits only while typing or pasting. */
-(function () {
-  document.querySelectorAll("[data-phone-digits-only]").forEach(function (input) {
-    function digitsOnly() {
-      var cleaned = input.value.replace(/\D/g, "");
-      if (input.value !== cleaned) {
-        input.value = cleaned;
-      }
-    }
-    input.addEventListener("input", digitsOnly);
-    input.addEventListener("paste", function () {
-      setTimeout(digitsOnly, 0);
-    });
-  });
-})();
