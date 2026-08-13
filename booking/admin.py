@@ -20,8 +20,27 @@ class ServiceAdmin(admin.ModelAdmin):
 
 @admin.register(WeeklyAvailability)
 class WeeklyAvailabilityAdmin(admin.ModelAdmin):
+    """Edit Mon–Sun hours — shown under Öppettider in the footer and used for Boka."""
+
     list_display = ("weekday", "start_time", "end_time", "slot_minutes", "is_active")
-    list_editable = ("is_active",)
+    list_editable = ("start_time", "end_time", "slot_minutes", "is_active")
+    list_display_links = ("weekday",)
+    ordering = ("weekday", "start_time")
+    list_filter = ("is_active", "weekday")
+    fieldsets = (
+        (
+            None,
+            {
+                "fields": ("weekday", "start_time", "end_time", "is_active", "slot_minutes"),
+                "description": (
+                    "Dessa tider visas under Öppettider i sidfoten. "
+                    "Lägg till en rad per öppen dag (t.ex. Måndag 09:00–16:00). "
+                    "Dagar utan aktiv rad visas som ”Stängt”. "
+                    "Du kan också ändra schemat under /dashboard/."
+                ),
+            },
+        ),
+    )
 
 
 @admin.register(ClosedDate)

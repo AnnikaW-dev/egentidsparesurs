@@ -2,7 +2,14 @@
 
 from django.contrib import admin
 
-from .models import ContentBlock, GalleryImage, SeasonTip, SitePage, SiteSettings
+from .models import (
+    ContentBlock,
+    GalleryImage,
+    SeasonTip,
+    SeasonTipItem,
+    SitePage,
+    SiteSettings,
+)
 
 
 class ContentBlockInline(admin.TabularInline):
@@ -13,11 +20,31 @@ class ContentBlockInline(admin.TabularInline):
     verbose_name_plural = "behandlingar / innehållsblock"
 
 
+class SeasonTipItemInline(admin.TabularInline):
+    model = SeasonTipItem
+    extra = 3
+    fields = ("headline", "description", "sort_order")
+    ordering = ("sort_order", "id")
+
+
 @admin.register(SiteSettings)
 class SiteSettingsAdmin(admin.ModelAdmin):
     fieldsets = (
         ("Varumärke", {"fields": ("site_name", "tagline", "logo")}),
-        ("Kontakt", {"fields": ("email", "phone", "address", "opening_hours")}),
+        ("Kontakt", {"fields": ("email", "phone", "address")}),
+        (
+            "Öppettider i sidfot",
+            {
+                "fields": ("opening_hours",),
+                "description": (
+                    "Veckans tider (måndag–söndag) redigeras under "
+                    "Bokning → Veckoschema / öppettider. "
+                    "De syns automatiskt under Öppettider i sidfoten. "
+                    "Fältet nedan är valfri extratext under schemat "
+                    "(t.ex. ”Bokning krävs”)."
+                ),
+            },
+        ),
         (
             "Sidfot",
             {
@@ -93,22 +120,43 @@ class GalleryImageAdmin(admin.ModelAdmin):
 
 @admin.register(SeasonTip)
 class SeasonTipAdmin(admin.ModelAdmin):
-    """One tip per calendar month — home page shows the current month automatically."""
-
-    list_display = ("month", "title", "is_visible")
-    list_editable = ("is_visible",)
-    ordering = ("month",)
-    list_display_links = ("month", "title")
+    list_display = ("month", "title", "is_featured", "is_visible")
+    list_editable = ("is_featured", "is_visible")
+    list_filter = ("is_featured", "is_visible")
+    search_fields = ("title", "closing_body")
+    inlines = [SeasonTipItemInline]
     fieldsets = (
         (
-            None,
+            "Månad på Året runt",
             {
-                "fields": ("month", "title", "body", "image", "is_visible"),
+                "fields": ("month", "title", "icon", "is_featured", "is_visible"),
                 "description": (
-                    "Startsida visar automatiskt tipset för innevarande månad "
-                    "(t.ex. i september → öppna September). "
-                    "I brödtexten: ## för underrubrik, ✔ för checklista, tom rad mellan stycken."
+                    "Fyll i rubrik och tipspunkter (nedan) för varje månad. "
+                    "Kryssa i ”Visas på Året runt” för den månad som ska synas just nu. "
+                    "Startsida visar automatiskt tipset för innevarande kalendermånad."
                 ),
+            },
+        ),
+        (
+            "Avslutning (Kort sagt)",
+            {
+                "fields": (
+                    "closing_icon",
+                    "closing_label",
+                    "closing_body",
+                    "closing_cta",
+                ),
+                "description": (
+                    "Visas under checklistan, t.ex. "
+                    "💡 Kort sagt: … – boka din behandling nu!"
+                ),
+            },
+        ),
+        (
+            "Övrigt",
+            {
+                "fields": ("body", "image"),
+                "classes": ("collapse",),
             },
         ),
     )

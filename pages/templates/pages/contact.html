@@ -28,10 +28,15 @@
 
   <section class="contact-form-wrap" aria-labelledby="contact-form-heading">
     <h2 id="contact-form-heading">Skicka meddelande</h2>
-    <form method="post" class="aligned-form" novalidate>
+    <form method="post" class="aligned-form" action="{% url 'contact' %}" novalidate>
       {% csrf_token %}
       {% if form.non_field_errors %}
         <div class="form-errors" role="alert">{{ form.non_field_errors }}</div>
+      {% endif %}
+      {% if form.errors %}
+        <div class="form-errors" role="alert">
+          Kontrollera fälten markerade nedan och försök igen.
+        </div>
       {% endif %}
       {% for field in form %}
       <div class="aligned-row{% if field.errors %} has-error{% endif %}">

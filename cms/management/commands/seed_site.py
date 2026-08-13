@@ -8,114 +8,54 @@ from django.core.management.base import BaseCommand
 from django.utils.text import slugify
 
 from booking.models import Service, WeeklyAvailability, generate_slots_for_range
-from cms.models import ContentBlock, GalleryImage, SeasonTip, SitePage, SiteSettings
-
-# Default treatment copy — used on Behandlingar (and mirrored on Prislista).
-TREATMENT_BLOCKS = [
-    (
-        "Evig Lycka – Spa-pedikyr",
-        1,
-        (
-            "425 kr | ca 60 min\n\n"
-            "Ge dina fötter en välförtjänt paus.\n"
-            "En avkopplande spa-pedikyr där naglar klipps och filas, fötterna mjukas upp "
-            "och behandlingen avslutas med vårdande kräm.\n\n"
-            "## Passar dig som:\n"
-            "✔ få mjukare fötter\n"
-            "✔ vårda torra fötter\n"
-            "✔ njuta av en lugn stund för dig själv"
-        ),
-        "hero-feet.jpg",
-    ),
-    (
-        "Gyllene Beröring – Värmande paraffinpedikyr",
-        2,
-        (
-            "499 kr | ca 75 min\n\n"
-            "En extra varm och vårdande behandling där spa-pedikyr kombineras med värmande paraffin.\n"
-            "Fötterna får först omsorg med nagelvård och uppmjukning, därefter får de njuta av "
-            "den behagliga värmen från paraffin som omsluter huden och ger en härlig känsla av "
-            "mjukhet och avslappning.\n\n"
-            "## Passar dig som:\n"
-            "✔ har torra fötter och vill ge huden extra fukt\n"
-            "✔ ofta fryser om fötterna\n"
-            "✔ känner dig stel och uppskattar värmande behandlingar\n"
-            "✔ vill unna dig en lugn stund med fokus på välmående\n\n"
-            "Paraffin kan hjälpa huden att kännas mjukare och smidigare, samtidigt som värmen "
-            "ger en skön och avslappnande upplevelse."
-        ),
-        "hero-feet.jpg",
-    ),
-    (
-        "Lugnande Händer – Manikyr med lack",
-        3,
-        (
-            "350–400 kr | ca 45 min\n\n"
-            "Välvårdade händer med en stund av avkoppling.\n"
-            "Behandlingen innehåller nagelbandsvård, formning av naglar, handmassage och lack om du önskar."
-        ),
-        "hand-massage.jpg",
-    ),
-    (
-        "Ren Omsorg – Värmande paraffinmanikyr",
-        4,
-        (
-            "499 kr | ca 60 min\n\n"
-            "En mjuk och värmande behandling för torra och trötta händer.\n"
-            "Med handmassage och paraffin får händerna:\n"
-            "✔ extra fukt\n"
-            "✔ mjukare hud\n"
-            "✔ en avslappnande stund"
-        ),
-        "hand-massage.jpg",
-    ),
-    (
-        "Kunglig Avkoppling – Kombo behandling",
-        5,
-        (
-            "800 kr | ca 120 min\n\n"
-            "En komplett stund för dig som vill njuta lite extra.\n"
-            "Spa-pedikyr och manikyr kombineras med värmande paraffin och massage för både händer och fötter."
-        ),
-        "hand-massage.jpg",
-    ),
-    (
-        "Lugnande Stund – Hand- eller fotmassage",
-        6,
-        (
-            "250 kr | ca 30 min\n\n"
-            "En enkel behandling med fokus på avkoppling och välbefinnande."
-        ),
-        "hand-massage.jpg",
-    ),
-    (
-        "Varför värmande behandlingar?",
-        7,
-        (
-            "Värme är inte bara skönt – det ger en härlig känsla av avslappning.\n"
-            "Paraffinbehandling används ofta för att:\n"
-            "✔ mjuka upp torr hud\n"
-            "✔ ge händer och fötter extra fukt\n"
-            "✔ skapa en behaglig värme\n"
-            "✔ hjälpa kroppen att slappna av"
-        ),
-        "",
-    ),
-]
+from cms.models import (
+    ContentBlock,
+    GalleryImage,
+    SeasonTip,
+    SeasonTipItem,
+    SitePage,
+    SiteSettings,
+)
 
 
-def attach_block_image(block, static_img: Path, filename: str) -> None:
-    """Save a static seed image on a ContentBlock and copy its WebP companion."""
-    if not filename:
+def _ensure_webp(image_field):
+    """Write a .webp sibling next to a saved ImageField (for <picture> tags)."""
+    if not image_field or not image_field.name:
         return
-    src = static_img / filename
-    if not src.exists():
+    try:
+        path = Path(image_field.path)
+    except Exception:
         return
-    with src.open("rb") as fh:
-        block.image.save(filename, File(fh), save=True)
-    webp_src = src.with_suffix(".webp")
-    if webp_src.exists() and block.image:
-        Path(block.image.path).with_suffix(".webp").write_bytes(webp_src.read_bytes())
+    if not path.exists() or path.suffix.lower() not in {".jpg", ".jpeg", ".png"}:
+        return
+    webp = path.with_suffix(".webp")
+    if webp.exists():
+        return
+    try:
+        from PIL import Image
+
+        Image.open(path).convert("RGB").save(webp, "WEBP", quality=80, method=6)
+    except Exception:
+        pass
+
+
+def _file_missing(image_field):
+    """True if the ImageField has no file on disk."""
+    if not image_field or not image_field.name:
+        return True
+    try:
+        return not Path(image_field.path).exists()
+    except Exception:
+        return True
+
+
+def _save_image(field, src_path: Path, dest_name: str):
+    """Copy a static image onto an ImageField and ensure WebP exists."""
+    if not src_path.exists():
+        return
+    with src_path.open("rb") as fh:
+        field.save(dest_name, File(fh), save=True)
+    _ensure_webp(field)
 
 
 class Command(BaseCommand):
@@ -129,26 +69,25 @@ class Command(BaseCommand):
         settings.email = "info@egentidsparesurs.se"
         settings.phone = ""
         settings.address = "Egen ingång på nedervåningen"
-        settings.opening_hours = "Enligt bokning\nVardagar efter överenskommelse"
+        settings.opening_hours = "Bokning krävs – se lediga tider under Boka."
         settings.footer_text = (
             "En lugn oas för fotvård, handvård och värmande behandlingar."
         )
         logo_src = static_img / "logo.jpg"
-        if logo_src.exists() and not settings.logo:
-            with logo_src.open("rb") as fh:
-                settings.logo.save("logo.jpg", File(fh), save=False)
+        # Always restore logo when missing on disk (common after Render redeploy without disk).
+        if logo_src.exists() and _file_missing(settings.logo):
+            _save_image(settings.logo, logo_src, "logo.jpg")
         settings.save()
+        _ensure_webp(settings.logo)
 
         pages = {
             SitePage.PageKey.HOME: {
                 "title": "Skönhet & avkoppling med en värmande touch!",
-                "subtitle": "Unna dig en stund av värme, lugn och omtanke.",
+                "subtitle": "",
                 "body": (
-                    "Välkommen till en stund där du får släppa vardagens stress och bara njuta. "
-                    "Mina behandlingar återfuktar huden, värmer stela leder och ger både kropp och själ ny energi.\n\n"
-                    "Mjuka händer. Lätta fötter. Ett lugnare sinne.\n\n"
-                    "Låt mig ta hand om dina händer och fötter med avkopplande behandlingar som mjukar upp huden, "
-                    "ökar välmåendet och ger ny energi. Här får du en paus från vardagen – bara för dig."
+                    "Ge dina fötter den omsorg de förtjänar! Unna dig en avkopplande "
+                    "spa-pedikyr som återfuktar, mjukar upp och ger ny energi till trötta fötter. "
+                    "Perfekt för alla årstider!"
                 ),
                 "hero": "hero-feet.jpg",
             },
@@ -172,38 +111,28 @@ class Command(BaseCommand):
                 "hero": "gallery-1.jpg",
             },
             SitePage.PageKey.TREATMENTS: {
-                "title": "Behandlingar",
-                "subtitle": "Unna dig en stund av värme, lugn och omtanke.",
+                "title": "Varför värmande manikyr och fotvård?",
+                "subtitle": "🌱 Värme är inte bara skönt – det är också läkande och avslappnande!",
                 "body": (
-                    "Här hittar du behandlingar för händer och fötter med fokus på avkoppling, "
-                    "mjukgörande vård och välmående."
-                ),
-                "hero": "hand-massage.jpg",
-            },
-            SitePage.PageKey.WARMING: {
-                "title": "Värmande behandlingar",
-                "subtitle": "Värme är inte bara skönt – det är också läkande och avslappnande!",
-                "body": (
-                    "Ökar blodcirkulationen.\n\n"
-                    "Mjukar upp stela och ömma leder.\n\n"
-                    "Lindrar torr hud och sprickor.\n\n"
-                    "Perfekt vid reumatism, artrit och ledvärk."
-                ),
-                "hero": "hand-massage.jpg",
-            },
-            SitePage.PageKey.PRICES: {
-                "title": "Prislista",
-                "subtitle": "Unna dig en stund av värme, lugn och omtanke.",
-                "body": (
-                    "Här hittar du behandlingar för händer och fötter med fokus på avkoppling, "
-                    "mjukgörande vård och välmående."
+                    "Ökar blodcirkulationen\n"
+                    "Mjukar upp stela och ömma leder\n"
+                    "Lindrar torr hud och sprickor\n"
+                    "Perfekt vid reumatism, artrit och ledvärk"
                 ),
                 "hero": None,
             },
             SitePage.PageKey.SEASONS: {
-                "title": "Året runt",
-                "subtitle": "Tips för händer och fötter genom årstiderna.",
-                "body": "Varje månad har sina behov – här är inspiration för din egentid.",
+                "title": "Välmående fötter och händer – året runt!",
+                "subtitle": "",
+                "body": (
+                    "Många tror att en spa-pedikyr på våren räcker för sommaren, men fötterna "
+                    "och händerna behöver regelbunden omsorg. Kyla, värme och torr luft "
+                    "påverkar huden året om, och utan vård kan förhårdnader, sprickor och "
+                    "nariga händer uppstå.\n\n"
+                    "Genom att unna dig en behandling var 6:e–8:e vecka håller du både fötter "
+                    "och händer mjuka och friska – oavsett säsong. Läs vidare för att se "
+                    "varför spa-pedikyr och värmande manikyr alltid är en bra idé!"
+                ),
                 "hero": None,
             },
             SitePage.PageKey.GALLERY: {
@@ -227,18 +156,6 @@ class Command(BaseCommand):
                 ),
                 "hero": None,
             },
-            SitePage.PageKey.SERVICE: {
-                "title": "Service",
-                "subtitle": "Mer än behandling – hjälp som sparar din tid och energi.",
-                "body": (
-                    "Behöver du avlastning med administrativa uppgifter eller en lugn stund "
-                    "för att prata igenom vad som tar tid och kraft i vardagen?\n\n"
-                    "Här kan du släppa stressen och låta mig ta hand om det som ger dig mer "
-                    "egentid. Hör av dig via kontaktformuläret så hittar vi en lösning "
-                    "tillsammans."
-                ),
-                "hero": None,
-            },
         }
 
         for key, data in pages.items():
@@ -251,17 +168,12 @@ class Command(BaseCommand):
                     "is_published": True,
                 },
             )
-            # Only attach hero once — re-saving creates Django name suffixes and breaks WebP pairs.
-            if data["hero"] and not page.hero_image:
+            if data["hero"]:
                 src = static_img / data["hero"]
-                if src.exists():
-                    with src.open("rb") as fh:
-                        page.hero_image.save(data["hero"], File(fh), save=True)
-                    webp_src = src.with_suffix(".webp")
-                    if webp_src.exists() and page.hero_image:
-                        Path(page.hero_image.path).with_suffix(".webp").write_bytes(
-                            webp_src.read_bytes()
-                        )
+                if src.exists() and _file_missing(page.hero_image):
+                    _save_image(page.hero_image, src, data["hero"])
+                elif page.hero_image:
+                    _ensure_webp(page.hero_image)
 
         home = SitePage.objects.get(key=SitePage.PageKey.HOME)
         ContentBlock.objects.filter(page=home).delete()
@@ -276,14 +188,10 @@ class Command(BaseCommand):
             sort_order=1,
         )
         hand_src = static_img / "hand-massage.jpg"
-        if hand_src.exists():
-            with hand_src.open("rb") as fh:
-                hand.image.save("hand-massage.jpg", File(fh), save=True)
-            # Keep WebP companion next to the saved upload name.
-            webp_src = hand_src.with_suffix(".webp")
-            if webp_src.exists() and hand.image:
-                dest_webp = Path(hand.image.path).with_suffix(".webp")
-                dest_webp.write_bytes(webp_src.read_bytes())
+        if hand_src.exists() and _file_missing(hand.image):
+            _save_image(hand.image, hand_src, "hand-massage.jpg")
+        elif hand.image:
+            _ensure_webp(hand.image)
 
         ContentBlock.objects.create(
             page=home,
@@ -297,111 +205,246 @@ class Command(BaseCommand):
         )
 
         treatments = SitePage.objects.get(key=SitePage.PageKey.TREATMENTS)
+        # Clear old hero if present — Behandlingar page is text-first like WordPress.
+        if treatments.hero_image:
+            treatments.hero_image.delete(save=False)
+            treatments.hero_image = None
+            treatments.save(update_fields=["hero_image"])
         ContentBlock.objects.filter(page=treatments).delete()
-        for title, order, body, image_name in TREATMENT_BLOCKS:
-            block = ContentBlock.objects.create(
+        ContentBlock.objects.create(
+            page=treatments,
+            title="Paraffin",
+            body=(
+                "❤️ Passar dig som:\n"
+                "Har torra händer och fötter\n"
+                "Har värk i leder och muskler\n"
+                "Vill ha en avslappnande lyxig behandling"
+            ),
+            sort_order=1,
+        )
+        ContentBlock.objects.create(
+            page=treatments,
+            title="Prislista",
+            body="",
+            sort_order=2,
+        )
+        # Adjust: prislista copy — edit blocks in admin under Sida “Behandlingar”
+        price_blocks = [
+            (
+                "Evig Lycka Spa Pedikyr",
+                "En avkopplande spa-pedikyr där naglar klipps och filas, fötterna mjukas upp "
+                "och behandlingen avslutas med vårdande kräm.\n"
+                "Pris: 425 kr",
+            ),
+            (
+                "Gyllene Beröring Paraffin Pedikyr",
+                "Klassisk spa-pedikyr med nagelvård och fotfilning, följt av värmande paraffin som:\n"
+                "mjukar upp torr hud\n"
+                "ger djup återfuktning\n"
+                "lindrar stelhet och frusna fötter\n"
+                "Pris: 499 kr",
+            ),
+            (
+                "Lugnande Händer Manikyr med Lack av Naglar",
+                "Vårdande manikyr med fokus på nagelband, handmassage och formning av naglar. "
+                "Avslutas med lack om så önskas.\n"
+                "Pris: 350–400 kr",
+            ),
+            (
+                "Ren Omsorg Paraffin Manikyr",
+                "Lyxig manikyr med nagelbandsvård och handmassage, följt av värmande paraffin:\n"
+                "återfuktar torra händer\n"
+                "mjukar upp huden\n"
+                "ger avslappning och behaglig värme\n"
+                "Pris: 499 kr",
+            ),
+            (
+                "Kunglig Avkoppling Kombo",
+                "En exklusiv behandling med både pedikyr och manikyr, värmande paraffin för "
+                "händer och fötter samt massage av både händer och fötter. En komplett stund "
+                "för återhämtning och lyx.\n"
+                "Pris: 800 kr",
+            ),
+            (
+                "Lugnande Stund – Hand- eller Fotmassage",
+                "Lyxigt Avkopplingsbad med Massage\n"
+                "Fot- eller handbad: max 5 minuter för värme och avkoppling\n"
+                "Massage: Händer och underarmar eller Fötter och underben, ca 15 minuter\n"
+                "Ingen nagel- eller fotvård – helt fokus på avslappning och välmående\n"
+                "Pris: 250 kr",
+            ),
+        ]
+        for order, (title, body) in enumerate(price_blocks, start=3):
+            ContentBlock.objects.create(
                 page=treatments,
                 title=title,
                 body=body,
                 sort_order=order,
             )
-            attach_block_image(block, static_img, image_name)
 
-        prices_page = SitePage.objects.get(key=SitePage.PageKey.PRICES)
-        ContentBlock.objects.filter(page=prices_page).delete()
-        price_blocks = [
-            *[(title, order, body) for title, order, body, _image in TREATMENT_BLOCKS],
-            (
-                "Olja nr 1 – För känslig och mycket torr hud (från 5 år)",
-                8,
-                (
-                    "Återfuktar på djupet och stärker hudens skyddsbarriär. Lugnar eksem och irriterad hud. "
-                    "Perfekt för känslig hud och extra torr hud. Passar både barn och vuxna."
-                ),
-            ),
-            (
-                "Olja nr 2 – Lyxig & rogivande för normal hud",
-                9,
-                (
-                    "Näringsboost för huden med extra lyster. Stärker elasticitet och stimulerar cellförnyelse. "
-                    "Lyxig och rogivande behandling med härliga dofter.\n\n"
-                    "Innehåll: Vitamin E, Vitamin A, Omega-9, Omega-6 och Zink."
-                ),
-            ),
+        # Gallery: create rows if empty, otherwise restore missing files.
+        gallery_specs = [
+            ("gallery-1.jpg", "Salongen"),
+            ("hand-massage.jpg", "Handmassage"),
+            ("hero-feet.jpg", "Fotvård"),
         ]
-        for title, order, body in price_blocks:
-            ContentBlock.objects.create(
-                page=prices_page,
-                title=title,
-                body=body,
-                sort_order=order,
-            )
-
         if not GalleryImage.objects.exists():
-            for name, title in [
-                ("gallery-1.jpg", "Salongen"),
-                ("hand-massage.jpg", "Handmassage"),
-                ("hero-feet.jpg", "Fotvård"),
-            ]:
+            for name, title in gallery_specs:
                 src = static_img / name
                 if src.exists():
                     gi = GalleryImage(title=title, caption=title, sort_order=0)
-                    with src.open("rb") as fh:
-                        gi.image.save(name, File(fh), save=True)
+                    _save_image(gi.image, src, name)
+        else:
+            for gi in GalleryImage.objects.all():
+                if _file_missing(gi.image):
+                    # Best-effort restore from static by filename.
+                    name = Path(gi.image.name).name if gi.image.name else ""
+                    src = static_img / name
+                    if src.exists():
+                        _save_image(gi.image, src, name)
+                else:
+                    _ensure_webp(gi.image)
 
-        # Rich monthly tips — home shows the tip for the current calendar month.
-        # Adjust: edit Admin → Säsongstips; use ## for headings and ✔ for checklist lines.
-        july_body = (
-            "Sommaren är en perfekt tid att ge händer och fötter lite extra uppmärksamhet. "
-            "När du är ledig och barfota ute – passa på att träna rörlighet och cirkulation "
-            "på ett enkelt och naturligt sätt.\n\n"
-            "## Ge fötterna sommarträning\n"
-            "✔ Gå barfota i gräs, sand eller på en filt och låt fötterna känna olika underlag.\n"
-            "✔ Böj och sträck tårna flera gånger.\n"
-            "✔ Försök att greppa en handduk eller lite gräs med tårna och släpp igen.\n\n"
-            "Det hjälper till att väcka små muskler i fötterna och hålla dem rörliga.\n\n"
-            "## Ge händerna lite kärlek\n"
-            "✔ Låt tummen möta ett finger i taget – pekfinger, långfinger, ringfinger och lillfinger.\n"
-            "✔ Sträck ut fingrarna och slappna av.\n\n"
-            "En liten stund varje dag kan göra stor skillnad för hur händerna känns.\n\n"
-            "## Mitt tips:\n"
-            "Gör dina rörelser när du sitter på stranden, i trädgården eller på balkongen. "
-            "Några minuter av egen tid kan vara en enkel väg till mer välmående."
-        )
+        # Året runt: full month copy editable in admin; featured = April by default.
+        SeasonTip.objects.update(is_featured=False)
         season_defaults = [
-            (2, "Februari–april", "Vårda torra vinterhänder och fötter med värmande behandlingar."),
-            (5, "Maj – Förbered dig för sommaren!", "Mjuka upp fötter inför öppna skor och sommarvärme."),
-            (6, "Juni", "Spa-pedikyr och värmande manikyr håller händer och fötter i form."),
             (
-                7,
-                "Juli – Ge händer och fötter lite extra sommaromsorg",
-                july_body,
+                4,
+                "April – Vår på riktigt",
+                "🌸",
+                True,
+                [
+                    (
+                        "Dags att ta fram sandalerna!",
+                        "Ge fötterna en fräsch start",
+                    ),
+                    (
+                        "Mildare luft = Fortfarande torr hud",
+                        "Huden vänjer sig långsamt vid förändringar",
+                    ),
+                    (
+                        "Boost för huden",
+                        "Värmebehandlingar ger ökad cirkulation och mjukar upp huden",
+                    ),
+                ],
+                {
+                    "closing_icon": "💡",
+                    "closing_label": "Kort sagt:",
+                    "closing_body": "Ge din hud och dina fötter en nystart efter vintern –",
+                    "closing_cta": "boka din behandling nu!",
+                },
             ),
             (
-                8,
-                "Augusti – Ge händer och fötter lite extra sommaromsorg",
-                july_body,
+                3,
+                "Mars – Vårens första månad",
+                "🌱",
+                False,
+                [
+                    (
+                        "Dags att vakna upp huden",
+                        "Efter en lång vinter behöver huden näring och fukt",
+                    ),
+                    (
+                        "Förbered fötterna för öppna skor",
+                        "Bort med torr hud och ge naglarna vårkänsla",
+                    ),
+                    (
+                        "Vårtrötthet?",
+                        "En avslappnande behandling ger ny energi",
+                    ),
+                ],
+                {
+                    "closing_icon": "💡",
+                    "closing_label": "Kort sagt:",
+                    "closing_body": "Ge händer och fötter en vårstart –",
+                    "closing_cta": "boka din behandling nu!",
+                },
             ),
-            (9, "September", "Bygg upp fuktbarriären inför svalare dagar."),
-            (10, "Oktober", "Värmande paraffin mot stelhet och torrhet."),
-            (11, "November", "Extra omsorg när kylan tar ut sin rätt."),
-            (12, "December", "Ge dig själv egentid mitt i julruschen."),
+            (1, "Januari – Nytt år, mjuka fötter", "❄️", False, [], {}),
+            (2, "Februari – Vintervård", "❄️", False, [], {}),
+            (5, "Maj – Förbered dig för sommaren!", "☀️", False, [], {}),
+            (6, "Juni – Sommarfötter", "☀️", False, [], {}),
+            (7, "Juli – Sol och bad", "☀️", False, [], {}),
+            (8, "Augusti – Sensommar", "🍂", False, [], {}),
+            (9, "September – Hösten börjar", "🍂", False, [], {}),
+            (10, "Oktober – Värmande omsorg", "🍂", False, [], {}),
+            (11, "November – Mot kylan", "❄️", False, [], {}),
+            (12, "December – Egentid i julruschen", "❄️", False, [], {}),
         ]
-        for month, title, body in season_defaults:
-            SeasonTip.objects.update_or_create(
+        for month, title, icon, featured, items, closing in season_defaults:
+            tip, _ = SeasonTip.objects.update_or_create(
                 month=month,
-                defaults={"title": title, "body": body, "is_visible": True},
+                defaults={
+                    "title": title,
+                    "icon": icon,
+                    "body": "",
+                    "is_featured": featured,
+                    "is_visible": True,
+                    "closing_icon": closing.get("closing_icon", "💡"),
+                    "closing_label": closing.get("closing_label", "Kort sagt:"),
+                    "closing_body": closing.get("closing_body", ""),
+                    "closing_cta": closing.get(
+                        "closing_cta", "boka din behandling nu!"
+                    ),
+                },
             )
+            if items:
+                tip.items.all().delete()
+                for order, (headline, description) in enumerate(items):
+                    SeasonTipItem.objects.create(
+                        tip=tip,
+                        headline=headline,
+                        description=description,
+                        sort_order=order,
+                    )
 
         services = [
-            ("Evig Lycka – Spa-pedikyr", 60, 425, "Avkopplande spa-pedikyr med nagelvård och vårdande kräm."),
-            ("Gyllene Beröring – Värmande paraffinpedikyr", 75, 499, "Spa-pedikyr med värmande paraffin."),
-            ("Lugnande Händer – Manikyr med lack", 45, 375, "Manikyr med nagelbandsvård, massage och lack."),
-            ("Ren Omsorg – Värmande paraffinmanikyr", 60, 499, "Värmande paraffinmanikyr med handmassage."),
-            ("Kunglig Avkoppling – Kombo behandling", 120, 800, "Spa-pedikyr och manikyr med paraffin och massage."),
-            ("Lugnande Stund – Hand- eller fotmassage", 30, 250, "Massage med fokus på avkoppling."),
+            (
+                "Evig Lycka Spa Pedikyr",
+                60,
+                425,
+                "Naglar klipps och filas, fötterna mjukas upp, avslutas med vårdande kräm.",
+            ),
+            (
+                "Gyllene Beröring Paraffin Pedikyr",
+                75,
+                499,
+                "Spa-pedikyr med nagelvård och fotfilning, följt av värmande paraffin.",
+            ),
+            (
+                "Lugnande Händer Manikyr med Lack",
+                45,
+                375,
+                "Nagelband, handmassage och formning. Lack om så önskas (350–400 kr).",
+            ),
+            (
+                "Ren Omsorg Paraffin Manikyr",
+                60,
+                499,
+                "Nagelbandsvård, handmassage och värmande paraffin.",
+            ),
+            (
+                "Kunglig Avkoppling Kombo",
+                120,
+                800,
+                "Pedikyr och manikyr med paraffin och massage för händer och fötter.",
+            ),
+            (
+                "Lugnande Stund – Hand- eller Fotmassage",
+                30,
+                250,
+                "Bad max 5 min + massage ca 15 min. Fokus på avslappning, ingen nagelvård.",
+            ),
         ]
-        for order, (name, mins, price, desc) in enumerate(services, start=1):
+        # Deactivate old seed services that no longer match the prislista.
+        Service.objects.filter(
+            slug__in=[
+                "spa-pedikyr",
+                "varmande-manikyr",
+                "paraffinbehandling",
+            ]
+        ).update(is_active=False)
+        for order, (name, mins, price, desc) in enumerate(services):
             Service.objects.update_or_create(
                 slug=slugify(name),
                 defaults={
@@ -413,10 +456,6 @@ class Command(BaseCommand):
                     "sort_order": order,
                 },
             )
-        # Deactivate legacy service names if they remain from older seeds.
-        Service.objects.filter(
-            slug__in=["spa-pedikyr", "varmande-manikyr", "paraffinbehandling"]
-        ).update(is_active=False)
 
         if not WeeklyAvailability.objects.exists():
             for weekday in range(0, 5):  # Mon–Fri

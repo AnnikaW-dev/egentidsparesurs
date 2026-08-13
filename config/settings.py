@@ -4,8 +4,12 @@ import os
 from pathlib import Path
 
 import dj_database_url
+from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Load local .env if present (ignored by git). Render uses dashboard env vars instead.
+load_dotenv(BASE_DIR / ".env")
 
 
 def env_bool(name: str, default: bool = False) -> bool:
@@ -124,7 +128,13 @@ STORAGES = {
         "BACKEND": "django.core.files.storage.FileSystemStorage",
     },
     "staticfiles": {
-        "BACKEND": "whitenoise.storage.CompressedStaticFilesStorage",
+        # Production: hashed filenames so browsers load new JS/CSS after deploy.
+        # Local DEBUG: plain storage (no manifest required before collectstatic).
+        "BACKEND": (
+            "django.contrib.staticfiles.storage.StaticFilesStorage"
+            if DEBUG
+            else "whitenoise.storage.CompressedManifestStaticFilesStorage"
+        ),
     },
 }
 WHITENOISE_MAX_AGE = 60 * 60 * 24 * 365
@@ -132,8 +142,19 @@ WHITENOISE_MAX_AGE = 60 * 60 * 24 * 365
 WHITENOISE_USE_FINDERS = DEBUG
 
 MEDIA_URL = "/media/"
-# Adjust: on Render set MEDIA_ROOT=/var/data/media and attach a disk.
-MEDIA_ROOT = Path(os.environ.get("MEDIA_ROOT", BASE_DIR / "media"))
+# Adjust: on Render prefer a disk at /var/data/media; fall back to local ./media if unusable.
+_media_env = os.environ.get("MEDIA_ROOT", "").strip()
+MEDIA_ROOT = Path(_media_env) if _media_env else (BASE_DIR / "media")
+try:
+    MEDIA_ROOT.mkdir(parents=True, exist_ok=True)
+    # Probe write access (Render free plan may lack /var/data disk).
+    probe = MEDIA_ROOT / ".write_test"
+    probe.write_text("ok", encoding="utf-8")
+    probe.unlink(missing_ok=True)
+except OSError:
+    MEDIA_ROOT = BASE_DIR / "media"
+    MEDIA_ROOT.mkdir(parents=True, exist_ok=True)
+
 SERVE_MEDIA = env_bool("SERVE_MEDIA", default=DEBUG)
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"

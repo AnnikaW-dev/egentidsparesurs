@@ -1,23 +1,22 @@
 """Public marketing pages driven by CMS SitePage content."""
 
 from django.contrib import messages
-from django.http import Http404
 from django.shortcuts import redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 
-from booking.models import Service
 from cms.models import GalleryImage, SeasonTip, SitePage
 
 from .forms import ContactForm
 
 
 def _get_page(key):
-    """Load a published CMS page by key, or 404."""
-    page = SitePage.objects.filter(key=key, is_published=True).prefetch_related("blocks").first()
-    if not page:
-        raise Http404("Sidan finns inte ännu.")
-    return page
+    """Load a published CMS page by key, or None if missing."""
+    return (
+        SitePage.objects.filter(key=key, is_published=True)
+        .prefetch_related("blocks")
+        .first()
+    )
 
 
 def home(request):
@@ -26,6 +25,8 @@ def home(request):
     Monthly tip: Admin → Säsongstips → row for the current month.
     """
     page = _get_page(SitePage.PageKey.HOME)
+    if not page:
+        return render(request, "pages/setup_needed.html", status=200)
     blocks = page.blocks.filter(is_visible=True)
     month_tip = SeasonTip.objects.filter(
         month=timezone.localdate().month,
@@ -41,6 +42,8 @@ def home(request):
 def salon(request):
     """About the salon (nav label: Om)."""
     page = _get_page(SitePage.PageKey.SALON)
+    if not page:
+        return render(request, "pages/setup_needed.html", status=200)
     return render(
         request,
         "pages/content_page.html",
@@ -53,24 +56,21 @@ def treatments(request):
 
     Edit treatments: Admin → Sidor → Behandlingar → Innehållsblock.
     """
-    page = SitePage.objects.filter(
-        key=SitePage.PageKey.TREATMENTS, is_published=True
-    ).prefetch_related("blocks").first()
+    page = _get_page(SitePage.PageKey.TREATMENTS)
     if not page:
-        raise Http404("Sidan finns inte ännu.")
+        return render(request, "pages/setup_needed.html", status=200)
     return render(
         request,
         "pages/treatments.html",
-        {
-            "page": page,
-            "blocks": page.blocks.filter(is_visible=True),
-        },
+        {"page": page, "blocks": page.blocks.filter(is_visible=True)},
     )
 
 
 def warming(request):
     """Warming treatments (värmande behandlingar) CMS page."""
     page = _get_page(SitePage.PageKey.WARMING)
+    if not page:
+        return render(request, "pages/setup_needed.html", status=200)
     return render(
         request,
         "pages/content_page.html",
@@ -83,22 +83,21 @@ def prices(request):
 
     Edit treatments: Admin → Sidor → Prislista → Innehållsblock.
     """
-    page = SitePage.objects.filter(key=SitePage.PageKey.PRICES, is_published=True).prefetch_related("blocks").first()
+    page = _get_page(SitePage.PageKey.PRICES)
     if not page:
-        raise Http404("Sidan finns inte ännu.")
+        return render(request, "pages/setup_needed.html", status=200)
     return render(
         request,
         "pages/prices.html",
-        {
-            "page": page,
-            "blocks": page.blocks.filter(is_visible=True),
-        },
+        {"page": page, "blocks": page.blocks.filter(is_visible=True)},
     )
 
 
 def service_page(request):
     """Resource / administrative service offering (CMS key=service)."""
     page = _get_page(SitePage.PageKey.SERVICE)
+    if not page:
+        return render(request, "pages/setup_needed.html", status=200)
     return render(
         request,
         "pages/content_page.html",
@@ -107,10 +106,22 @@ def service_page(request):
 
 
 def seasons(request):
-    """Year-round seasonal tips."""
+    """Året runt — intro from CMS page + one featured month tip (chosen in admin)."""
     page = _get_page(SitePage.PageKey.SEASONS)
-    tips = SeasonTip.objects.filter(is_visible=True)
-    return render(request, "pages/seasons.html", {"page": page, "tips": tips})
+    tip = (
+        SeasonTip.objects.filter(is_featured=True, is_visible=True)
+        .prefetch_related("items")
+        .first()
+    )
+    if tip is None:
+        tip = (
+            SeasonTip.objects.filter(month=timezone.localdate().month, is_visible=True)
+            .prefetch_related("items")
+            .first()
+        ) or (
+            SeasonTip.objects.filter(is_visible=True).prefetch_related("items").first()
+        )
+    return render(request, "pages/seasons.html", {"page": page, "tip": tip})
 
 
 def gallery(request):

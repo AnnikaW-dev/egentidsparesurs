@@ -1,11 +1,18 @@
 """Forms for public booking and staff availability tools."""
 
-import re
-
 from django import forms
 from django.core.exceptions import ValidationError
+from django.core.validators import EmailValidator
 
-from .models import Booking, Service, WeeklyAvailability
+from pages.forms import (
+    EMAIL_INVALID_MSG,
+    TelInput,
+    clean_digits_only,
+    configure_email_field,
+    configure_phone_field,
+)
+
+from .models import Booking, WeeklyAvailability
 
 
 class BookingForm(forms.ModelForm):
@@ -45,14 +52,10 @@ class BookingForm(forms.ModelForm):
                     "inputmode": "email",
                 }
             ),
-            "customer_phone": forms.TextInput(
+            "customer_phone": TelInput(
                 attrs={
                     "autocomplete": "tel",
                     "placeholder": "0701234567",
-                    "inputmode": "numeric",
-                    "type": "text",
-                    "pattern": "[0-9]+",
-                    "title": "Endast siffror, inga mellanslag eller bindestreck.",
                     "data-phone-digits-only": "true",
                 }
             ),
@@ -64,6 +67,8 @@ class BookingForm(forms.ModelForm):
         self.fields["customer_name"].required = True
         self.fields["customer_email"].required = True
         self.fields["customer_phone"].required = True
+        configure_email_field(self.fields["customer_email"])
+        configure_phone_field(self.fields["customer_phone"], required=True)
         self.fields["confirm_via"].widget.attrs["class"] = "confirm-via-list"
         for name, field in self.fields.items():
             if name == "confirm_via":
@@ -89,12 +94,15 @@ class BookingForm(forms.ModelForm):
             "true" if self.is_bound and self.errors.get("confirm_via") else "false"
         )
 
+    def clean_customer_email(self):
+        """Normalize and re-check e-post format with a clear Swedish error."""
+        email = (self.cleaned_data.get("customer_email") or "").strip()
+        EmailValidator(message=EMAIL_INVALID_MSG)(email)
+        return email
+
     def clean_customer_phone(self):
         """Accept digits only — strip anything pasted with spaces or dashes."""
-        raw = self.cleaned_data.get("customer_phone", "")
-        digits = re.sub(r"\D", "", raw)
-        if not digits:
-            raise ValidationError("Ange ett telefonnummer med endast siffror.")
+        digits = clean_digits_only(self.cleaned_data.get("customer_phone"), required=True)
         if len(digits) < 7:
             raise ValidationError("Telefonnumret måste vara minst 7 siffror.")
         if len(digits) > 15:
