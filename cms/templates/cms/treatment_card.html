@@ -1,4 +1,4 @@
-{% load media_extras %}
+{% load media_extras cms_extras %}
 {# cms/treatment_card.html — one CMS ContentBlock: image beside title/price/body, optional book CTA #}
 <section
   class="treatment-card{% if block.image %} treatment-card--split{% endif %}{% if not block.shows_book_cta %} treatment-card--info{% endif %}"
@@ -19,9 +19,9 @@
     </div>
   {% endif %}
   <div class="treatment-card-copy">
-    <h2 id="treatment-{{ block.pk }}" class="treatment-card-title">{{ block.title }}</h2>
+    <h2 id="treatment-{{ block.pk }}" class="treatment-card-title">{{ block.title|cms_richtext }}</h2>
     {% if block.price_meta %}
-      <p class="treatment-card-meta">{{ block.price_meta }}</p>
+      <p class="treatment-card-meta">{{ block.price_meta|cms_richtext }}</p>
     {% endif %}
     <div class="treatment-card-body">
       {% include "cms/body_sections.html" with sections=block.body_sections %}

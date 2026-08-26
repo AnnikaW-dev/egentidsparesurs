@@ -5,11 +5,13 @@ from django.contrib import admin
 from .models import (
     ContentBlock,
     GalleryImage,
+    MonthHook,
     SeasonTip,
     SeasonTipItem,
     SitePage,
     SiteSettings,
 )
+from .text_format import BOLD_MARKUP_HINT
 
 
 class ContentBlockInline(admin.TabularInline):
@@ -22,9 +24,12 @@ class ContentBlockInline(admin.TabularInline):
 
 class SeasonTipItemInline(admin.TabularInline):
     model = SeasonTipItem
-    extra = 3
+    extra = 0
     fields = ("headline", "description", "sort_order")
     ordering = ("sort_order", "id")
+    verbose_name = "äldre tipspunkt"
+    verbose_name_plural = "äldre tipspunkter (används sällan – texten ligger i Brödtext)"
+    classes = ("collapse",)
 
 
 @admin.register(SiteSettings)
@@ -37,12 +42,11 @@ class SiteSettingsAdmin(admin.ModelAdmin):
             {
                 "fields": ("opening_hours",),
                 "description": (
-                    "Veckans tider (måndag–söndag) redigeras under "
-                    "Bokning → Veckoschema / öppettider. "
-                    "De syns automatiskt under Öppettider i sidfoten. "
-                    "Fältet nedan är valfri extratext under schemat "
-                    "(t.ex. ”Bokning krävs”)."
+                    "Sidfoten visar inte längre veckoschema. "
+                    "Där står i stället: ”Välkommen att boka tid under Boka” "
+                    "(Boka är en länk). Fältet nedan används inte på sajten just nu."
                 ),
+                "classes": ("collapse",),
             },
         ),
         (
@@ -76,23 +80,32 @@ class SitePageAdmin(admin.ModelAdmin):
     inlines = [ContentBlockInline]
 
     def get_fieldsets(self, request, obj=None):
-        """Extra notes for Startsida and Behandlingar/Prislista content blocks."""
+        """Extra notes for Startsida and Behandlingar content blocks."""
         home_note = ""
         block_note = ""
         if obj and obj.key == SitePage.PageKey.HOME:
             home_note = (
-                "Månadens tips under knapparna på startsidan redigeras inte här. "
-                "Gå till CMS → Säsongstips och öppna raden för rätt månad "
-                "(sajten visar automatiskt innevarande månad)."
+                "Blocket ”Känner du igen det här?” under knapparna, och hela "
+                "månadslistan på Året runt, redigeras under CMS → Känner du igen."
             )
-        if obj and obj.key in (SitePage.PageKey.TREATMENTS, SitePage.PageKey.PRICES):
+        if obj and obj.key == SitePage.PageKey.TREATMENTS:
             block_note = (
                 "Behandlingar redigeras som Innehållsblock nedan. "
                 "Första raden i brödtext = pris (t.ex. 425 kr | ca 60 min). "
                 "Använd ## för underrubrik, ✔ för checklista, tom rad mellan stycken. "
+                + BOLD_MARKUP_HINT
+                + " "
                 "Ladda upp bild per block om du vill visa en bild ovanför texten."
             )
-        content_description = " ".join(part for part in (home_note, block_note) if part)
+        content_description = " ".join(
+            part
+            for part in (
+                home_note,
+                block_note,
+                BOLD_MARKUP_HINT,
+            )
+            if part
+        )
         return (
             (None, {"fields": ("key", "title", "subtitle", "is_published")}),
             (
@@ -120,43 +133,94 @@ class GalleryImageAdmin(admin.ModelAdmin):
 
 @admin.register(SeasonTip)
 class SeasonTipAdmin(admin.ModelAdmin):
-    list_display = ("month", "title", "is_featured", "is_visible")
-    list_editable = ("is_featured", "is_visible")
-    list_filter = ("is_featured", "is_visible")
-    search_fields = ("title", "closing_body")
+    list_display = ("month", "title", "is_visible")
+    list_editable = ("is_visible",)
+    list_filter = ("is_visible",)
+    search_fields = ("title", "body")
     inlines = [SeasonTipItemInline]
     fieldsets = (
         (
             "Månad på Året runt",
             {
-                "fields": ("month", "title", "icon", "is_featured", "is_visible"),
+                "fields": ("month", "title", "icon", "is_visible"),
                 "description": (
-                    "Fyll i rubrik och tipspunkter (nedan) för varje månad. "
-                    "Kryssa i ”Visas på Året runt” för den månad som ska synas just nu. "
-                    "Startsida visar automatiskt tipset för innevarande kalendermånad."
+                    "Året runt visar automatiskt tipset för innevarande kalendermånad. "
+                    "Öppna t.ex. Augusti för att redigera den text som syns i augusti."
                 ),
             },
         ),
         (
-            "Avslutning (Kort sagt)",
+            "Text på Året runt",
+            {
+                "fields": ("body",),
+                "description": (
+                    "Detta är den långa texten under månadsrubriken. "
+                    "Använd ## för underrubrik och • eller ✔ för punktlista. "
+                    + BOLD_MARKUP_HINT
+                ),
+            },
+        ),
+        (
+            "Bild (valfritt)",
+            {
+                "fields": ("image",),
+                "classes": ("collapse",),
+            },
+        ),
+        (
+            "Äldre avslutning (används sällan)",
             {
                 "fields": (
+                    "is_featured",
                     "closing_icon",
                     "closing_label",
                     "closing_body",
                     "closing_cta",
                 ),
+                "classes": ("collapse",),
                 "description": (
-                    "Visas under checklistan, t.ex. "
-                    "💡 Kort sagt: … – boka din behandling nu!"
+                    "Äldre “Kort sagt”-rad och “featured”. Sidan styrs nu av "
+                    "kalendermånad + brödtexten ovan."
+                ),
+            },
+        ),
+    )
+
+
+@admin.register(MonthHook)
+class MonthHookAdmin(admin.ModelAdmin):
+    """Home recognition block — one entry per month under Boka/Se behandlingar."""
+
+    list_display = ("month", "icon", "short_quote", "cta", "is_visible")
+    list_editable = ("is_visible",)
+    list_filter = ("is_visible",)
+    search_fields = ("quote", "body", "cta")
+    ordering = ("month",)
+    fieldsets = (
+        (
+            None,
+            {
+                "fields": ("month", "icon", "is_visible"),
+                "description": (
+                    "Visas under Boka tid / Se behandlingar på startsidan "
+                    "(innevarande månad). Året runt-texten redigeras under "
+                    "CMS → Säsongstips."
                 ),
             },
         ),
         (
-            "Övrigt",
+            "Text",
             {
-                "fields": ("body", "image"),
-                "classes": ("collapse",),
+                "fields": ("quote", "body", "cta"),
+                "description": (
+                    "Citat visas i kursiv stil. CTA-raden länkar till bokningssidan. "
+                    + BOLD_MARKUP_HINT
+                ),
             },
         ),
     )
+
+    @admin.display(description="Citat")
+    def short_quote(self, obj):
+        text = obj.quote or ""
+        return text if len(text) <= 60 else f"{text[:57]}…"

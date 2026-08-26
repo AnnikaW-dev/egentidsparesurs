@@ -361,19 +361,25 @@ h1 {
   margin: 1rem auto 1.25rem;
 }
 
+/* Home: subtitle sits above hero image — tighten gap under title */
+.hero > .lead + picture .hero-image,
+.hero > .lead + .hero-image {
+  margin-top: 0.75rem;
+}
+
 .lead {
   font-size: 1.05rem;
   max-width: 40rem;
   margin: 0.5rem auto 1rem;
 }
 
-/* Home subtitle + first intro line — Adjust: bold; later .hero .prose is regular */
+/* Home subtitle (above hero image) — Adjust: bold lead under h1 */
 .hero .lead {
   font-size: 1.05rem;
   font-weight: 700;
   color: var(--ink-strong);
   max-width: 40rem;
-  margin: 0.5rem auto 1rem;
+  margin: 0.35rem auto 0;
 }
 
 .hero .prose {
@@ -486,6 +492,84 @@ h1 {
   gap: 0.75rem;
   justify-content: center;
   margin-top: 1.5rem;
+}
+
+/* Divider under Boka / Se behandlingar — before monthly recognition */
+.home-divider {
+  border: 0;
+  border-top: 1px solid var(--ink-muted);
+  opacity: 0.45;
+  max-width: 12rem;
+  margin: 2rem auto 1.75rem;
+}
+
+/* “Känner du igen det här?” — month copy from pages/month_hooks.py */
+.month-hook {
+  max-width: 34rem;
+  margin: 0 auto 0.5rem;
+  text-align: center;
+}
+
+.month-hook-heading {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(1.25rem, 3vw, 1.55rem);
+  color: var(--ink-strong);
+  margin: 0 0 1rem;
+  line-height: 1.3;
+}
+
+.month-hook-block {
+  margin: 0;
+}
+
+.month-hook-month {
+  margin: 0 0 0.85rem;
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: var(--ink-strong);
+  font-family: inherit;
+}
+
+.month-hook-icon {
+  margin-right: 0.25rem;
+}
+
+.month-hook-quote {
+  margin: 0 0 0.85rem;
+  padding: 0;
+  border: 0;
+}
+
+.month-hook-quote p {
+  margin: 0;
+  font-style: italic;
+  font-size: 1.05rem;
+  line-height: 1.5;
+  color: var(--ink-strong);
+}
+
+.month-hook-body {
+  margin: 0 auto 1rem;
+  max-width: 32rem;
+  line-height: 1.55;
+  color: var(--ink);
+}
+
+.month-hook-cta {
+  margin: 0;
+}
+
+.month-hook-cta a {
+  color: var(--ink-strong);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+
+.month-hook-cta a:hover,
+.month-hook-cta a:focus-visible {
+  color: var(--ink);
 }
 
 /* Why choose — checkmarks + double underline under “spa”; Adjust list copy in home.html */
@@ -1069,7 +1153,7 @@ h1 {
 /* Året runt — centered intro + one featured month (admin-chosen) */
 .seasons-page {
   text-align: center;
-  max-width: 42rem;
+  max-width: 40rem;
   margin-left: auto;
   margin-right: auto;
 }
@@ -1077,16 +1161,16 @@ h1 {
 .seasons-title {
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: clamp(1.65rem, 4.2vw, 2.2rem);
-  line-height: 1.2;
+  font-size: clamp(1.65rem, 4.2vw, 2.15rem);
+  line-height: 1.25;
   color: var(--ink-strong);
   margin: 0 auto 1.25rem;
-  max-width: 22ch;
+  max-width: 18rem;
 }
 
 .seasons-intro {
   margin: 0 auto 2rem;
-  max-width: 38rem;
+  max-width: 36rem;
 }
 
 .seasons-intro p {
@@ -1098,9 +1182,28 @@ h1 {
   margin-bottom: 0;
 }
 
+/* Året runt — all MonthHook months (same copy as startsidan) */
+.seasons-hooks {
+  max-width: 34rem;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.seasons-hook-divider {
+  border: 0;
+  border-top: 1px solid var(--ink-muted);
+  opacity: 0.4;
+  margin: 1.75rem auto;
+  max-width: 14rem;
+}
+
+.seasons-page .month-hook-month {
+  font-size: clamp(1.15rem, 2.8vw, 1.35rem);
+}
+
 .season-feature {
   margin: 0 auto;
-  max-width: 36rem;
+  max-width: 34rem;
   text-align: left;
 }
 
@@ -1112,10 +1215,10 @@ h1 {
   gap: 0.45rem 0.55rem;
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: clamp(1.25rem, 3vw, 1.55rem);
+  font-size: clamp(1.25rem, 3vw, 1.5rem);
   line-height: 1.3;
   color: var(--ink-strong);
-  margin: 0 0 1.1rem;
+  margin: 0 0 1rem;
 }
 
 .season-feature-icon {
@@ -1127,18 +1230,50 @@ h1 {
   margin: 0 0 1rem;
 }
 
+.season-feature-body p {
+  margin: 0 0 0.75rem;
+  max-width: none;
+}
+
+/* Closing under current month tip — from Året runt ContentBlock */
+.seasons-closing {
+  margin: 2.25rem auto 0;
+  max-width: 34rem;
+  text-align: left;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--line);
+}
+
+.seasons-closing-title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(1.15rem, 2.8vw, 1.4rem);
+  line-height: 1.3;
+  color: var(--ink-strong);
+  margin: 0 0 1rem;
+}
+
+.seasons-closing-body p {
+  margin: 0 0 0.75rem;
+  line-height: 1.55;
+  color: var(--ink);
+}
+
+.seasons-closing-body p:last-child {
+  margin-bottom: 0;
+}
+
 .season-check-list {
   list-style: none;
   padding: 0;
   margin: 0;
   width: 100%;
-  max-width: 100%;
   text-align: left;
 }
 
 .season-check-list li {
   position: relative;
-  padding: 0.4rem 0 0.4rem 1.75rem;
+  padding: 0.45rem 0 0.45rem 1.75rem;
   line-height: 1.45;
 }
 
@@ -1146,7 +1281,7 @@ h1 {
   content: "✓";
   position: absolute;
   left: 0;
-  top: 0.35rem;
+  top: 0.4rem;
   font-weight: 700;
   color: var(--ink-strong);
   font-size: 1.05rem;
@@ -1189,6 +1324,22 @@ h1 {
   color: var(--ink-muted);
 }
 
+/* Home “Månadens tips” uses the same tip card */
+.month-tip .season-feature {
+  margin-top: 0.5rem;
+}
+
+.month-tip .season-feature-heading {
+  font-size: clamp(1.15rem, 2.8vw, 1.35rem);
+  justify-content: center;
+  text-align: center;
+}
+
+.month-tip .season-check-list,
+.month-tip .season-closing {
+  text-align: left;
+}
+
 .gallery-item figcaption {
   font-size: 0.9rem;
   color: var(--ink-muted);
@@ -1218,6 +1369,16 @@ h1 {
 .prices-intro {
   text-align: center;
   margin-bottom: 2rem;
+}
+
+.treatments-category {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(1.35rem, 3vw, 1.65rem);
+  color: var(--ink-strong);
+  text-align: center;
+  margin: 2.25rem 0 1rem;
+  padding-top: 0.25rem;
 }
 
 .treatments-page {
@@ -1443,7 +1604,7 @@ h1 {
   flex-shrink: 0;
   border-top: 1px solid var(--line);
   background: var(--bg-soft);
-  padding: 2rem 1.25rem 1.25rem;
+  padding: 1.2rem 1.25rem 0.8rem;
   margin-top: auto;
   width: 100%;
 }
@@ -1452,8 +1613,20 @@ h1 {
   max-width: 1200px;
   margin: 0 auto;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 1.25rem;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.85rem 1.25rem;
+}
+
+.footer-brand p,
+.footer-contact p,
+.footer-booking p {
+  margin: 0 0 0.45rem;
+}
+
+.footer-brand p:last-child,
+.footer-contact p:last-child,
+.footer-booking p:last-child {
+  margin-bottom: 0;
 }
 
 .footer-name,
@@ -1464,46 +1637,37 @@ h1 {
   color: var(--ink-strong);
 }
 
-/* Öppettider — week schedule from WeeklyAvailability */
-.footer-week-hours {
-  list-style: none;
-  padding: 0;
-  margin: 0 0 0.65rem;
-  font-size: 0.92rem;
+/* Footer booking invite — “Boka” is a link to the booking page */
+.footer-booking-note {
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--ink);
   line-height: 1.45;
 }
 
-.footer-week-hours li {
-  display: grid;
-  grid-template-columns: 5.5rem 1fr;
-  gap: 0.35rem 0.75rem;
-  margin: 0.15rem 0;
-}
-
-.footer-week-day {
-  font-weight: 500;
+.footer-booking-note a {
   color: var(--ink-strong);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
 }
 
-.footer-week-time {
+.footer-booking-note a:hover,
+.footer-booking-note a:focus-visible {
   color: var(--ink);
 }
 
-.footer-week-hours li.is-closed .footer-week-time {
-  color: var(--ink-muted);
-}
-
-.footer-hours-note {
-  margin: 0.5rem 0 0;
-  font-size: 0.88rem;
-  color: var(--ink-muted);
-  line-height: 1.4;
+.footer-booking .footer-address {
+  margin: 0.55rem 0 0;
+  font-size: 0.95rem;
+  color: var(--ink);
+  line-height: 1.45;
 }
 
 .footer-bottom {
   max-width: 1200px;
-  margin: 1.5rem auto 0;
-  padding: 0 1.25rem;
+  margin: 0.95rem auto 0;
+  padding: 0;
   display: flex;
   flex-wrap: wrap;
   justify-content: space-between;
@@ -1589,6 +1753,11 @@ h1 {
 }
 
 @media (max-width: 760px) {
+  .footer-inner {
+    grid-template-columns: 1fr;
+    gap: 1.25rem;
+  }
+
   .nav-toggle {
     display: inline-block;
   }

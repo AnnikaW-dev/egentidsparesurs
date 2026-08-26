@@ -1,0 +1,17 @@
+{% load cms_extras %}
+{# cms/month_hook_block.html — one MonthHook; Admin → CMS → Känner du igen #}
+<section class="month-hook-block" aria-labelledby="month-hook-{{ hook.month }}">
+  <h{{ heading_level|default:"2" }} id="month-hook-{{ hook.month }}" class="month-hook-month">
+    {% if hook.icon %}<span class="month-hook-icon" aria-hidden="true">{{ hook.icon }}</span>{% endif %}
+    {{ hook.get_month_display }}
+  </h{{ heading_level|default:"2" }}>
+  <blockquote class="month-hook-quote">
+    <p>”{{ hook.quote|cms_richtext }}”</p>
+  </blockquote>
+  <p class="month-hook-body">{{ hook.body|cms_richtext }}</p>
+  <p class="month-hook-cta">
+    <a href="{% url 'booking' %}">
+      <span aria-hidden="true">→ </span>{{ hook.cta|cms_richtext }}
+    </a>
+  </p>
+</section>

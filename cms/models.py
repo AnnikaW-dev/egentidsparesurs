@@ -2,7 +2,7 @@
 
 from django.db import models
 
-from .text_format import parse_body_sections
+from .text_format import BOLD_MARKUP_HINT, parse_body_sections
 
 
 class SiteSettings(models.Model):
@@ -16,17 +16,18 @@ class SiteSettings(models.Model):
     logo = models.ImageField(upload_to="brand/", blank=True)
     email = models.EmailField(blank=True, default="info@egentidsparesurs.se")
     phone = models.CharField(max_length=40, blank=True)
-    address = models.TextField(blank=True)
+    address = models.TextField(blank=True, help_text=BOLD_MARKUP_HINT)
     opening_hours = models.TextField(
         blank=True,
         help_text=(
-            "Valfri extratext under veckoschemat i sidfoten "
-            "(t.ex. ”Bokning krävs”). Själva tiderna kommer från Veckoschema."
+            "Används inte i sidfoten just nu. Sidfoten visar i stället "
+            "”Välkommen att boka tid under Boka” med länk till bokning."
         ),
     )
     footer_text = models.TextField(
         blank=True,
         default="En lugn oas för fotvård, handvård och värmande behandlingar.",
+        help_text=BOLD_MARKUP_HINT,
     )
     # Adjust: paste full profile URLs; leave blank to hide that icon in the footer.
     facebook_url = models.URLField(
@@ -81,7 +82,7 @@ class SitePage(models.Model):
     class PageKey(models.TextChoices):
         HOME = "home", "Startsida"
         SALON = "salon", "Om"
-        TREATMENTS = "treatments", "Behandlingar"
+        TREATMENTS = "treatments", "Behandlingar & priser"
         WARMING = "warming", "Värmande behandlingar"
         PRICES = "prices", "Prislista"
         SEASONS = "seasons", "Året runt"
@@ -95,7 +96,9 @@ class SitePage(models.Model):
     subtitle = models.CharField(max_length=300, blank=True)
     body = models.TextField(
         blank=True,
-        help_text="Huvudtext. Använd tom rad för nytt stycke.",
+        help_text=(
+            "Huvudtext. Använd tom rad för nytt stycke. " + BOLD_MARKUP_HINT
+        ),
     )
     hero_image = models.ImageField(upload_to="pages/", blank=True)
     # SEO overrides — leave blank to use title / default site description.
@@ -181,10 +184,17 @@ class ContentBlock(models.Model):
 
     def book_label(self):
         """CTA label for bookable treatments — Adjust: title before en-dash."""
+        # Category headings on Behandlingar & priser (no book button)
+        if self.title in {"Fötter", "Händer", "Massage"}:
+            return ""
         if self.title.startswith("Olja ") or self.title.startswith("Varför "):
             return ""
         short = self.title.split(" – ")[0].split(" - ")[0].strip()
         return f"Boka {short}" if short else ""
+
+    def is_category_heading(self):
+        """True for Fötter / Händer / Massage section titles on treatments page."""
+        return self.title in {"Fötter", "Händer", "Massage"}
 
     def shows_book_cta(self):
         return bool(self.book_label())
@@ -284,7 +294,10 @@ class SeasonTip(models.Model):
     )
     body = models.TextField(
         blank=True,
-        help_text="Valfri brödtext ovanför tipspunkterna.",
+        help_text=(
+            "Huvudtexten på Året runt för denna månad. "
+            "## = underrubrik, • eller ✔ = punktlista. " + BOLD_MARKUP_HINT
+        ),
     )
     # Adjust: “Kort sagt …” line under the checklist (see WordPress month tips)
     closing_icon = models.CharField(
@@ -313,8 +326,11 @@ class SeasonTip(models.Model):
     image = models.ImageField(upload_to="seasons/", blank=True)
     is_featured = models.BooleanField(
         default=False,
-        verbose_name="Visas på Året runt",
-        help_text="Visa detta tipset på Året runt-sidan. Endast ett kan vara valt.",
+        verbose_name="Visas på Året runt (äldre)",
+        help_text=(
+            "Används inte längre. Året runt visar automatiskt innevarande "
+            "kalendermånad utifrån fältet Månad."
+        ),
     )
     is_visible = models.BooleanField(default=True)
 
@@ -359,3 +375,55 @@ class SeasonTipItem(models.Model):
 
     def __str__(self):
         return self.headline
+
+
+class MonthHook(models.Model):
+    """Home “Känner du igen det här?” — one quote block per calendar month.
+
+    Edit in Admin → CMS → Känner du igen.
+    Startsidan shows the current month; Året runt lists all visible months.
+    """
+
+    MONTH_CHOICES = SeasonTip.MONTH_CHOICES
+
+    month = models.PositiveSmallIntegerField(
+        choices=MONTH_CHOICES,
+        unique=True,
+        help_text="Vilken kalendermånad blocket hör till.",
+    )
+    # Adjust: emoji before month name on startsidan
+    icon = models.CharField(
+        max_length=8,
+        blank=True,
+        default="",
+        help_text="Emoji framför månadsnamnet, t.ex. 🌾",
+    )
+    quote = models.CharField(
+        max_length=300,
+        help_text=(
+            "Citatet i kursiv stil (utan citationstecken — de läggs till i mallen). "
+            + BOLD_MARKUP_HINT
+        ),
+    )
+    body = models.TextField(
+        help_text="Stödtext under citatet. " + BOLD_MARKUP_HINT,
+    )
+    cta = models.CharField(
+        max_length=200,
+        help_text=(
+            "Länktext under texten (går till Boka), t.ex. Återhämtande fotvård. "
+            + BOLD_MARKUP_HINT
+        ),
+    )
+    is_visible = models.BooleanField(
+        default=True,
+        help_text="Avmarkera för att dölja denna månad på startsidan.",
+    )
+
+    class Meta:
+        ordering = ["month"]
+        verbose_name = "känner du igen"
+        verbose_name_plural = "känner du igen"
+
+    def __str__(self):
+        return f"{self.get_month_display()} – {self.quote[:40]}"

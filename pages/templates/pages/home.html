@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% load static %}
 {% load media_extras %}
+{% load cms_extras %}
 {# pages/home.html — start page; title/body/blocks from CMS SitePage key=home #}
 
 {% block title %}{{ page.seo_title }} – {{ site.site_name }}{% endblock %}
@@ -28,7 +29,9 @@
 
 {% block content %}
 <section class="hero" aria-labelledby="home-heading">
-  <h1 id="home-heading">{{ page.title }}</h1>
+  <h1 id="home-heading">{{ page.title|cms_richtext }}</h1>
+  {# Subtitle sits above the hero image — Adjust in Admin → Startsida → Underrubrik #}
+  {% if page.subtitle %}<p class="lead">{{ page.subtitle|cms_richtext }}</p>{% endif %}
   {% if page.hero_image %}
     <picture>
       <source type="image/webp" srcset="{{ page.hero_image|as_webp }}">
@@ -56,10 +59,8 @@
       >
     </picture>
   {% endif %}
-  {% if page.subtitle %}<p class="lead">{{ page.subtitle }}</p>{% endif %}
   {% for para in page.body_paragraphs %}
-    {# Order: prose, bold tagline (2nd), prose — Adjust body paragraphs in Admin → Startsida #}
-    <p class="{% if forloop.counter == 2 %}lead{% else %}prose{% endif %}">{{ para }}</p>
+    <p class="prose">{{ para|cms_richtext }}</p>
   {% endfor %}
 
   {# Why-choose checklist — above CTAs; Adjust copy here or later move to CMS ContentBlock #}
@@ -79,23 +80,17 @@
 
   <p class="hero-actions">
     <a class="btn" href="{% url 'booking' %}">Boka tid</a>
-    <a class="btn btn-ghost" href="{% url 'treatments' %}">Se behandlingar</a>
+    <a class="btn btn-ghost" href="{% url 'treatments' %}">Se behandlingar &amp; priser</a>
   </p>
 
-  {% if month_tip %}
-  {# Editable monthly tip — Admin → Säsongstips → current month #}
-  <section class="month-tip" aria-labelledby="month-tip-heading">
-    <h2 id="month-tip-heading" class="month-tip-heading">
-      Månadens tips – ta hand om händer &amp; fötter hemma
+  {% if month_hook %}
+  {# Monthly recognition — Admin → CMS → Känner du igen #}
+  <hr class="home-divider" aria-hidden="true">
+  <section class="month-hook" aria-labelledby="month-hook-heading">
+    <h2 id="month-hook-heading" class="month-hook-heading">
+      <span aria-hidden="true">✨ </span>Känner du igen det här?
     </h2>
-    <hr class="month-tip-rule" aria-hidden="true">
-    <h3 class="month-tip-title">{{ month_tip.title }}</h3>
-    <div class="month-tip-body">
-      {% include "cms/season_tip_body.html" with tip=month_tip %}
-    </div>
-    <p class="month-tip-more">
-      <a href="{% url 'seasons' %}">Fler tips året runt</a>
-    </p>
+    {% include "cms/month_hook_block.html" with hook=month_hook heading_level="3" %}
   </section>
   {% endif %}
 </section>
@@ -114,9 +109,9 @@
     </picture>
   {% endif %}
   <div class="feature-copy">
-    <h2 id="block-{{ block.pk }}">{{ block.title }}</h2>
+    <h2 id="block-{{ block.pk }}">{{ block.title|cms_richtext }}</h2>
     {% for para in block.body_paragraphs %}
-      <p>{{ para }}</p>
+      <p>{{ para|cms_richtext }}</p>
     {% endfor %}
   </div>
 </section>

@@ -1,14 +1,15 @@
-{# cms/body_sections.html — render ## headings, ✔ lists, paragraphs from body_sections #}
+{# cms/body_sections.html — render ## headings, ✔ lists, paragraphs; **bold** via cms_richtext #}
+{% load cms_extras %}
 {% for section in sections %}
   {% if section.type == "heading" %}
-    <h3 class="body-section-heading">{{ section.text }}</h3>
+    <h3 class="body-section-heading">{{ section.text|cms_richtext }}</h3>
   {% elif section.type == "list" %}
     <ul class="body-section-checks">
       {% for item in section.items %}
-        <li>{{ item }}</li>
+        <li>{{ item|cms_richtext }}</li>
       {% endfor %}
     </ul>
   {% else %}
-    <p>{{ section.text }}</p>
+    <p>{{ section.text|cms_richtext }}</p>
   {% endif %}
 {% endfor %}

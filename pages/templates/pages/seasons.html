@@ -1,5 +1,6 @@
-{# pages/seasons.html — Året runt; SitePage key=seasons + featured SeasonTip #}
+{# pages/seasons.html — Året runt; SitePage key=seasons + current SeasonTip month #}
 {% extends "base.html" %}
+{% load cms_extras %}
 
 {% block title %}{% if page %}{{ page.seo_title }}{% else %}Året runt{% endif %} – {{ site.site_name }}{% endblock %}
 {% block meta_description %}{% if page %}{% firstof page.seo_description seo_description %}{% else %}Tips för fotvård och handvård året runt.{% endif %}{% endblock %}
@@ -11,53 +12,35 @@
 {% block content %}
 <article class="page-article seasons-page">
   <header class="page-header">
-    <h1 class="seasons-title">{% if page %}{{ page.title }}{% else %}Året runt{% endif %}</h1>
+    <h1 class="seasons-title">{% if page %}{{ page.title|cms_richtext }}{% else %}Året runt{% endif %}</h1>
   </header>
 
   {% if page %}
   <div class="seasons-intro">
     {% for para in page.body_paragraphs %}
-      <p>{{ para }}</p>
+      <p>{{ para|cms_richtext }}</p>
     {% endfor %}
   </div>
   {% endif %}
 
   {% if tip %}
-  <section class="season-feature" aria-labelledby="season-tip-heading">
-    <h2 id="season-tip-heading" class="season-feature-heading">
-      {% if tip.icon %}<span class="season-feature-icon" aria-hidden="true">{{ tip.icon }}</span>{% endif %}
-      <span class="season-feature-title">{{ tip.title }}</span>
-    </h2>
-    {% if tip.body %}
-    <p class="season-feature-body">{{ tip.body }}</p>
-    {% endif %}
-    {% if tip.items.all %}
-    <ul class="season-check-list">
-      {% for item in tip.items.all %}
-      <li>
-        <span class="season-check-headline">{{ item.headline }}</span>
-        <span class="season-check-sep" aria-hidden="true"> – </span>
-        <span class="season-check-desc">{{ item.description }}</span>
-      </li>
-      {% endfor %}
-    </ul>
-    {% endif %}
-    {% if tip.closing_label or tip.closing_body or tip.closing_cta %}
-    <p class="season-closing">
-      {% if tip.closing_icon %}<span class="season-closing-icon" aria-hidden="true">{{ tip.closing_icon }}</span> {% endif %}
-      {% if tip.closing_label %}<strong class="season-closing-label">{{ tip.closing_label }}</strong> {% endif %}
-      {% if tip.closing_body %}<span class="season-closing-body">{{ tip.closing_body }}</span>{% endif %}
-      {% if tip.closing_cta %}
-      {% if tip.closing_body %} {% endif %}
-      <a class="season-closing-cta" href="{% url 'booking' %}"><strong>{{ tip.closing_cta }}</strong></a>
-      {% endif %}
-    </p>
-    {% endif %}
-  </section>
+    {% include "cms/season_tip_feature.html" with tip=tip heading_id="season-tip-heading" %}
   {% else %}
   <p class="seasons-empty" role="status">
-    Månadstips läggs till i admin under Säsongstips. Markera ett tips som ”visas på Året runt”.
+    Månadstips läggs till i admin under CMS → Säsongstips.
   </p>
   {% endif %}
+
+  {% for block in blocks %}
+  {# Closing under tip — Admin → Sidor → Året runt → Innehållsblock #}
+  <section class="seasons-closing" aria-labelledby="seasons-closing-{{ block.pk }}">
+    <h2 id="seasons-closing-{{ block.pk }}" class="seasons-closing-title">{{ block.title|cms_richtext }}</h2>
+    <div class="seasons-closing-body">
+      {% for para in block.body_paragraphs %}
+        <p>{{ para|cms_richtext }}</p>
+      {% endfor %}
+    </div>
+  </section>
+  {% endfor %}
 </article>
 {% endblock %}

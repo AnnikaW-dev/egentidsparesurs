@@ -17,7 +17,6 @@ class StaticViewSitemap(Sitemap):
         ("about", 0.8),
         ("treatments", 0.9),
         ("warming", 0.8),
-        ("prices", 0.8),
         ("seasons", 0.6),
         ("gallery", 0.5),
         ("booking", 0.9),

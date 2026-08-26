@@ -1,5 +1,6 @@
 {% load static %}
 {% load media_extras %}
+{% load cms_extras %}
 {# Base layout: shared header, nav, footer — EU/WCAG a11y + SEO head #}
 <!DOCTYPE html>
 <html lang="sv">
@@ -88,20 +89,17 @@
               aria-controls="nav-behandlingar"
               data-submenu-toggle
             >
-              Behandlingar
+              Behandlingar &amp; priser
             </button>
             <ul id="nav-behandlingar" class="nav-submenu">
               <li>
-                <a href="{% url 'treatments' %}" {% if request.resolver_match.url_name == 'treatments' %}aria-current="page"{% endif %}>Behandlingar</a>
+                <a href="{% url 'treatments' %}" {% if request.resolver_match.url_name == 'treatments' %}aria-current="page"{% endif %}>Behandlingar &amp; priser</a>
               </li>
               <li>
                 <a href="{% url 'seasons' %}" {% if request.resolver_match.url_name == 'seasons' %}aria-current="page"{% endif %}>Året runt</a>
               </li>
               <li>
                 <a href="{% url 'warming' %}" {% if request.resolver_match.url_name == 'warming' %}aria-current="page"{% endif %}>Värmande behandlingar</a>
-              </li>
-              <li>
-                <a href="{% url 'prices' %}" {% if request.resolver_match.url_name == 'prices' %}aria-current="page"{% endif %}>Prislista</a>
               </li>
             </ul>
           </li>
@@ -138,30 +136,20 @@
     <div class="footer-inner">
       <div class="footer-brand">
         <p class="footer-name">{{ site.site_name }}</p>
-        <p>{{ site.footer_text }}</p>
+        <p>{{ site.footer_text|cms_richtext }}</p>
       </div>
       <div class="footer-contact">
         <p class="footer-label">Kontakt</p>
         <p><a href="{% url 'contact' %}">Kontaktformulär</a></p>
         {% if site.email %}<p><a href="mailto:{{ site.email }}">{{ site.email }}</a></p>{% endif %}
         {% if site.phone %}<p>{{ site.phone }}</p>{% endif %}
-        {% if site.address %}<p class="footer-address">{{ site.address|linebreaksbr }}</p>{% endif %}
       </div>
-      <div class="footer-hours">
-        <p class="footer-label" id="footer-hours-heading">Öppettider</p>
-        {% if footer_week_hours %}
-        <ul class="footer-week-hours" aria-labelledby="footer-hours-heading">
-          {% for row in footer_week_hours %}
-          <li{% if not row.is_open %} class="is-closed"{% endif %}>
-            <span class="footer-week-day">{{ row.label }}</span>
-            <span class="footer-week-time">{{ row.hours }}</span>
-          </li>
-          {% endfor %}
-        </ul>
-        {% endif %}
-        {% if site.opening_hours %}
-          <p class="footer-hours-note">{{ site.opening_hours|linebreaksbr }}</p>
-        {% endif %}
+      <div class="footer-booking">
+        {# Adjust: short booking invite; “Boka” links to the booking page #}
+        <p class="footer-booking-note">
+          Välkommen att boka tid under <a href="{% url 'booking' %}">Boka</a>.
+        </p>
+        {% if site.address %}<p class="footer-address">{{ site.address|cms_richtext_br }}</p>{% endif %}
       </div>
       {% if site.facebook_url or site.linkedin_url %}
       <div class="footer-social">

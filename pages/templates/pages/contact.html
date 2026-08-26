@@ -1,5 +1,6 @@
 {# pages/contact.html — contact form; intro from CMS SitePage key=contact #}
 {% extends "base.html" %}
+{% load cms_extras %}
 
 {% block title %}{% if page %}{{ page.seo_title }}{% else %}Kontakt{% endif %} – {{ site.site_name }}{% endblock %}
 {% block meta_description %}{% if page %}{% firstof page.seo_description seo_description %}{% else %}{{ seo_description }}{% endif %}{% endblock %}
@@ -11,19 +12,19 @@
 {% block content %}
 <article class="page-article contact-page">
   <header class="page-header">
-    <h1>{% if page %}{{ page.title }}{% else %}Kontakt{% endif %}</h1>
-    {% if page and page.subtitle %}<p class="lead">{{ page.subtitle }}</p>{% endif %}
+    <h1>{% if page %}{{ page.title|cms_richtext }}{% else %}Kontakt{% endif %}</h1>
+    {% if page and page.subtitle %}<p class="lead">{{ page.subtitle|cms_richtext }}</p>{% endif %}
   </header>
 
   <div class="prose-stack">
     {% if page %}
       {% for para in page.body_paragraphs %}
-        <p>{{ para }}</p>
+        <p>{{ para|cms_richtext }}</p>
       {% endfor %}
     {% else %}
       <p>Skicka ett meddelande så återkommer vi.</p>
     {% endif %}
-    <p>Vill du boka en tid direkt? Använd sidan <a href="{% url 'booking' %}">Boka</a>.</p>
+    <p>Vill du boka en tid för fot/hand behandling? Använd <a href="{% url 'booking' %}">Boka</a>.</p>
   </div>
 
   <section class="contact-form-wrap" aria-labelledby="contact-form-heading">

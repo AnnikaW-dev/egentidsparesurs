@@ -1,19 +1,19 @@
 {% extends "base.html" %}
-{% load media_extras %}
-{# pages/treatments.html — behandlingar; intro + treatment blocks from CMS SitePage key=treatments #}
+{% load media_extras cms_extras %}
+{# pages/treatments.html — Behandlingar & priser; CMS SitePage key=treatments + ContentBlocks #}
 
-{% block title %}{% if page %}{{ page.seo_title }}{% else %}Behandlingar{% endif %} – {{ site.site_name }}{% endblock %}
-{% block meta_description %}{% if page %}{% firstof page.seo_description seo_description %}{% else %}Fotvård, handvård och värmande behandlingar hos {{ site.site_name }}.{% endif %}{% endblock %}
-{% block og_title %}{% if page %}{{ page.seo_title }}{% else %}Behandlingar{% endif %}{% endblock %}
-{% block og_description %}{% if page %}{% firstof page.seo_description seo_description %}{% else %}Fotvård, handvård och värmande behandlingar hos {{ site.site_name }}.{% endif %}{% endblock %}
-{% block twitter_title %}{% if page %}{{ page.seo_title }}{% else %}Behandlingar{% endif %}{% endblock %}
-{% block twitter_description %}{% if page %}{% firstof page.seo_description seo_description %}{% else %}Fotvård, handvård och värmande behandlingar hos {{ site.site_name }}.{% endif %}{% endblock %}
+{% block title %}{% if page %}{{ page.seo_title }}{% else %}Behandlingar &amp; priser{% endif %} – {{ site.site_name }}{% endblock %}
+{% block meta_description %}{% if page %}{% firstof page.seo_description seo_description %}{% else %}Fotvård, handvård och massage med priser hos {{ site.site_name }}.{% endif %}{% endblock %}
+{% block og_title %}{% if page %}{{ page.seo_title }}{% else %}Behandlingar &amp; priser{% endif %}{% endblock %}
+{% block og_description %}{% if page %}{% firstof page.seo_description seo_description %}{% else %}Fotvård, handvård och massage med priser hos {{ site.site_name }}.{% endif %}{% endblock %}
+{% block twitter_title %}{% if page %}{{ page.seo_title }}{% else %}Behandlingar &amp; priser{% endif %}{% endblock %}
+{% block twitter_description %}{% if page %}{% firstof page.seo_description seo_description %}{% else %}Fotvård, handvård och massage med priser hos {{ site.site_name }}.{% endif %}{% endblock %}
 
 {% block content %}
 <article class="page-article treatments-page">
   <header class="page-header">
-    <h1>{% if page %}{{ page.title }}{% else %}Behandlingar{% endif %}</h1>
-    {% if page and page.subtitle %}<p class="lead treatments-lead">{{ page.subtitle }}</p>{% endif %}
+    <h1>{% if page %}{{ page.title|cms_richtext }}{% else %}Behandlingar &amp; priser{% endif %}</h1>
+    {% if page and page.subtitle %}<p class="lead treatments-lead">{{ page.subtitle|cms_richtext }}</p>{% endif %}
   </header>
 
   {% if page and page.hero_image %}
@@ -32,13 +32,17 @@
   {% if page %}
   <div class="prose-stack treatments-intro">
     {% for para in page.body_paragraphs %}
-      <p>{{ para }}</p>
+      <p>{{ para|cms_richtext }}</p>
     {% endfor %}
   </div>
   {% endif %}
 
   {% for block in blocks %}
-    {% include "cms/treatment_card.html" with block=block %}
+    {% if block.is_category_heading %}
+      <h2 class="treatments-category" id="treatment-cat-{{ block.pk }}">{{ block.title|cms_richtext }}</h2>
+    {% else %}
+      {% include "cms/treatment_card.html" with block=block %}
+    {% endif %}
   {% empty %}
   <p>Behandlingar publiceras snart. Kontakta oss gärna för mer information.</p>
   {% endfor %}

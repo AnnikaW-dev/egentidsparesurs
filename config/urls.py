@@ -5,7 +5,7 @@ from django.conf.urls.static import static
 from django.contrib import admin
 from django.contrib.sitemaps.views import sitemap
 from django.urls import path, re_path
-from django.views.generic import TemplateView
+from django.views.generic import RedirectView, TemplateView
 from django.views.static import serve
 
 from booking import views as booking_views
@@ -23,7 +23,11 @@ urlpatterns = [
     path("om/", page_views.salon, name="about"),  # Same CMS page as salongen
     path("behandlingar/", page_views.treatments, name="treatments"),
     path("varmande-behandlingar/", page_views.warming, name="warming"),
-    path("prislista/", page_views.prices, name="prices"),
+    # Prislista removed — old URL redirects to Behandlingar
+    path(
+        "prislista/",
+        RedirectView.as_view(pattern_name="treatments", permanent=True),
+    ),
     path("aret-runt/", page_views.seasons, name="seasons"),
     path("galleri/", page_views.gallery, name="gallery"),
     path("kontakt/", page_views.contact, name="contact"),

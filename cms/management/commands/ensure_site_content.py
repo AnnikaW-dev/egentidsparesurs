@@ -15,7 +15,6 @@ REQUIRED_PAGE_KEYS = (
     SitePage.PageKey.SALON,
     SitePage.PageKey.TREATMENTS,
     SitePage.PageKey.WARMING,
-    SitePage.PageKey.PRICES,
     SitePage.PageKey.SEASONS,
     SitePage.PageKey.BOOKING,
     SitePage.PageKey.CONTACT,
@@ -24,13 +23,18 @@ REQUIRED_PAGE_KEYS = (
 
 
 class Command(BaseCommand):
-    help = "Seed when pages or media files are missing, or when SEED_ON_DEPLOY=true."
+    help = (
+        "Seed missing pages/media when needed. Never overwrites admin CMS text "
+        "(seed_site preserves edits unless run with --force)."
+    )
 
     def handle(self, *args, **options):
         """
-        Adjust: SEED_ON_DEPLOY=true forces a full seed; otherwise seeds if content/media missing.
+        Adjust: SEED_ON_DEPLOY=true runs a safe seed (fills gaps only).
+        Admin edits are kept. To reset content intentionally:
+        python manage.py seed_site --force
         """
-        force = os.environ.get("SEED_ON_DEPLOY", "").strip().lower() in (
+        want_seed = os.environ.get("SEED_ON_DEPLOY", "").strip().lower() in (
             "1",
             "true",
             "yes",
@@ -39,19 +43,20 @@ class Command(BaseCommand):
         missing_keys = self._missing_page_keys()
         media_missing = self._media_missing()
 
-        if not missing_keys and not media_missing and not force:
+        if not missing_keys and not media_missing and not want_seed:
             self.stdout.write("Site content and media present — skip seed.")
             return
 
-        if force:
-            reason = "forced"
-        elif missing_keys:
+        if missing_keys:
             reason = f"missing pages: {', '.join(missing_keys)}"
-        else:
+        elif media_missing:
             reason = "missing media"
+        else:
+            reason = "SEED_ON_DEPLOY (safe fill-only seed)"
 
         self.stdout.write(f"Seeding site content ({reason})...")
         try:
+            # Never pass --force here — deploy must not wipe admin edits.
             call_command("seed_site")
         except Exception as exc:
             self.stderr.write(self.style.ERROR(f"seed_site failed: {exc}"))

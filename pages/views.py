@@ -5,7 +5,7 @@ from django.shortcuts import redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 
-from cms.models import GalleryImage, SeasonTip, SitePage
+from cms.models import GalleryImage, MonthHook, SeasonTip, SitePage
 
 from .forms import ContactForm
 
@@ -20,22 +20,22 @@ def _get_page(key):
 
 
 def home(request):
-    """Landing page with hero, monthly tip, and featured content blocks.
+    """Landing page with hero, monthly recognition hook, and content blocks.
 
-    Monthly tip: Admin → Säsongstips → row for the current month.
+    Month hook: Admin → CMS → Känner du igen (current calendar month).
     """
     page = _get_page(SitePage.PageKey.HOME)
     if not page:
         return render(request, "pages/setup_needed.html", status=200)
     blocks = page.blocks.filter(is_visible=True)
-    month_tip = SeasonTip.objects.filter(
+    month_hook = MonthHook.objects.filter(
         month=timezone.localdate().month,
         is_visible=True,
     ).first()
     return render(
         request,
         "pages/home.html",
-        {"page": page, "blocks": blocks, "month_tip": month_tip},
+        {"page": page, "blocks": blocks, "month_hook": month_hook},
     )
 
 
@@ -52,9 +52,9 @@ def salon(request):
 
 
 def treatments(request):
-    """Treatments overview — CMS intro plus content blocks on SitePage key=treatments.
+    """Behandlingar & priser — CMS intro plus content blocks.
 
-    Edit treatments: Admin → Sidor → Behandlingar → Innehållsblock.
+    Edit: Admin → Sidor → Behandlingar & priser → Innehållsblock.
     """
     page = _get_page(SitePage.PageKey.TREATMENTS)
     if not page:
@@ -78,21 +78,6 @@ def warming(request):
     )
 
 
-def prices(request):
-    """Price list — CMS intro plus content blocks on SitePage key=prices.
-
-    Edit treatments: Admin → Sidor → Prislista → Innehållsblock.
-    """
-    page = _get_page(SitePage.PageKey.PRICES)
-    if not page:
-        return render(request, "pages/setup_needed.html", status=200)
-    return render(
-        request,
-        "pages/prices.html",
-        {"page": page, "blocks": page.blocks.filter(is_visible=True)},
-    )
-
-
 def service_page(request):
     """Resource / administrative service offering (CMS key=service)."""
     page = _get_page(SitePage.PageKey.SERVICE)
@@ -106,22 +91,26 @@ def service_page(request):
 
 
 def seasons(request):
-    """Året runt — intro from CMS page + one featured month tip (chosen in admin)."""
+    """Året runt — intro, current month tip, and closing block.
+
+    Month tip: Admin → Säsongstips (current calendar month).
+    Closing under tip: Admin → Sidor → Året runt → Innehållsblock.
+    """
     page = _get_page(SitePage.PageKey.SEASONS)
     tip = (
-        SeasonTip.objects.filter(is_featured=True, is_visible=True)
+        SeasonTip.objects.filter(
+            month=timezone.localdate().month,
+            is_visible=True,
+        )
         .prefetch_related("items")
         .first()
     )
-    if tip is None:
-        tip = (
-            SeasonTip.objects.filter(month=timezone.localdate().month, is_visible=True)
-            .prefetch_related("items")
-            .first()
-        ) or (
-            SeasonTip.objects.filter(is_visible=True).prefetch_related("items").first()
-        )
-    return render(request, "pages/seasons.html", {"page": page, "tip": tip})
+    blocks = page.blocks.filter(is_visible=True) if page else []
+    return render(
+        request,
+        "pages/seasons.html",
+        {"page": page, "tip": tip, "blocks": blocks},
+    )
 
 
 def gallery(request):

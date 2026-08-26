@@ -1,4 +1,32 @@
-"""Shared body text parsing for CMS models (## headings, ✔ lists, paragraphs)."""
+"""Shared body text parsing for CMS models (## headings, ✔/• lists, **bold**)."""
+
+import re
+from html import escape
+
+from django.utils.safestring import mark_safe
+
+# Shown in admin help — how editors mark bold text
+BOLD_MARKUP_HINT = "Fet stil: skriv **text** (dubbla asterisker runt ordet)."
+
+_BOLD_RE = re.compile(r"\*\*(.+?)\*\*")
+
+
+def format_inline_markup(text: str, *, newlines: bool = False):
+    """Escape HTML, then turn **bold** into <strong>. Safe for templates.
+
+    Adjust: only **…** is supported; raw HTML from admin is not rendered.
+    Set newlines=True to turn line breaks into <br> (e.g. footer address).
+    """
+    if text is None:
+        return ""
+    raw = str(text)
+    if not raw:
+        return ""
+    escaped = escape(raw)
+    html = _BOLD_RE.sub(r"<strong>\1</strong>", escaped)
+    if newlines:
+        html = html.replace("\r\n", "\n").replace("\r", "\n").replace("\n", "<br>")
+    return mark_safe(html)
 
 
 def parse_body_sections(body: str):
@@ -17,8 +45,13 @@ def parse_body_sections(body: str):
         if not line:
             flush_list()
             continue
-        if line.startswith(("✔", "✓")):
-            checklist.append(line.lstrip("✔✓").strip())
+        if line.startswith(("✔", "✓", "•")) or line.startswith("- "):
+            item = line
+            for prefix in ("✔", "✓", "•", "- "):
+                if item.startswith(prefix):
+                    item = item[len(prefix) :].strip()
+                    break
+            checklist.append(item)
             continue
         flush_list()
         if line.startswith("## "):
