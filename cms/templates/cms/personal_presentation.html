@@ -1,0 +1,36 @@
+{% load media_extras cms_extras %}
+{# cms/personal_presentation.html — Om: photo left, Emma intro right; image from ContentBlock #}
+<section class="about-presentation" aria-labelledby="about-presentation-{{ block.pk }}">
+  <h2 id="about-presentation-{{ block.pk }}" class="visually-hidden">
+    {% if block.title %}{{ block.title|cms_richtext|striptags }}{% else %}Personlig presentation{% endif %}
+  </h2>
+  <div class="about-presentation-split">
+    <div class="about-presentation-media">
+      {% if block.image %}
+        <picture>
+          <source type="image/webp" srcset="{{ block.image|as_webp }}">
+          <img
+            class="about-presentation-photo"
+            src="{{ block.image.url }}"
+            alt=""
+            loading="lazy"
+            decoding="async"
+          >
+        </picture>
+      {% else %}
+        {# Adjust: upload portrait in Admin → Sidor → Om → Innehållsblock → Bild #}
+        <div class="about-photo-placeholder" role="img" aria-label="Plats för porträttbild">
+          <span class="about-photo-placeholder-label" aria-hidden="true">Foto</span>
+        </div>
+      {% endif %}
+    </div>
+    <div class="about-presentation-copy">
+      {% if block.title %}
+      <h3 class="about-presentation-title">{{ block.title|cms_richtext }}</h3>
+      {% endif %}
+      <div class="about-presentation-body">
+        {% include "cms/body_sections.html" with sections=block.body_sections %}
+      </div>
+    </div>
+  </div>
+</section>

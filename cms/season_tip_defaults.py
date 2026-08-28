@@ -257,22 +257,3 @@ SEASON_TIP_DEFAULTS = {
         ),
     },
 }
-
-# Adjust: closing under the current month tip on Året runt
-# Edit live: Admin → Sidor → Året runt → Innehållsblock
-SEASONS_CLOSING = {
-    "title": "🌿 Dina händer och fötter följer dig hela året",
-    "body": (
-        "De behöver inte alltid samma sak.\n\n"
-        "Ibland behöver de fukt.\n\n"
-        "Ibland fetare kräm.\n\n"
-        "Ibland rörelse.\n\n"
-        "Ibland massage.\n\n"
-        "Ibland nagelolja och nagelvård.\n\n"
-        "Ibland behöver fötterna nya eller bättre skor, en fotanalys eller skoinlägg.\n\n"
-        "Och ibland behöver du bara få sätta dig ner och låta någon annan ta hand om dig en stund.\n\n"
-        "Händerna är de du hälsar med, håller någon i handen med, arbetar med och möter världen med.\n\n"
-        "Fötterna är de som tar dig dit du vill – genom vardag, arbete, promenader, resor och alla små steg däremellan.\n\n"
-        "Ta hand om dem hela året – inte bara när de ska synas. ❤️"
-    ),
-}

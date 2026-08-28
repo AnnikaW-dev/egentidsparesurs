@@ -106,6 +106,18 @@ class SitePageAdmin(admin.ModelAdmin):
                 "Extraknappen går till Behandlingar & priser; huvudknappen till Boka. "
                 "Ändringar sparas direkt — seed skriver inte över dem."
             )
+        if obj and obj.key == SitePage.PageKey.SALON:
+            block_note = (
+                "Innehållsblocket visas under Boka-knappen: ladda upp porträttbild till vänster, "
+                "Emma-text till höger. "
+                + BOLD_MARKUP_HINT
+            )
+        if obj and obj.key == SitePage.PageKey.SERVICE:
+            block_note = (
+                "Underrubrik och brödtext stödjer **fet stil**. "
+                "Knappen går till kontaktformuläret. "
+                + BOLD_MARKUP_HINT
+            )
         content_description = " ".join(
             part
             for part in (

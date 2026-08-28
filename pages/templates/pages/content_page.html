@@ -18,10 +18,12 @@
 {% endblock %}
 
 {% block content %}
-<article class="page-article{% if page.key == 'warming' %} warming-page{% endif %}">
+<article class="page-article{% if page.key == 'warming' %} warming-page{% elif page.key == 'salon' %} about-page{% elif page.key == 'service' %} service-page{% endif %}">
   <header class="page-header">
     <h1>{{ page.title|cms_richtext }}</h1>
-    {% if page.subtitle %}<p class="lead">{{ page.subtitle|cms_richtext }}</p>{% endif %}
+    {% if page.subtitle %}
+    <p class="lead{% if page.key == 'service' %} service-lead{% endif %}">{{ page.subtitle|cms_richtext }}</p>
+    {% endif %}
   </header>
 
   {% if page.hero_image %}
@@ -35,6 +37,7 @@
     {% include "cms/body_sections.html" with sections=page.body_sections %}
   </div>
 
+  {% if page.key != "salon" %}
   {% for block in blocks %}
   <section class="content-block" aria-labelledby="block-{{ block.pk }}">
     {% if block.image %}
@@ -49,10 +52,11 @@
     </div>
   </section>
   {% endfor %}
+  {% endif %}
 
   <p class="hero-actions">
     {% if page.key == "service" %}
-    <a class="btn" href="{% url 'contact' %}">{% firstof page.cta_primary "Kontaktformulär" %}</a>
+    <a class="btn" href="{% url 'contact' %}">{% firstof page.cta_primary "Kontakta mig" %}</a>
     {% elif page.key == "warming" %}
     {% if page.cta_secondary %}
     <a class="btn btn-ghost" href="{% url 'treatments' %}">{{ page.cta_secondary|cms_richtext }}</a>
@@ -62,5 +66,12 @@
     <a class="btn" href="{% url 'booking' %}">{% firstof page.cta_primary "Boka din behandling" %}</a>
     {% endif %}
   </p>
+
+  {% if page.key == "salon" %}
+  {% for block in blocks %}
+  <hr class="about-divider" aria-hidden="true">
+  {% include "cms/personal_presentation.html" with block=block %}
+  {% endfor %}
+  {% endif %}
 </article>
 {% endblock %}

@@ -17,7 +17,23 @@ from cms.models import (
     SiteSettings,
 )
 from cms.month_hook_defaults import MONTH_HOOK_DEFAULTS
-from cms.season_tip_defaults import SEASON_TIP_DEFAULTS, SEASONS_CLOSING
+from cms.salon_defaults import (
+    SALON_BODY,
+    SALON_BODY_LEGACY,
+    SALON_PROFILE_BODY,
+    SALON_PROFILE_TITLE,
+    SALON_SUBTITLE,
+    SALON_TITLE,
+    SALON_TITLE_LEGACY,
+)
+from cms.service_defaults import (
+    SERVICE_BODY,
+    SERVICE_BODY_LEGACY,
+    SERVICE_CTA_PRIMARY,
+    SERVICE_SUBTITLE,
+    SERVICE_TITLE,
+)
+from cms.season_tip_defaults import SEASON_TIP_DEFAULTS
 from cms.warming_defaults import (
     WARMING_BODY,
     WARMING_BODY_LEGACY,
@@ -131,22 +147,9 @@ class Command(BaseCommand):
                 "hero": "hero-feet.jpg",
             },
             SitePage.PageKey.SALON: {
-                "title": "Min salong – En plats för avkoppling och fokus",
-                "subtitle": "",
-                "body": (
-                    "Välkommen till min salong, en lugn oas inredd i beige, brunt och naturliga "
-                    "färger för att skapa en varm och avslappnad atmosfär. Här vill jag att du "
-                    "ska känna dig trygg, omhändertagen och kunna släppa stressen.\n\n"
-                    "När du kommer hit för en behandling får du njuta av en rogivande miljö där "
-                    "fokus ligger helt på dig och ditt välmående.\n\n"
-                    "Om du istället vill diskutera hur jag kan hjälpa dig som resurs, kan vi slå "
-                    "oss ner i min sköna soffa och prata i lugn och ro. Här ska du kunna koppla "
-                    "bort allt annat och fokusera på hur vi tillsammans kan skapa mer egentid "
-                    "och lätthet i vardagen.\n\n"
-                    "Min salong ligger på nedervåningen i mitt hem med en egen ingång, vilket "
-                    "gör det enkelt och avskilt för dig som kund.\n\n"
-                    "Välkommen att boka en stund för dig själv!"
-                ),
+                "title": SALON_TITLE,
+                "subtitle": SALON_SUBTITLE,
+                "body": SALON_BODY,
                 "hero": "gallery-1.jpg",
             },
             SitePage.PageKey.TREATMENTS: {
@@ -202,15 +205,10 @@ class Command(BaseCommand):
                 "hero": None,
             },
             SitePage.PageKey.SERVICE: {
-                "title": "Service",
-                "subtitle": "Mer än behandling – hjälp som sparar din tid och energi.",
-                "body": (
-                    "Behöver du avlastning med administrativa uppgifter eller en lugn stund "
-                    "för att prata igenom vad som tar tid och kraft i vardagen?\n\n"
-                    "Här kan du släppa stressen och låta mig ta hand om det som ger dig mer "
-                    "egentid. Hör av dig via kontaktformuläret så hittar vi en lösning "
-                    "tillsammans."
-                ),
+                "title": SERVICE_TITLE,
+                "subtitle": SERVICE_SUBTITLE,
+                "body": SERVICE_BODY,
+                "cta_primary": SERVICE_CTA_PRIMARY,
                 "hero": None,
             },
         }
@@ -270,6 +268,46 @@ class Command(BaseCommand):
                 page.cta_primary = WARMING_CTA_PRIMARY
                 page.cta_secondary = WARMING_CTA_SECONDARY
                 page.save(update_fields=["cta_primary", "cta_secondary"])
+            elif (
+                key == SitePage.PageKey.SALON
+                and not force
+                and (
+                    (page.title or "").strip() == SALON_TITLE_LEGACY.strip()
+                    or (page.body or "").strip() == SALON_BODY_LEGACY.strip()
+                )
+            ):
+                # One-time upgrade from the old Om copy
+                page.title = SALON_TITLE
+                page.subtitle = SALON_SUBTITLE
+                page.body = SALON_BODY
+                page.save(update_fields=["title", "subtitle", "body"])
+            elif (
+                key == SitePage.PageKey.SALON
+                and not force
+                and not (page.body or "").strip()
+            ):
+                # Restore body after retired presentation layout (empty page body)
+                page.body = SALON_BODY
+                page.save(update_fields=["body"])
+            elif (
+                key == SitePage.PageKey.SERVICE
+                and not force
+                and (page.body or "").strip() == SERVICE_BODY_LEGACY.strip()
+            ):
+                page.title = SERVICE_TITLE
+                page.subtitle = SERVICE_SUBTITLE
+                page.body = SERVICE_BODY
+                page.cta_primary = SERVICE_CTA_PRIMARY
+                page.save(
+                    update_fields=["title", "subtitle", "body", "cta_primary"]
+                )
+            elif (
+                key == SitePage.PageKey.SERVICE
+                and not force
+                and not (page.cta_primary or "").strip()
+            ):
+                page.cta_primary = SERVICE_CTA_PRIMARY
+                page.save(update_fields=["cta_primary"])
             if created or force:
                 if key == SitePage.PageKey.TREATMENTS:
                     page.meta_title = ""
@@ -292,6 +330,25 @@ class Command(BaseCommand):
             page__key=SitePage.PageKey.HOME,
             title__in=("Händer får massage", "Mer än bara behandling"),
         ).delete()
+
+        # Emma profile under Boka on Om — Admin → Sidor → Om → Innehållsblock
+        salon_page = SitePage.objects.get(key=SitePage.PageKey.SALON)
+        if force:
+            ContentBlock.objects.filter(page=salon_page).delete()
+        profile = ContentBlock.objects.filter(page=salon_page).first()
+        if force or not profile:
+            ContentBlock.objects.create(
+                page=salon_page,
+                title=SALON_PROFILE_TITLE,
+                body=SALON_PROFILE_BODY,
+                sort_order=0,
+                is_visible=True,
+            )
+        elif not (profile.body or "").strip():
+            profile.title = SALON_PROFILE_TITLE
+            profile.body = SALON_PROFILE_BODY
+            profile.is_visible = True
+            profile.save(update_fields=["title", "body", "is_visible"])
 
         treatments = SitePage.objects.get(key=SitePage.PageKey.TREATMENTS)
         # Adjust: Behandlingar & priser copy — Admin → Sidor → Behandlingar & priser
@@ -458,19 +515,11 @@ class Command(BaseCommand):
                 tip.save()
                 tip.items.all().delete()
 
-        # Closing under month tip — Admin → Sidor → Året runt → Innehållsblock
-        seasons_page = SitePage.objects.get(key=SitePage.PageKey.SEASONS)
-        if force or not seasons_page.blocks.exists():
-            if force:
-                ContentBlock.objects.filter(page=seasons_page).delete()
-            if not seasons_page.blocks.exists():
-                ContentBlock.objects.create(
-                    page=seasons_page,
-                    title=SEASONS_CLOSING["title"],
-                    body=SEASONS_CLOSING["body"],
-                    sort_order=0,
-                    is_visible=True,
-                )
+        # Retired Året runt closing block — remove if still in DB
+        ContentBlock.objects.filter(
+            page__key=SitePage.PageKey.SEASONS,
+            title="🌿 Dina händer och fötter följer dig hela året",
+        ).delete()
 
         # Home “Känner du igen” — Admin → CMS → Känner du igen
         for month, data in MONTH_HOOK_DEFAULTS.items():
