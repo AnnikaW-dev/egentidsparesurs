@@ -18,6 +18,14 @@ from cms.models import (
 )
 from cms.month_hook_defaults import MONTH_HOOK_DEFAULTS
 from cms.season_tip_defaults import SEASON_TIP_DEFAULTS, SEASONS_CLOSING
+from cms.warming_defaults import (
+    WARMING_BODY,
+    WARMING_BODY_LEGACY,
+    WARMING_CTA_PRIMARY,
+    WARMING_CTA_SECONDARY,
+    WARMING_SUBTITLE,
+    WARMING_TITLE,
+)
 
 
 def _ensure_webp(image_field):
@@ -151,14 +159,11 @@ class Command(BaseCommand):
                 "hero": "hand-massage.jpg",
             },
             SitePage.PageKey.WARMING: {
-                "title": "Värmande behandlingar",
-                "subtitle": "Värme är inte bara skönt – det är också läkande och avslappnande!",
-                "body": (
-                    "Ökar blodcirkulationen.\n\n"
-                    "Mjukar upp stela och ömma leder.\n\n"
-                    "Lindrar torr hud och sprickor.\n\n"
-                    "Perfekt vid reumatism, artrit och ledvärk."
-                ),
+                "title": WARMING_TITLE,
+                "subtitle": WARMING_SUBTITLE,
+                "body": WARMING_BODY,
+                "cta_primary": WARMING_CTA_PRIMARY,
+                "cta_secondary": WARMING_CTA_SECONDARY,
                 "hero": "hand-massage.jpg",
             },
             SitePage.PageKey.SEASONS: {
@@ -211,21 +216,60 @@ class Command(BaseCommand):
         }
 
         for key, data in pages.items():
+            page_defaults = {
+                "title": data["title"],
+                "subtitle": data["subtitle"],
+                "body": data["body"],
+                "is_published": True,
+            }
+            if data.get("cta_primary") is not None:
+                page_defaults["cta_primary"] = data["cta_primary"]
+            if data.get("cta_secondary") is not None:
+                page_defaults["cta_secondary"] = data["cta_secondary"]
             page, created = SitePage.objects.get_or_create(
                 key=key,
-                defaults={
-                    "title": data["title"],
-                    "subtitle": data["subtitle"],
-                    "body": data["body"],
-                    "is_published": True,
-                },
+                defaults=page_defaults,
             )
             if force and not created:
                 page.title = data["title"]
                 page.subtitle = data["subtitle"]
                 page.body = data["body"]
                 page.is_published = True
+                if "cta_primary" in data:
+                    page.cta_primary = data["cta_primary"]
+                if "cta_secondary" in data:
+                    page.cta_secondary = data["cta_secondary"]
                 page.save()
+            elif (
+                key == SitePage.PageKey.WARMING
+                and not force
+                and (page.body or "").strip() == WARMING_BODY_LEGACY.strip()
+            ):
+                # One-time upgrade from the old short warming copy
+                page.title = WARMING_TITLE
+                page.subtitle = WARMING_SUBTITLE
+                page.body = WARMING_BODY
+                page.cta_primary = WARMING_CTA_PRIMARY
+                page.cta_secondary = WARMING_CTA_SECONDARY
+                page.save(
+                    update_fields=[
+                        "title",
+                        "subtitle",
+                        "body",
+                        "cta_primary",
+                        "cta_secondary",
+                    ]
+                )
+            elif (
+                key == SitePage.PageKey.WARMING
+                and not force
+                and not (page.cta_primary or "").strip()
+                and not (page.cta_secondary or "").strip()
+            ):
+                # Fill empty CTA labels once without overwriting admin edits
+                page.cta_primary = WARMING_CTA_PRIMARY
+                page.cta_secondary = WARMING_CTA_SECONDARY
+                page.save(update_fields=["cta_primary", "cta_secondary"])
             if created or force:
                 if key == SitePage.PageKey.TREATMENTS:
                     page.meta_title = ""
@@ -243,37 +287,11 @@ class Command(BaseCommand):
         # Prislista removed from the public site — hide any leftover CMS page
         SitePage.objects.filter(key=SitePage.PageKey.PRICES).update(is_published=False)
 
-        home = SitePage.objects.get(key=SitePage.PageKey.HOME)
-        if force or not home.blocks.exists():
-            if force:
-                ContentBlock.objects.filter(page=home).delete()
-            if not home.blocks.exists():
-                hand = ContentBlock.objects.create(
-                    page=home,
-                    title="Händer får massage",
-                    body=(
-                        "Låt stressen rinna av med en lyxig handbehandling! Värmande massage och "
-                        "näringsrik vård ger mjuka, återfuktade händer och starka naglar. En stund "
-                        "av välbehövlig avkoppling bara för dig."
-                    ),
-                    sort_order=1,
-                )
-                hand_src = static_img / "hand-massage.jpg"
-                if hand_src.exists() and _file_missing(hand.image):
-                    _save_image(hand.image, hand_src, "hand-massage.jpg")
-                elif hand.image:
-                    _ensure_webp(hand.image)
-
-                ContentBlock.objects.create(
-                    page=home,
-                    title="Mer än bara behandling",
-                    body=(
-                        "Oavsett om du vill ha en skön behandling eller hjälp med administrativa "
-                        "uppgifter, så är detta en plats där du kan släppa stressen och låta mig ta "
-                        "hand om det som sparar din tid och energi. Vad behöver du hjälp med idag?"
-                    ),
-                    sort_order=2,
-                )
+        # Retired home feature blocks — remove if still in DB (local or after deploy)
+        ContentBlock.objects.filter(
+            page__key=SitePage.PageKey.HOME,
+            title__in=("Händer får massage", "Mer än bara behandling"),
+        ).delete()
 
         treatments = SitePage.objects.get(key=SitePage.PageKey.TREATMENTS)
         # Adjust: Behandlingar & priser copy — Admin → Sidor → Behandlingar & priser

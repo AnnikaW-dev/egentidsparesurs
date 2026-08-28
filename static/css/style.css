@@ -679,6 +679,22 @@ h1 {
   margin: 0 auto;
 }
 
+/* Content pages with ## / checklist body (Värmande, Om, Service, …) */
+.page-body-sections {
+  text-align: left;
+  max-width: 40rem;
+  margin: 0 auto 1.5rem;
+}
+
+.page-body-sections .body-section-heading {
+  margin-top: 1.75rem;
+}
+
+.warming-page .page-header .lead {
+  font-weight: 700;
+  color: var(--ink-strong);
+}
+
 .booking-page,
 .dashboard,
 .contact-page {

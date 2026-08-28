@@ -80,7 +80,7 @@ class SitePageAdmin(admin.ModelAdmin):
     inlines = [ContentBlockInline]
 
     def get_fieldsets(self, request, obj=None):
-        """Extra notes for Startsida and Behandlingar content blocks."""
+        """Extra notes for Startsida, Behandlingar and Värmande."""
         home_note = ""
         block_note = ""
         if obj and obj.key == SitePage.PageKey.HOME:
@@ -97,6 +97,15 @@ class SitePageAdmin(admin.ModelAdmin):
                 + " "
                 "Ladda upp bild per block om du vill visa en bild ovanför texten."
             )
+        if obj and obj.key == SitePage.PageKey.WARMING:
+            block_note = (
+                "All text på sidan redigeras här: titel, underrubrik och brödtext. "
+                "Brödtext: ## underrubrik, • punktlista, tom rad mellan stycken. "
+                + BOLD_MARKUP_HINT
+                + " "
+                "Extraknappen går till Behandlingar & priser; huvudknappen till Boka. "
+                "Ändringar sparas direkt — seed skriver inte över dem."
+            )
         content_description = " ".join(
             part
             for part in (
@@ -106,7 +115,7 @@ class SitePageAdmin(admin.ModelAdmin):
             )
             if part
         )
-        return (
+        fieldsets = [
             (None, {"fields": ("key", "title", "subtitle", "is_published")}),
             (
                 "Innehåll",
@@ -116,13 +125,25 @@ class SitePageAdmin(admin.ModelAdmin):
                 },
             ),
             (
+                "Knappar",
+                {
+                    "fields": ("cta_secondary", "cta_primary"),
+                    "description": (
+                        "Extraknapp = länk till Behandlingar & priser (Värmande). "
+                        "Huvudknapp = Boka (eller Kontaktformulär på Service). "
+                        "Tomt fält = sidans standardtext."
+                    ),
+                },
+            ),
+            (
                 "SEO",
                 {
                     "fields": ("meta_title", "meta_description"),
                     "description": "Valfritt. Tomt = sidans titel / standardbeskrivning.",
                 },
             ),
-        )
+        ]
+        return fieldsets
 
 
 @admin.register(GalleryImage)

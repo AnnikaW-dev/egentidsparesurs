@@ -97,10 +97,28 @@ class SitePage(models.Model):
     body = models.TextField(
         blank=True,
         help_text=(
-            "Huvudtext. Använd tom rad för nytt stycke. " + BOLD_MARKUP_HINT
+            "Huvudtext. Tom rad = nytt stycke. "
+            "## underrubrik · • eller ✔ punktlista. "
+            + BOLD_MARKUP_HINT
         ),
     )
     hero_image = models.ImageField(upload_to="pages/", blank=True)
+    # Adjust: button labels on content pages (Värmande, Service, …); blank = template default
+    cta_primary = models.CharField(
+        max_length=120,
+        blank=True,
+        verbose_name="Huvudknapp",
+        help_text="Text på huvudknappen (t.ex. Boka). Tom = sidans standardtext.",
+    )
+    cta_secondary = models.CharField(
+        max_length=120,
+        blank=True,
+        verbose_name="Extraknapp",
+        help_text=(
+            "Text på den andra knappen (t.ex. Se värmande behandlingar & priser). "
+            "Tom = ingen extraknapp (utom sidans inbyggda standard)."
+        ),
+    )
     # SEO overrides — leave blank to use title / default site description.
     meta_title = models.CharField(
         max_length=70,
@@ -126,6 +144,10 @@ class SitePage(models.Model):
     def body_paragraphs(self):
         """Split body into non-empty paragraphs for templates."""
         return [p.strip() for p in self.body.split("\n\n") if p.strip()]
+
+    def body_sections(self):
+        """Parse ## / lists / paragraphs for richer CMS pages (e.g. Värmande)."""
+        return parse_body_sections(self.body or "")
 
     def body_lines(self):
         """Split body into non-empty single lines (checklists)."""

@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% load media_extras cms_extras %}
-{# pages/content_page.html — CMS SitePage body + blocks #}
+{# pages/content_page.html — CMS SitePage body + blocks; ## / • / **bold** in body #}
 
 {% block title %}{{ page.seo_title }} – {{ site.site_name }}{% endblock %}
 {% block meta_description %}{% firstof page.seo_description seo_description %}{% endblock %}
@@ -18,7 +18,7 @@
 {% endblock %}
 
 {% block content %}
-<article class="page-article">
+<article class="page-article{% if page.key == 'warming' %} warming-page{% endif %}">
   <header class="page-header">
     <h1>{{ page.title|cms_richtext }}</h1>
     {% if page.subtitle %}<p class="lead">{{ page.subtitle|cms_richtext }}</p>{% endif %}
@@ -31,10 +31,8 @@
     </picture>
   {% endif %}
 
-  <div class="prose-stack">
-    {% for para in page.body_paragraphs %}
-      <p>{{ para|cms_richtext }}</p>
-    {% endfor %}
+  <div class="prose-stack page-body-sections">
+    {% include "cms/body_sections.html" with sections=page.body_sections %}
   </div>
 
   {% for block in blocks %}
@@ -46,17 +44,22 @@
       </picture>
     {% endif %}
     <h2 id="block-{{ block.pk }}">{{ block.title|cms_richtext }}</h2>
-    {% for para in block.body_paragraphs %}
-      <p>{{ para|cms_richtext }}</p>
-    {% endfor %}
+    <div class="content-block-body">
+      {% include "cms/body_sections.html" with sections=block.body_sections %}
+    </div>
   </section>
   {% endfor %}
 
   <p class="hero-actions">
     {% if page.key == "service" %}
-    <a class="btn" href="{% url 'contact' %}">Kontaktformulär</a>
+    <a class="btn" href="{% url 'contact' %}">{% firstof page.cta_primary "Kontaktformulär" %}</a>
+    {% elif page.key == "warming" %}
+    {% if page.cta_secondary %}
+    <a class="btn btn-ghost" href="{% url 'treatments' %}">{{ page.cta_secondary|cms_richtext }}</a>
+    {% endif %}
+    <a class="btn" href="{% url 'booking' %}">{% firstof page.cta_primary "Boka" %}</a>
     {% else %}
-    <a class="btn" href="{% url 'booking' %}">Boka din behandling</a>
+    <a class="btn" href="{% url 'booking' %}">{% firstof page.cta_primary "Boka din behandling" %}</a>
     {% endif %}
   </p>
 </article>
