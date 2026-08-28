@@ -20,7 +20,7 @@
     <figure class="gallery-item">
       <picture>
         <source type="image/webp" srcset="{{ image.image|as_webp }}">
-        <img src="{{ image.image.url }}" alt="{% firstof image.caption image.title 'Bild från salongen och behandlingarna' %}" loading="lazy" decoding="async" width="658" height="900">
+        <img src="{{ image.image.url }}" alt="{{ image.alt_text }}" loading="lazy" decoding="async" width="658" height="900">
       </picture>
       {% if image.caption or image.title %}
         <figcaption>{{ image.caption|default:image.title }}</figcaption>

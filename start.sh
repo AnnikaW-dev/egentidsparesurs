@@ -21,4 +21,7 @@ if ! python manage.py ensure_site_content; then
   echo "Fix: open Render Shell and run: python manage.py seed_site"
 fi
 
+echo "Checking email configuration..."
+python manage.py check_email_config || true
+
 exec gunicorn config.wsgi:application --bind "0.0.0.0:${PORT:-8000}"

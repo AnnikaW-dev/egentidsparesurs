@@ -42,20 +42,16 @@ class BookingForm(forms.ModelForm):
             "customer_phone": "Telefonnummer",
         }
         widgets = {
-            "customer_name": forms.TextInput(
-                attrs={"autocomplete": "name", "placeholder": "För- och efternamn"}
-            ),
+            "customer_name": forms.TextInput(attrs={"autocomplete": "name"}),
             "customer_email": forms.EmailInput(
                 attrs={
                     "autocomplete": "email",
-                    "placeholder": "namn@example.com",
                     "inputmode": "email",
                 }
             ),
             "customer_phone": TelInput(
                 attrs={
                     "autocomplete": "tel",
-                    "placeholder": "0701234567",
                     "data-phone-digits-only": "true",
                 }
             ),
@@ -173,4 +169,13 @@ class QuickWeekForm(forms.Form):
                 required=False,
                 initial=rule.end_time if rule else "17:00",
                 widget=forms.TimeInput(attrs={"type": "time", "class": "form-control"}),
+            )
+            self.fields[f"day_{weekday}_enabled"].widget.attrs["aria-label"] = (
+                f"Öppen {label.lower()}"
+            )
+            self.fields[f"day_{weekday}_start"].widget.attrs["aria-label"] = (
+                f"{label} öppnar"
+            )
+            self.fields[f"day_{weekday}_end"].widget.attrs["aria-label"] = (
+                f"{label} stänger"
             )

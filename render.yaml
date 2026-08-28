@@ -6,6 +6,7 @@
 # 2. Log in with DJANGO_SUPERUSER_USERNAME / DJANGO_SUPERUSER_PASSWORD (see Environment)
 # 3. SEED_ON_DEPLOY may stay true — seed only fills gaps and keeps admin edits
 # 4. Admin → Webbplatsinställningar → set public_site_url to your https URL
+# 5. Render → Environment → set SENDGRID_API_KEY (or EMAIL_* SMTP vars) for booking/contact mail
 # Reset content intentionally: python manage.py seed_site --force
 
 databases:
@@ -55,6 +56,25 @@ services:
       # true = run safe seed on boot (fills gaps only; does not wipe admin edits)
       - key: SEED_ON_DEPLOY
         value: "true"
+      # Outgoing mail — set SENDGRID_API_KEY in Render dashboard (sync: false keeps it secret).
+      # Verify DEFAULT_FROM_EMAIL as a sender in SendGrid (Single Sender or domain auth).
+      - key: DEFAULT_FROM_EMAIL
+        value: info@egentidspaservice.se
+      - key: CONTACT_INBOX
+        sync: false
+      - key: SENDGRID_API_KEY
+        sync: false
+      # Alternative: generic SMTP (uncomment and set in dashboard instead of SendGrid)
+      # - key: EMAIL_HOST
+      #   sync: false
+      # - key: EMAIL_PORT
+      #   value: "587"
+      # - key: EMAIL_HOST_USER
+      #   sync: false
+      # - key: EMAIL_HOST_PASSWORD
+      #   sync: false
+      # - key: EMAIL_USE_TLS
+      #   value: "true"
     # Remove disk block if your plan has no disks (app falls back to ./media).
     disk:
       name: egentid-media

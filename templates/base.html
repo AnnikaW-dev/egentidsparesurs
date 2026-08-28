@@ -121,9 +121,9 @@
   </header>
 
   {% if messages %}
-    <div class="flash-wrap" role="status" aria-live="polite">
+    <div class="flash-wrap" aria-live="polite">
       {% for message in messages %}
-        <p class="flash flash-{{ message.tags }}">{{ message }}</p>
+        <p class="flash flash-{{ message.tags }}"{% if 'error' in message.tags %} role="alert"{% else %} role="status"{% endif %}>{{ message }}</p>
       {% endfor %}
     </div>
   {% endif %}

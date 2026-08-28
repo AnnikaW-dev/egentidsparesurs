@@ -7,6 +7,7 @@ from django.views.decorators.http import require_http_methods
 
 from cms.models import GalleryImage, MonthHook, SeasonTip, SitePage
 
+from .emails import send_contact_notification
 from .forms import ContactForm
 
 
@@ -128,7 +129,8 @@ def contact(request):
     form = ContactForm(request.POST or None)
 
     if request.method == "POST" and form.is_valid():
-        form.save()
+        message = form.save()
+        send_contact_notification(message)
         messages.success(
             request,
             "Tack! Ditt meddelande är skickat. Vi återkommer så snart vi kan.",

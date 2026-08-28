@@ -45,7 +45,7 @@
       {% for service in services %}
       <li class="service-pick-item">
         <div class="service-pick-card">
-          <a class="service-pick-main" href="?service={{ service.slug }}">
+          <a class="service-pick-main" href="?service={{ service.slug }}" aria-label="Välj {{ service.name }}">
             <span class="service-pick-name">{{ service.name }}</span>
             <span class="service-pick-meta">
               {{ service.duration_minutes }} min{% if service.price_sek %} · {{ service.price_sek }} kr{% endif %}
@@ -112,12 +112,16 @@
       · Tid: <strong>{{ selected_slot.start|date:"l j F Y, H:i" }}</strong>
       <a href="?service={{ selected_service.slug }}">Byt tid</a>
     </p>
-    <form method="post" class="stack-form aligned-form booking-confirm-form">
+    <form method="post" class="stack-form aligned-form booking-confirm-form" novalidate{% if form.errors %} aria-describedby="booking-form-errors"{% endif %}>
       {% csrf_token %}
       <input type="hidden" name="service" value="{{ selected_service.slug }}">
       <input type="hidden" name="slot" value="{{ selected_slot.pk }}">
       {% if form.non_field_errors %}
-        <div class="form-errors" role="alert">{{ form.non_field_errors }}</div>
+        <div class="form-errors" id="booking-form-errors" role="alert">{{ form.non_field_errors }}</div>
+      {% elif form.errors %}
+        <div class="form-errors" id="booking-form-errors" role="alert">
+          Kontrollera fälten markerade nedan och försök igen.
+        </div>
       {% endif %}
       {% for field in form %}
       {% if field.name != "confirm_via" %}

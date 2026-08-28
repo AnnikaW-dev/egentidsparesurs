@@ -1,10 +1,13 @@
 """Django settings for EGentid Spa & Service — local + Render production."""
 
 import os
+import sys
 from pathlib import Path
 
 import dj_database_url
 from dotenv import load_dotenv
+
+from config.mail import apply_email_config
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -162,23 +165,9 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 LOGIN_URL = "/admin/login/"
 LOGIN_REDIRECT_URL = "/dashboard/"
 
-# Email — Adjust: set SMTP vars on Render for production delivery.
-# Local DEBUG defaults to console backend (prints to runserver terminal).
-_default_email_backend = (
-    "django.core.mail.backends.console.EmailBackend"
-    if DEBUG
-    else "django.core.mail.backends.smtp.EmailBackend"
-)
-EMAIL_BACKEND = os.environ.get("EMAIL_BACKEND", _default_email_backend)
-DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "info@egentidsparesurs.se")
-SERVER_EMAIL = os.environ.get("SERVER_EMAIL", DEFAULT_FROM_EMAIL)
-EMAIL_HOST = os.environ.get("EMAIL_HOST", "")
-EMAIL_PORT = int(os.environ.get("EMAIL_PORT", "587"))
-EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "")
-EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD", "")
-EMAIL_USE_TLS = env_bool("EMAIL_USE_TLS", default=True)
-EMAIL_USE_SSL = env_bool("EMAIL_USE_SSL", default=False)
-EMAIL_TIMEOUT = int(os.environ.get("EMAIL_TIMEOUT", "30"))
+# Email — Adjust: set SENDGRID_API_KEY or EMAIL_* on Render (see config/mail.py).
+apply_email_config(sys.modules[__name__], debug=DEBUG)
+CONTACT_INBOX = os.environ.get("CONTACT_INBOX", "").strip()
 
 # SMS — Adjust: set Twilio or 46elks on Render. Local DEBUG defaults to console.
 # SMS_BACKEND: console | locmem | twilio | 46elks | auto

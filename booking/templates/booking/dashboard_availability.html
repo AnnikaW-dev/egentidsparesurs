@@ -1,11 +1,11 @@
 {% extends "base.html" %}
 
-{% block title %}Tillgänglighet – {{ site.site_name }}{% endblock %}
+{% block title %}Bokningsschema – {{ site.site_name }}{% endblock %}
 
 {% block content %}
 <article class="page-article dashboard">
   <header class="page-header">
-    <h1>Tillgänglighet</h1>
+    <h1>Bokningsschema</h1>
     <p class="lead">Ange öppettider per veckodag, generera sedan luckor för en vecka eller månad.</p>
     <p><a href="{% url 'dashboard' %}">← Tillbaka till översikt</a></p>
   </header>
@@ -20,12 +20,13 @@
         {{ week_form.slot_minutes }}
       </p>
       <table class="week-table">
+        <caption class="visually-hidden">Veckoschema — öppettider per veckodag</caption>
         <thead>
           <tr>
-            <th>Dag</th>
-            <th>Öppen</th>
-            <th>Från</th>
-            <th>Till</th>
+            <th scope="col">Dag</th>
+            <th scope="col">Öppen</th>
+            <th scope="col">Från</th>
+            <th scope="col">Till</th>
           </tr>
         </thead>
         <tbody>

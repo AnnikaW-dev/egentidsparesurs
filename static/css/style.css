@@ -331,10 +331,12 @@ h1 {
 
 .flash-success {
   color: var(--flash-ok);
+  border-color: var(--flash-ok);
 }
 
 .flash-error {
   color: var(--flash-err);
+  border-color: var(--flash-err);
 }
 
 .site-main {
@@ -692,44 +694,6 @@ h1 {
 .warming-page .page-header .lead {
   font-weight: 700;
   color: var(--ink-strong);
-}
-
-.warming-video-wrap {
-  margin: 0 0 1.5rem;
-  max-width: 34rem;
-}
-
-.warming-video {
-  display: block;
-  width: 100%;
-  height: auto;
-  border-radius: 4px;
-  border: 1px solid var(--line);
-  background: var(--bg-panel);
-}
-
-.warming-video:focus-visible {
-  outline: 2px solid var(--ink-strong);
-  outline-offset: 2px;
-}
-
-.warming-video-caption {
-  margin: 0.45rem 0 0;
-  font-size: 0.92rem;
-  color: var(--ink-muted);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .warming-video {
-    display: none;
-  }
-
-  .warming-video-wrap::after {
-    content: "Video dold när reducerad rörelse är aktiverad i systemet.";
-    display: block;
-    font-size: 0.92rem;
-    color: var(--ink-muted);
-  }
 }
 
 /* Service — bold lead with triangle marker (matches brand mockup) */
@@ -1704,6 +1668,15 @@ h1 {
 
 .slot-chip:hover {
   background: var(--bg-soft);
+}
+
+.slot-chip:focus-visible {
+  outline: 2px solid var(--ink-strong);
+  outline-offset: 2px;
+}
+
+.setup-page {
+  text-align: center;
 }
 
 .stack-form p,

@@ -74,7 +74,7 @@ def import_gallery() -> int:
 
 
 def import_video() -> bool:
-    """Copy client MP4 into static/video/ for optional page use."""
+    """Copy client MP4 into static/video/ (stored only — not shown on any page by default)."""
     src = CLIENT_IMAGES_DIR / CLIENT_VIDEO_SOURCE
     if not src.exists():
         print("skip missing video", CLIENT_VIDEO_SOURCE)

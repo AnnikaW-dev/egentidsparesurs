@@ -1,8 +1,10 @@
 """Tests for the public contact form."""
 
-from django.test import Client, TestCase
+from django.core import mail
+from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 
+from cms.models import SiteSettings
 from pages.models import ContactMessage
 
 
@@ -58,3 +60,38 @@ class ContactFormTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(ContactMessage.objects.count(), 0)
         self.assertContains(response, "bara innehålla siffror")
+
+
+class AccessibilityPageTests(TestCase):
+    """Public accessibility statement (EAA / WCAG 2.1 AA)."""
+
+    def test_accessibility_page_renders(self):
+        response = Client().get(reverse("accessibility"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Tillgänglighetsredogörelse")
+        self.assertContains(response, "WCAG")
+        self.assertContains(response, "För dig som redigerar innehåll")
+        self.assertContains(response, "Galleribilder")
+
+
+@override_settings(CONTACT_INBOX="info@egentidspaservice.se")
+class ContactNotificationEmailTests(TestCase):
+    def setUp(self):
+        SiteSettings.load()
+
+    def test_contact_form_notifies_inbox(self):
+        response = Client().post(
+            reverse("contact"),
+            {
+                "name": "Anna Test",
+                "email": "anna@example.com",
+                "phone": "0701234567",
+                "subject": "Fråga",
+                "message": "Hej!",
+            },
+        )
+        self.assertRedirects(response, reverse("contact"))
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(mail.outbox[0].to, ["info@egentidspaservice.se"])
+        self.assertEqual(mail.outbox[0].reply_to, ["anna@example.com"])
+        self.assertIn("Anna Test", mail.outbox[0].body)

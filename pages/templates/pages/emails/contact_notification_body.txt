@@ -1,0 +1,12 @@
+Nytt meddelande via kontaktformuläret på {{ site.site_name }}.
+
+Namn: {{ message.name }}
+E-post: {{ message.email }}
+{% if message.phone %}Telefon: {{ message.phone }}
+{% endif %}{% if message.subject %}Ämne: {{ message.subject }}
+{% endif %}
+Meddelande:
+{{ message.message }}
+
+---
+Svara genom att svara på detta mejl (Reply-to är kundens adress).

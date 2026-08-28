@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load static media_extras cms_extras %}
+{% load media_extras cms_extras %}
 {# pages/content_page.html — CMS SitePage body + blocks; ## / • / **bold** in body #}
 
 {% block title %}{{ page.seo_title }} – {{ site.site_name }}{% endblock %}
@@ -29,26 +29,8 @@
   {% if page.resolved_hero_image %}
     <picture>
       <source type="image/webp" srcset="{{ page.resolved_hero_image|as_webp }}">
-      <img class="page-hero" src="{{ page.resolved_hero_image.url }}" alt="{{ page.title }}" loading="eager" decoding="async">
+      <img class="page-hero" src="{{ page.resolved_hero_image.url }}" alt="{{ page.resolved_hero_alt }}" loading="eager" decoding="async">
     </picture>
-  {% endif %}
-
-  {% if page.key == "warming" %}
-  <figure class="warming-video-wrap">
-    <video
-      class="warming-video"
-      controls
-      preload="metadata"
-      playsinline
-      poster="{% static 'img/gallery/paraffin-hand-blue.jpg' %}"
-      width="900"
-      height="506"
-    >
-      <source src="{% static 'video/warming-paraffin.mp4' %}" type="video/mp4">
-      <p>Din webbläsare stödjer inte videouppspelning. <a href="{% static 'video/warming-paraffin.mp4' %}">Ladda ner videon</a>.</p>
-    </video>
-    <figcaption class="warming-video-caption">Värmande paraffinbehandling för händer.</figcaption>
-  </figure>
   {% endif %}
 
   <div class="prose-stack page-body-sections">

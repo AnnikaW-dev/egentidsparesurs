@@ -38,7 +38,7 @@
       <img
         class="hero-image"
         src="{{ page.resolved_hero_image.url }}"
-        alt="{{ page.title }}"
+        alt="{{ page.resolved_hero_alt }}"
         width="1047"
         height="1400"
         fetchpriority="high"
@@ -105,7 +105,7 @@
   {% elif forloop.first %}
     <picture>
       <source type="image/webp" srcset="{% static 'img/hand-massage.webp' %}">
-      <img class="feature-image" src="{% static 'img/hand-massage.jpg' %}" alt="" width="904" height="601" loading="lazy" decoding="async">
+      <img class="feature-image" src="{% static 'img/hand-massage.jpg' %}" alt="Handmassage" width="904" height="601" loading="lazy" decoding="async">
     </picture>
   {% endif %}
   <div class="feature-copy">

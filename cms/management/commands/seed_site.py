@@ -47,6 +47,8 @@ from cms.warming_defaults import (
 # Adjust: public brand name — seed upgrades legacy "Resurs" once without --force
 BRAND_NAME = "EGentid Spa & Service"
 BRAND_NAME_LEGACY = "EGentid Spa & Resurs"
+CONTACT_EMAIL = "info@egentidspaservice.se"
+CONTACT_EMAIL_LEGACY = "info@egentidsparesurs.se"
 DEFAULT_META_DESCRIPTION = (
     "Fotvård, spa-pedikyr och värmande manikyr. Boka egentid hos EGentid Spa & Service."
 )
@@ -146,7 +148,7 @@ class Command(BaseCommand):
         if force:
             settings.site_name = BRAND_NAME
             settings.tagline = "Skönhet & avkoppling – med en värmande touch!"
-            settings.email = "info@egentidsparesurs.se"
+            settings.email = CONTACT_EMAIL
             settings.phone = ""
             settings.address = "Egen ingång på nedervåningen"
             settings.opening_hours = ""
@@ -159,8 +161,8 @@ class Command(BaseCommand):
                 settings.site_name = BRAND_NAME
             if not (settings.tagline or "").strip():
                 settings.tagline = "Skönhet & avkoppling – med en värmande touch!"
-            if not (settings.email or "").strip():
-                settings.email = "info@egentidsparesurs.se"
+            if settings.email in ("", CONTACT_EMAIL_LEGACY):
+                settings.email = CONTACT_EMAIL
             if not (settings.address or "").strip():
                 settings.address = "Egen ingång på nedervåningen"
             if not (settings.footer_text or "").strip():

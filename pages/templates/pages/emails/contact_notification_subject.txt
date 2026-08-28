@@ -1,0 +1,1 @@
+Nytt kontaktmeddelande{% if message.subject %}: {{ message.subject }}{% endif %} – {{ site.site_name }}

@@ -1,7 +1,8 @@
 """Admin registration for editable site content."""
 
-from django.contrib import admin
+from django.contrib import admin, messages
 
+from .a11y import A11Y_BLOCK_IMAGE_HELP, A11Y_GALLERY_CAPTION_HELP, A11Y_PAGE_IMAGE_HELP
 from .models import (
     ContentBlock,
     GalleryImage,
@@ -20,7 +21,7 @@ class ContentBlockInline(admin.TabularInline):
     fields = ("title", "body", "gallery_image", "image", "sort_order", "is_visible")
     autocomplete_fields = ("gallery_image",)
     verbose_name = "behandling / innehållsblock"
-    verbose_name_plural = "behandlingar / innehållsblock"
+    verbose_name_plural = "behandlingar / innehållsblock (bildtext följer från Galleriet)"
 
 
 class SeasonTipItemInline(admin.TabularInline):
@@ -98,7 +99,8 @@ class SitePageAdmin(admin.ModelAdmin):
                 + BOLD_MARKUP_HINT
                 + " "
                 "Ladda upp bild per block om du vill visa en bild ovanför texten. "
-                "Eller välj Bild från galleri i innehållsblocket (samma bilder som under Galleribilder)."
+                "Eller välj Bild från galleri i innehållsblocket (samma bilder som under Galleribilder). "
+                + A11Y_BLOCK_IMAGE_HELP
             )
         if obj and obj.key == SitePage.PageKey.WARMING:
             block_note = (
@@ -107,13 +109,16 @@ class SitePageAdmin(admin.ModelAdmin):
                 + BOLD_MARKUP_HINT
                 + " "
                 "Extraknappen går till Behandlingar & priser; huvudknappen till Boka. "
+                "Välj hero eller bilder från Galleriet (Hero från galleri / Bild från galleri). "
                 "Ändringar sparas direkt — seed skriver inte över dem."
             )
         if obj and obj.key == SitePage.PageKey.SALON:
             block_note = (
-                "Innehållsblocket visas under Boka-knappen: ladda upp porträttbild till vänster, "
-                "Emma-text till höger. "
+                "Innehållsblocket visas under Boka-knappen: välj porträtt från Galleriet "
+                "eller ladda upp bild. Bildtext = alt-text för skärmläsare. "
                 + BOLD_MARKUP_HINT
+                + " "
+                + A11Y_BLOCK_IMAGE_HELP
             )
         if obj and obj.key == SitePage.PageKey.SERVICE:
             block_note = (
@@ -127,8 +132,7 @@ class SitePageAdmin(admin.ModelAdmin):
                 home_note,
                 block_note,
                 BOLD_MARKUP_HINT,
-                "Hero-bild: välj från Galleriet (CMS → Galleribilder) "
-                "eller ladda upp egen fil. Gallerival har företräde.",
+                A11Y_PAGE_IMAGE_HELP,
             )
             if part
         )
@@ -165,9 +169,33 @@ class SitePageAdmin(admin.ModelAdmin):
 
 @admin.register(GalleryImage)
 class GalleryImageAdmin(admin.ModelAdmin):
-    list_display = ("title", "caption", "sort_order", "is_visible")
+    list_display = ("title", "caption", "alt_status", "sort_order", "is_visible")
     list_editable = ("sort_order", "is_visible")
     search_fields = ("title", "caption")
+    fieldsets = (
+        (
+            None,
+            {
+                "fields": ("title", "image", "caption", "sort_order", "is_visible"),
+                "description": A11Y_GALLERY_CAPTION_HELP,
+            },
+        ),
+    )
+
+    @admin.display(description="Bildtext OK")
+    def alt_status(self, obj):
+        if obj.missing_alt_warning():
+            return "Saknas"
+        return "OK"
+
+    def save_model(self, request, obj, form, change):
+        super().save_model(request, obj, form, change)
+        if obj.missing_alt_warning():
+            messages.warning(
+                request,
+                f"Galleribild ”{obj}” saknar titel och bildtext. "
+                "Lägg till en kort bildtext så skärmläsare förstår bilden (WCAG).",
+            )
 
 
 @admin.register(SeasonTip)

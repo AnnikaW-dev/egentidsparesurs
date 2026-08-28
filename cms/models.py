@@ -3,6 +3,7 @@
 from django.db import models
 from django.utils import timezone
 
+from .a11y import plain_cms_text, resolve_image_alt
 from .text_format import BOLD_MARKUP_HINT, parse_body_sections
 
 
@@ -15,7 +16,7 @@ class SiteSettings(models.Model):
         default="Skönhet & avkoppling – med en värmande touch!",
     )
     logo = models.ImageField(upload_to="brand/", blank=True)
-    email = models.EmailField(blank=True, default="info@egentidsparesurs.se")
+    email = models.EmailField(blank=True, default="info@egentidspaservice.se")
     phone = models.CharField(
         max_length=40,
         blank=True,
@@ -128,7 +129,10 @@ class SitePage(models.Model):
         on_delete=models.SET_NULL,
         related_name="hero_pages",
         verbose_name="Hero från galleri",
-        help_text="Välj en bild från Galleriet. Har företräde framför egen uppladdning.",
+        help_text=(
+            "Välj en bild från Galleriet. Bildtexten från Galleribilder "
+            "används som alt-text på sidan."
+        ),
     )
     # Adjust: button labels on content pages (Värmande, Service, …); blank = template default
     cta_primary = models.CharField(
@@ -203,6 +207,16 @@ class SitePage(models.Model):
                 return gallery.image
         return self.hero_image
 
+    @property
+    def resolved_hero_alt(self) -> str:
+        """Alt text for hero: gallery caption → page title → default."""
+        title_fallback = plain_cms_text(self.title)
+        if self.hero_gallery_image_id and self.hero_gallery_image:
+            return self.hero_gallery_image.alt_text(fallback=title_fallback)
+        if self.hero_image:
+            return resolve_image_alt(fallback=title_fallback)
+        return ""
+
 
 class ContentBlock(models.Model):
     """Optional titled section on a page (e.g. hand treatment highlight)."""
@@ -223,7 +237,10 @@ class ContentBlock(models.Model):
         on_delete=models.SET_NULL,
         related_name="content_blocks",
         verbose_name="Bild från galleri",
-        help_text="Välj en bild från Galleriet. Har företräde framför egen uppladdning.",
+        help_text=(
+            "Välj en bild från Galleriet. Bildtexten från Galleribilder "
+            "används som alt-text."
+        ),
     )
     sort_order = models.PositiveIntegerField(default=0)
     is_visible = models.BooleanField(default=True)
@@ -320,10 +337,13 @@ class ContentBlock(models.Model):
         return self.image
 
     @property
-    def resolved_image_alt(self):
-        """Alt text from gallery caption/title when a galleribild is selected."""
+    def resolved_image_alt(self) -> str:
+        """Alt text: gallery caption → block title → default."""
+        title_fallback = plain_cms_text(self.title)
         if self.gallery_image_id and self.gallery_image:
-            return (self.gallery_image.caption or self.gallery_image.title or "").strip()
+            return self.gallery_image.alt_text(fallback=title_fallback)
+        if self.image:
+            return resolve_image_alt(fallback=title_fallback)
         return ""
 
 
@@ -332,7 +352,15 @@ class GalleryImage(models.Model):
 
     title = models.CharField(max_length=120, blank=True)
     image = models.ImageField(upload_to="gallery/")
-    caption = models.CharField(max_length=255, blank=True)
+    caption = models.CharField(
+        max_length=255,
+        blank=True,
+        verbose_name="Bildtext (alt-text)",
+        help_text=(
+            "Kort beskrivning för skärmläsare. Används på Galleri och när bilden "
+            "väljes på sidor/block. Tom = titeln används."
+        ),
+    )
     sort_order = models.PositiveIntegerField(default=0)
     is_visible = models.BooleanField(default=True)
 
@@ -343,6 +371,20 @@ class GalleryImage(models.Model):
 
     def __str__(self):
         return self.title or f"Bild {self.pk}"
+
+    def alt_text(self, fallback: str = "") -> str:
+        """Alt text for this image wherever it is reused (gallery, hero, blocks)."""
+        return resolve_image_alt(
+            caption=self.caption,
+            title=self.title,
+            fallback=fallback,
+        )
+
+    def missing_alt_warning(self) -> bool:
+        """True when visible image lacks both caption and title (admin reminder)."""
+        return self.is_visible and not plain_cms_text(self.caption) and not plain_cms_text(
+            self.title
+        )
 
 
 class SeasonTip(models.Model):
