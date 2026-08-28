@@ -12,16 +12,16 @@
 {% block twitter_description %}{% firstof page.seo_description seo_description %}{% endblock %}
 
 {% block og_image_tags %}
-  {% if page.hero_image %}
-  <meta property="og:image" content="{{ request.scheme }}://{{ request.get_host }}{{ page.hero_image.url }}">
+  {% if page.resolved_hero_image %}
+  <meta property="og:image" content="{{ request.scheme }}://{{ request.get_host }}{{ page.resolved_hero_image.url }}">
   {% elif og_image_url %}
   <meta property="og:image" content="{{ og_image_url }}">
   {% endif %}
 {% endblock %}
 
 {% block extra_head %}
-  {% if page.hero_image %}
-    <link rel="preload" as="image" href="{{ page.hero_image|as_webp }}" type="image/webp" fetchpriority="high">
+  {% if page.resolved_hero_image %}
+    <link rel="preload" as="image" href="{{ page.resolved_hero_image|as_webp }}" type="image/webp" fetchpriority="high">
   {% else %}
     <link rel="preload" as="image" href="{% static 'img/hero-feet.webp' %}" type="image/webp" fetchpriority="high">
   {% endif %}
@@ -32,12 +32,12 @@
   <h1 id="home-heading">{{ page.title|cms_richtext }}</h1>
   {# Subtitle sits above the hero image — Adjust in Admin → Startsida → Underrubrik #}
   {% if page.subtitle %}<p class="lead">{{ page.subtitle|cms_richtext }}</p>{% endif %}
-  {% if page.hero_image %}
+  {% if page.resolved_hero_image %}
     <picture>
-      <source type="image/webp" srcset="{{ page.hero_image|as_webp }}">
+      <source type="image/webp" srcset="{{ page.resolved_hero_image|as_webp }}">
       <img
         class="hero-image"
-        src="{{ page.hero_image.url }}"
+        src="{{ page.resolved_hero_image.url }}"
         alt="{{ page.title }}"
         width="1047"
         height="1400"
@@ -97,10 +97,10 @@
 
 {% for block in blocks %}
 <section class="feature {% cycle 'feature-left' 'feature-right' %}" aria-labelledby="block-{{ block.pk }}">
-  {% if block.image %}
+  {% if block.resolved_image %}
     <picture>
-      <source type="image/webp" srcset="{{ block.image|as_webp }}">
-      <img class="feature-image" src="{{ block.image.url }}" alt="" width="904" height="601" loading="lazy" decoding="async">
+      <source type="image/webp" srcset="{{ block.resolved_image|as_webp }}">
+      <img class="feature-image" src="{{ block.resolved_image.url }}" alt="{{ block.resolved_image_alt }}" width="904" height="601" loading="lazy" decoding="async">
     </picture>
   {% elif forloop.first %}
     <picture>

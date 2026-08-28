@@ -6,19 +6,19 @@
   </h2>
   <div class="about-presentation-split">
     <div class="about-presentation-media">
-      {% if block.image %}
+      {% if block.resolved_image %}
         <picture>
-          <source type="image/webp" srcset="{{ block.image|as_webp }}">
+          <source type="image/webp" srcset="{{ block.resolved_image|as_webp }}">
           <img
             class="about-presentation-photo"
-            src="{{ block.image.url }}"
-            alt=""
+            src="{{ block.resolved_image.url }}"
+            alt="{% firstof block.resolved_image_alt 'Porträttbild' %}"
             loading="lazy"
             decoding="async"
           >
         </picture>
       {% else %}
-        {# Adjust: upload portrait in Admin → Sidor → Om → Innehållsblock → Bild #}
+        {# Adjust: välj Bild från galleri eller ladda upp i Admin → Sidor → Om → Innehållsblock #}
         <div class="about-photo-placeholder" role="img" aria-label="Plats för porträttbild">
           <span class="about-photo-placeholder-label" aria-hidden="true">Foto</span>
         </div>

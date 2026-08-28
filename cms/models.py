@@ -115,7 +115,21 @@ class SitePage(models.Model):
             + BOLD_MARKUP_HINT
         ),
     )
-    hero_image = models.ImageField(upload_to="pages/", blank=True)
+    hero_image = models.ImageField(
+        upload_to="pages/",
+        blank=True,
+        verbose_name="Egen hero-bild",
+        help_text="Används om ingen bild är vald från Galleriet ovan.",
+    )
+    hero_gallery_image = models.ForeignKey(
+        "GalleryImage",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="hero_pages",
+        verbose_name="Hero från galleri",
+        help_text="Välj en bild från Galleriet. Har företräde framför egen uppladdning.",
+    )
     # Adjust: button labels on content pages (Värmande, Service, …); blank = template default
     cta_primary = models.CharField(
         max_length=120,
@@ -180,6 +194,15 @@ class SitePage(models.Model):
             return text[:157] + ("…" if len(text) > 157 else "")
         return fallback
 
+    @property
+    def resolved_hero_image(self):
+        """Hero file: gallery pick first, else direct upload."""
+        if self.hero_gallery_image_id:
+            gallery = self.hero_gallery_image
+            if gallery and gallery.image:
+                return gallery.image
+        return self.hero_image
+
 
 class ContentBlock(models.Model):
     """Optional titled section on a page (e.g. hand treatment highlight)."""
@@ -187,7 +210,21 @@ class ContentBlock(models.Model):
     page = models.ForeignKey(SitePage, on_delete=models.CASCADE, related_name="blocks")
     title = models.CharField(max_length=200)
     body = models.TextField(blank=True)
-    image = models.ImageField(upload_to="blocks/", blank=True)
+    image = models.ImageField(
+        upload_to="blocks/",
+        blank=True,
+        verbose_name="Egen bild",
+        help_text="Används om ingen bild är vald från Galleriet ovan.",
+    )
+    gallery_image = models.ForeignKey(
+        "GalleryImage",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="content_blocks",
+        verbose_name="Bild från galleri",
+        help_text="Välj en bild från Galleriet. Har företräde framför egen uppladdning.",
+    )
     sort_order = models.PositiveIntegerField(default=0)
     is_visible = models.BooleanField(default=True)
 
@@ -272,6 +309,22 @@ class ContentBlock(models.Model):
         """Checklist lines under a prislista item (everything after the intro)."""
         lines = self.price_body_lines()
         return lines[1:] if len(lines) > 1 else []
+
+    @property
+    def resolved_image(self):
+        """Block image file: gallery pick first, else direct upload."""
+        if self.gallery_image_id:
+            gallery = self.gallery_image
+            if gallery and gallery.image:
+                return gallery.image
+        return self.image
+
+    @property
+    def resolved_image_alt(self):
+        """Alt text from gallery caption/title when a galleribild is selected."""
+        if self.gallery_image_id and self.gallery_image:
+            return (self.gallery_image.caption or self.gallery_image.title or "").strip()
+        return ""
 
 
 class GalleryImage(models.Model):

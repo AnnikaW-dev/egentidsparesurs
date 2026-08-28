@@ -1,17 +1,17 @@
 {% load media_extras cms_extras %}
 {# cms/treatment_card.html — one CMS ContentBlock: image beside title/price/body, optional book CTA #}
 <section
-  class="treatment-card{% if block.image %} treatment-card--split{% endif %}{% if not block.shows_book_cta %} treatment-card--info{% endif %}"
+  class="treatment-card{% if block.resolved_image %} treatment-card--split{% endif %}{% if not block.shows_book_cta %} treatment-card--info{% endif %}"
   aria-labelledby="treatment-{{ block.pk }}"
 >
-  {% if block.image %}
+  {% if block.resolved_image %}
     <div class="treatment-card-media">
       <picture>
-        <source type="image/webp" srcset="{{ block.image|as_webp }}">
+        <source type="image/webp" srcset="{{ block.resolved_image|as_webp }}">
         <img
           class="treatment-card-image"
-          src="{{ block.image.url }}"
-          alt=""
+          src="{{ block.resolved_image.url }}"
+          alt="{{ block.resolved_image_alt }}"
           loading="lazy"
           decoding="async"
         >

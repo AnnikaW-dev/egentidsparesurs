@@ -694,6 +694,44 @@ h1 {
   color: var(--ink-strong);
 }
 
+.warming-video-wrap {
+  margin: 0 0 1.5rem;
+  max-width: 34rem;
+}
+
+.warming-video {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 4px;
+  border: 1px solid var(--line);
+  background: var(--bg-panel);
+}
+
+.warming-video:focus-visible {
+  outline: 2px solid var(--ink-strong);
+  outline-offset: 2px;
+}
+
+.warming-video-caption {
+  margin: 0.45rem 0 0;
+  font-size: 0.92rem;
+  color: var(--ink-muted);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .warming-video {
+    display: none;
+  }
+
+  .warming-video-wrap::after {
+    content: "Video dold när reducerad rörelse är aktiverad i systemet.";
+    display: block;
+    font-size: 0.92rem;
+    color: var(--ink-muted);
+  }
+}
+
 /* Service — bold lead with triangle marker (matches brand mockup) */
 .service-page .service-lead {
   font-weight: 700;

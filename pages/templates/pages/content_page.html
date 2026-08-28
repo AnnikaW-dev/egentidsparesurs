@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load media_extras cms_extras %}
+{% load static media_extras cms_extras %}
 {# pages/content_page.html — CMS SitePage body + blocks; ## / • / **bold** in body #}
 
 {% block title %}{{ page.seo_title }} – {{ site.site_name }}{% endblock %}
@@ -10,8 +10,8 @@
 {% block twitter_description %}{% firstof page.seo_description seo_description %}{% endblock %}
 
 {% block og_image_tags %}
-  {% if page.hero_image %}
-  <meta property="og:image" content="{{ request.scheme }}://{{ request.get_host }}{{ page.hero_image.url }}">
+  {% if page.resolved_hero_image %}
+  <meta property="og:image" content="{{ request.scheme }}://{{ request.get_host }}{{ page.resolved_hero_image.url }}">
   {% elif og_image_url %}
   <meta property="og:image" content="{{ og_image_url }}">
   {% endif %}
@@ -26,11 +26,29 @@
     {% endif %}
   </header>
 
-  {% if page.hero_image %}
+  {% if page.resolved_hero_image %}
     <picture>
-      <source type="image/webp" srcset="{{ page.hero_image|as_webp }}">
-      <img class="page-hero" src="{{ page.hero_image.url }}" alt="{{ page.title }}" loading="eager" decoding="async">
+      <source type="image/webp" srcset="{{ page.resolved_hero_image|as_webp }}">
+      <img class="page-hero" src="{{ page.resolved_hero_image.url }}" alt="{{ page.title }}" loading="eager" decoding="async">
     </picture>
+  {% endif %}
+
+  {% if page.key == "warming" %}
+  <figure class="warming-video-wrap">
+    <video
+      class="warming-video"
+      controls
+      preload="metadata"
+      playsinline
+      poster="{% static 'img/gallery/paraffin-hand-blue.jpg' %}"
+      width="900"
+      height="506"
+    >
+      <source src="{% static 'video/warming-paraffin.mp4' %}" type="video/mp4">
+      <p>Din webbläsare stödjer inte videouppspelning. <a href="{% static 'video/warming-paraffin.mp4' %}">Ladda ner videon</a>.</p>
+    </video>
+    <figcaption class="warming-video-caption">Värmande paraffinbehandling för händer.</figcaption>
+  </figure>
   {% endif %}
 
   <div class="prose-stack page-body-sections">
@@ -40,10 +58,10 @@
   {% if page.key != "salon" %}
   {% for block in blocks %}
   <section class="content-block" aria-labelledby="block-{{ block.pk }}">
-    {% if block.image %}
+    {% if block.resolved_image %}
       <picture>
-        <source type="image/webp" srcset="{{ block.image|as_webp }}">
-        <img class="content-block-image" src="{{ block.image.url }}" alt="" loading="lazy" decoding="async">
+        <source type="image/webp" srcset="{{ block.resolved_image|as_webp }}">
+        <img class="content-block-image" src="{{ block.resolved_image.url }}" alt="{{ block.resolved_image_alt }}" loading="lazy" decoding="async">
       </picture>
     {% endif %}
     <h2 id="block-{{ block.pk }}">{{ block.title|cms_richtext }}</h2>

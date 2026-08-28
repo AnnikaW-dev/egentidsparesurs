@@ -17,7 +17,8 @@ from .text_format import BOLD_MARKUP_HINT
 class ContentBlockInline(admin.TabularInline):
     model = ContentBlock
     extra = 1
-    fields = ("title", "body", "image", "sort_order", "is_visible")
+    fields = ("title", "body", "gallery_image", "image", "sort_order", "is_visible")
+    autocomplete_fields = ("gallery_image",)
     verbose_name = "behandling / innehållsblock"
     verbose_name_plural = "behandlingar / innehållsblock"
 
@@ -77,6 +78,7 @@ class SitePageAdmin(admin.ModelAdmin):
     list_display = ("title", "key", "is_published", "updated_at")
     list_filter = ("is_published",)
     search_fields = ("title", "body", "meta_title", "meta_description")
+    autocomplete_fields = ("hero_gallery_image",)
     inlines = [ContentBlockInline]
 
     def get_fieldsets(self, request, obj=None):
@@ -95,7 +97,8 @@ class SitePageAdmin(admin.ModelAdmin):
                 "Använd ## för underrubrik, ✔ för checklista, tom rad mellan stycken. "
                 + BOLD_MARKUP_HINT
                 + " "
-                "Ladda upp bild per block om du vill visa en bild ovanför texten."
+                "Ladda upp bild per block om du vill visa en bild ovanför texten. "
+                "Eller välj Bild från galleri i innehållsblocket (samma bilder som under Galleribilder)."
             )
         if obj and obj.key == SitePage.PageKey.WARMING:
             block_note = (
@@ -124,6 +127,8 @@ class SitePageAdmin(admin.ModelAdmin):
                 home_note,
                 block_note,
                 BOLD_MARKUP_HINT,
+                "Hero-bild: välj från Galleriet (CMS → Galleribilder) "
+                "eller ladda upp egen fil. Gallerival har företräde.",
             )
             if part
         )
@@ -132,7 +137,7 @@ class SitePageAdmin(admin.ModelAdmin):
             (
                 "Innehåll",
                 {
-                    "fields": ("body", "hero_image"),
+                    "fields": ("body", "hero_gallery_image", "hero_image"),
                     "description": content_description,
                 },
             ),
@@ -160,8 +165,9 @@ class SitePageAdmin(admin.ModelAdmin):
 
 @admin.register(GalleryImage)
 class GalleryImageAdmin(admin.ModelAdmin):
-    list_display = ("title", "sort_order", "is_visible")
+    list_display = ("title", "caption", "sort_order", "is_visible")
     list_editable = ("sort_order", "is_visible")
+    search_fields = ("title", "caption")
 
 
 @admin.register(SeasonTip)

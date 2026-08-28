@@ -16,6 +16,7 @@ from cms.models import (
     SitePage,
     SiteSettings,
 )
+from cms.gallery_defaults import GALLERY_IMAGES
 from cms.month_hook_defaults import MONTH_HOOK_DEFAULTS
 from cms.salon_defaults import (
     SALON_BODY,
@@ -531,26 +532,49 @@ class Command(BaseCommand):
                         if src.exists():
                             _save_image(block.image, src, image_name)
 
-        # Gallery: create rows if empty, otherwise restore missing files.
-        gallery_specs = [
-            ("gallery-1.jpg", "Salongen"),
-            ("hand-massage.jpg", "Handmassage"),
-            ("hero-feet.jpg", "Fotvård"),
-        ]
-        if not GalleryImage.objects.exists():
-            for name, title in gallery_specs:
-                src = static_img / name
-                if src.exists():
-                    gi = GalleryImage(title=title, caption=title, sort_order=0)
-                    _save_image(gi.image, src, name)
-        else:
-            for gi in GalleryImage.objects.all():
-                if _file_missing(gi.image):
-                    # Best-effort restore from static by filename.
-                    name = Path(gi.image.name).name if gi.image.name else ""
-                    src = static_img / name
-                    if src.exists():
-                        _save_image(gi.image, src, name)
+        # Gallery — static/img/gallery/ + Admin → Galleribilder
+        gallery_dir = static_img / "gallery"
+        legacy_gallery_names = {"gallery-1.jpg", "hand-massage.jpg", "hero-feet.jpg"}
+        existing_gallery_names = {
+            Path(gi.image.name).name
+            for gi in GalleryImage.objects.all()
+            if gi.image and gi.image.name
+        }
+        if force or (
+            GalleryImage.objects.exists()
+            and existing_gallery_names
+            and existing_gallery_names.issubset(legacy_gallery_names)
+            and gallery_dir.is_dir()
+        ):
+            GalleryImage.objects.all().delete()
+        for sort_order, (filename, title, caption) in enumerate(GALLERY_IMAGES):
+            src = gallery_dir / filename
+            if not src.exists():
+                continue
+            gi = GalleryImage.objects.filter(image__endswith=f"/{filename}").first()
+            if not gi:
+                gi = GalleryImage(
+                    title=title,
+                    caption=caption,
+                    sort_order=sort_order,
+                    is_visible=True,
+                )
+                _save_image(gi.image, src, filename)
+            else:
+                updates = []
+                if force or gi.title != title:
+                    gi.title = title
+                    updates.append("title")
+                if force or gi.caption != caption:
+                    gi.caption = caption
+                    updates.append("caption")
+                if gi.sort_order != sort_order:
+                    gi.sort_order = sort_order
+                    updates.append("sort_order")
+                if updates:
+                    gi.save(update_fields=updates)
+                if force or _file_missing(gi.image):
+                    _save_image(gi.image, src, filename)
                 else:
                     _ensure_webp(gi.image)
 
