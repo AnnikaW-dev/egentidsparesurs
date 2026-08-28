@@ -26,6 +26,25 @@ class Service(models.Model):
     def __str__(self):
         return self.name
 
+    def treatment_info_url(self):
+        """URL to this treatment on Behandlingar & priser (#anchor), or empty if none."""
+        from cms.models import ContentBlock, SitePage
+
+        block = (
+            ContentBlock.objects.filter(
+                page__key=SitePage.PageKey.TREATMENTS,
+                title=self.name,
+                is_visible=True,
+            )
+            .select_related("page")
+            .first()
+        )
+        if not block or block.is_category_heading():
+            return ""
+        from django.urls import reverse
+
+        return f"{reverse('treatments')}#treatment-{block.pk}"
+
 
 class WeeklyAvailability(models.Model):
     """Recurring weekday hours for booking slots and the footer Öppettider list."""

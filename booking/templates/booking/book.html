@@ -43,16 +43,25 @@
     {% if services %}
     <ul class="service-pick-list">
       {% for service in services %}
-      <li>
-        <a class="service-pick-card" href="?service={{ service.slug }}">
-          <span class="service-pick-name">{{ service.name }}</span>
-          <span class="service-pick-meta">
-            {{ service.duration_minutes }} min{% if service.price_sek %} · {{ service.price_sek }} kr{% endif %}
-          </span>
-          {% if service.description %}
-            <span class="service-pick-desc muted">{{ service.description }}</span>
+      <li class="service-pick-item">
+        <div class="service-pick-card">
+          <a class="service-pick-main" href="?service={{ service.slug }}">
+            <span class="service-pick-name">{{ service.name }}</span>
+            <span class="service-pick-meta">
+              {{ service.duration_minutes }} min{% if service.price_sek %} · {{ service.price_sek }} kr{% endif %}
+            </span>
+            {% if service.description %}
+              <span class="service-pick-desc muted">{{ service.description }}</span>
+            {% endif %}
+          </a>
+          {% if service.treatment_info_url %}
+          <a
+            class="service-pick-more"
+            href="{{ service.treatment_info_url }}"
+            aria-label="Mer info om {{ service.name }}"
+          >Mer info</a>
           {% endif %}
-        </a>
+        </div>
       </li>
       {% endfor %}
     </ul>
@@ -66,6 +75,9 @@
     <h2 id="step-slot-heading">Välj tid</h2>
     <p class="booking-summary">
       Behandling: <strong>{{ selected_service.name }}</strong>
+      {% if selected_service.treatment_info_url %}
+      <a href="{{ selected_service.treatment_info_url }}" aria-label="Mer info om {{ selected_service.name }}">Mer info</a>
+      {% endif %}
       <a href="{% url 'booking' %}">Byt behandling</a>
     </p>
     {% if slots_by_date %}
@@ -94,6 +106,9 @@
     <h2 id="step-details-heading">Dina uppgifter</h2>
     <p class="booking-summary">
       Behandling: <strong>{{ selected_service.name }}</strong>
+      {% if selected_service.treatment_info_url %}
+      <a href="{{ selected_service.treatment_info_url }}" aria-label="Mer info om {{ selected_service.name }}">Mer info</a>
+      {% endif %}
       · Tid: <strong>{{ selected_slot.start|date:"l j F Y, H:i" }}</strong>
       <a href="?service={{ selected_service.slug }}">Byt tid</a>
     </p>
