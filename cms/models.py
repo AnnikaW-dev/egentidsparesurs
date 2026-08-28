@@ -1,6 +1,7 @@
 """Editable site content: settings, pages, blocks, and gallery images."""
 
 from django.db import models
+from django.utils import timezone
 
 from .text_format import BOLD_MARKUP_HINT, parse_body_sections
 
@@ -8,14 +9,19 @@ from .text_format import BOLD_MARKUP_HINT, parse_body_sections
 class SiteSettings(models.Model):
     """Singleton row for brand, contact, and footer text editable in admin."""
 
-    site_name = models.CharField(max_length=120, default="EGentid Spa & Resurs")
+    site_name = models.CharField(max_length=120, default="EGentid Spa & Service")
     tagline = models.CharField(
         max_length=200,
         default="Skönhet & avkoppling – med en värmande touch!",
     )
     logo = models.ImageField(upload_to="brand/", blank=True)
     email = models.EmailField(blank=True, default="info@egentidsparesurs.se")
-    phone = models.CharField(max_length=40, blank=True)
+    phone = models.CharField(
+        max_length=40,
+        blank=True,
+        verbose_name="Telefonnummer",
+        help_text="Visas i sidfoten under Kontakt. Lämna tomt för att dölja raden.",
+    )
     address = models.TextField(blank=True, help_text=BOLD_MARKUP_HINT)
     opening_hours = models.TextField(
         blank=True,
@@ -47,7 +53,7 @@ class SiteSettings(models.Model):
         max_length=160,
         blank=True,
         default=(
-            "Fotvård, spa-pedikyr och värmande manikyr. Boka egentid hos EGentid Spa & Resurs."
+            "Fotvård, spa-pedikyr och värmande manikyr. Boka egentid hos EGentid Spa & Service."
         ),
         help_text="Standard meta description (ca 150–160 tecken) om sidan saknar egen.",
     )
@@ -63,6 +69,13 @@ class SiteSettings(models.Model):
 
     def __str__(self):
         return self.site_name
+
+    def phone_tel(self) -> str:
+        """Digits (and optional +) for tel: links; display text stays in phone."""
+        raw = (self.phone or "").strip()
+        if raw.startswith("+"):
+            return "+" + "".join(ch for ch in raw[1:] if ch.isdigit())
+        return "".join(ch for ch in raw if ch.isdigit())
 
     def save(self, *args, **kwargs):
         # Rule: only one settings row — always overwrite pk=1.
@@ -368,6 +381,63 @@ class SeasonTip(models.Model):
         """Parse body for home “Månadens tips” (## / ✔ / paragraphs)."""
         return parse_body_sections(self.body or "")
 
+    def body_intro_sections(self):
+        """First paragraph on Året runt — shown before Läs mer."""
+        sections = self.body_sections()
+        if sections and sections[0]["type"] == "para":
+            return [sections[0]]
+        return []
+
+    def body_rest_sections(self):
+        """Remaining body after the intro paragraph."""
+        sections = self.body_sections()
+        if sections and sections[0]["type"] == "para":
+            return sections[1:]
+        return sections
+
+    def has_collapsible_content(self):
+        """True when Året runt should offer Läs mer (body rest, items, or closing)."""
+        return bool(
+            self.body_rest_sections()
+            or self.items.exists()
+            or self.closing_label
+            or self.closing_body
+            or self.closing_cta
+        )
+
+    @classmethod
+    def rolling_display_months(cls, from_date=None):
+        """Months shown on Året runt: current calendar month plus the next two."""
+        if from_date is None:
+            from_date = timezone.localdate()
+        start = from_date.month
+        return [((start + offset - 1) % 12) + 1 for offset in range(3)]
+
+    @classmethod
+    def month_label(cls, month):
+        """Swedish month name for a month number (1–12)."""
+        return dict(cls.MONTH_CHOICES).get(month, "")
+
+    @classmethod
+    def tips_for_rolling_window(cls, from_date=None):
+        """Visible tips for current month + next two, in display order."""
+        months = cls.rolling_display_months(from_date)
+        tips = {
+            tip.month: tip
+            for tip in cls.objects.filter(month__in=months, is_visible=True).prefetch_related(
+                "items"
+            )
+        }
+        return [
+            {
+                "month": month,
+                "month_label": cls.month_label(month),
+                "tip": tips.get(month),
+                "heading_id": f"season-tip-{month}",
+            }
+            for month in months
+        ]
+
     def save(self, *args, **kwargs):
         # Rule: at most one featured tip — clearing others when this one is featured.
         super().save(*args, **kwargs)
@@ -403,7 +473,7 @@ class MonthHook(models.Model):
     """Home “Känner du igen det här?” — one quote block per calendar month.
 
     Edit in Admin → CMS → Känner du igen.
-    Startsidan shows the current month; Året runt lists all visible months.
+    Startsidan shows the current month only.
     """
 
     MONTH_CHOICES = SeasonTip.MONTH_CHOICES

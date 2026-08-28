@@ -12,19 +12,84 @@ ROOT = Path(__file__).resolve().parents[1]
 
 # (relative path under project, max box edge in px, jpeg quality)
 TARGETS = [
-    ("static/img/logo.jpg", 256, 82),
+    ("static/img/logo.png", 256, 85),
     ("static/img/hero-feet.jpg", 1400, 78),
     ("static/img/gallery-1.jpg", 900, 78),
     ("static/img/hand-massage.jpg", 1000, 80),
 ]
 
 
+def knock_out_near_white(img: Image.Image, threshold: int = 245) -> Image.Image:
+    """Remove near-white background connected to image edges (keeps light logo colors)."""
+    from collections import deque
+
+    img = img.convert("RGBA")
+    w, h = img.size
+    pixels = img.load()
+    visited = [[False] * w for _ in range(h)]
+
+    def is_background(r: int, g: int, b: int) -> bool:
+        return r >= threshold and g >= threshold and b >= threshold
+
+    queue = deque()
+    for x in range(w):
+        for y in (0, h - 1):
+            if is_background(*pixels[x, y][:3]):
+                queue.append((x, y))
+    for y in range(h):
+        for x in (0, w - 1):
+            if is_background(*pixels[x, y][:3]):
+                queue.append((x, y))
+
+    while queue:
+        x, y = queue.popleft()
+        if x < 0 or x >= w or y < 0 or y >= h or visited[x][y]:
+            continue
+        r, g, b, _a = pixels[x, y]
+        if not is_background(r, g, b):
+            continue
+        visited[x][y] = True
+        pixels[x, y] = (r, g, b, 0)
+        queue.extend([(x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)])
+
+    # Erode near-white anti-alias halo left on the logo edge
+    for _ in range(3):
+        to_clear = []
+        for y in range(h):
+            for x in range(w):
+                r, g, b, a = pixels[x, y]
+                if a == 0:
+                    continue
+                if r >= 230 and g >= 230 and b >= 230:
+                    for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                        nx, ny = x + dx, y + dy
+                        if 0 <= nx < w and 0 <= ny < h and pixels[nx, ny][3] == 0:
+                            to_clear.append((x, y))
+                            break
+        for x, y in to_clear:
+            r, g, b, _a = pixels[x, y]
+            pixels[x, y] = (r, g, b, 0)
+
+    return img
+
+
 def optimize(path: Path, max_edge: int, quality: int) -> None:
-    """Resize to max_edge, save optimized JPEG + WebP next to it."""
+    """Resize to max_edge, save optimized image + WebP next to it."""
     if not path.exists():
         print("skip missing", path)
         return
     img = Image.open(path)
+    if path.suffix.lower() == ".png":
+        img = knock_out_near_white(img)
+        img.thumbnail((max_edge, max_edge), Image.Resampling.LANCZOS)
+        img.save(path, "PNG", optimize=True)
+        webp = path.with_suffix(".webp")
+        img.save(webp, "WEBP", quality=quality, method=6)
+        print(
+            f"OK {path.name}: {img.size} -> {path.stat().st_size // 1024}KB + "
+            f"{webp.name} {webp.stat().st_size // 1024}KB"
+        )
+        return
     img = img.convert("RGB")
     img.thumbnail((max_edge, max_edge), Image.Resampling.LANCZOS)
 
@@ -37,7 +102,7 @@ def optimize(path: Path, max_edge: int, quality: int) -> None:
 def mirror_to_media() -> None:
     """Copy optimized static heroes into common media upload paths."""
     mapping = {
-        "static/img/logo.jpg": ["media/brand/logo.jpg"],
+        "static/img/logo.png": ["media/brand/logo.png"],
         "static/img/hero-feet.jpg": [
             "media/pages/hero-feet.jpg",
             "media/gallery/hero-feet.jpg",

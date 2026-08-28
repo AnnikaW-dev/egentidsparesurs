@@ -1,4 +1,4 @@
-# EGentid Spa & Resurs
+# EGentid Spa & Service
 
 Website for foot and hand care services (spa-pedikyr, värmande manikyr), inspired by the color scheme and content of [egentidsparesurs.wordpress.com](https://egentidsparesurs.wordpress.com/).
 

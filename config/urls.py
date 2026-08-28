@@ -1,4 +1,4 @@
-"""URL routes for EGentid Spa & Resurs."""
+"""URL routes for EGentid Spa & Service."""
 
 from django.conf import settings
 from django.conf.urls.static import static
@@ -50,7 +50,7 @@ urlpatterns = [
     ),
 ]
 
-admin.site.site_header = "EGentid Spa & Resurs – Admin"
+admin.site.site_header = "EGentid Spa & Service – Admin"
 admin.site.site_title = "EGentid Admin"
 admin.site.index_title = "Innehåll & bokningar"
 

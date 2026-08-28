@@ -1,4 +1,4 @@
-{# pages/seasons.html — Året runt; SitePage key=seasons + current SeasonTip month #}
+{# pages/seasons.html — Året runt; SitePage key=seasons + rolling 3-month SeasonTips #}
 {% extends "base.html" %}
 {% load cms_extras %}
 
@@ -23,8 +23,21 @@
   </div>
   {% endif %}
 
-  {% if tip %}
-    {% include "cms/season_tip_feature.html" with tip=tip heading_id="season-tip-heading" %}
+  {% if season_tips %}
+  <div class="seasons-month-list">
+    {% for entry in season_tips %}
+      {% if entry.tip %}
+        {% include "cms/season_tip_feature.html" with tip=entry.tip heading_id=entry.heading_id collapsible=True %}
+      {% else %}
+      <p class="seasons-empty" role="status">
+        Tips för {{ entry.month_label }} läggs till i admin under CMS → Säsongstips.
+      </p>
+      {% endif %}
+      {% if not forloop.last %}
+      <hr class="season-month-divider" aria-hidden="true">
+      {% endif %}
+    {% endfor %}
+  </div>
   {% else %}
   <p class="seasons-empty" role="status">
     Månadstips läggs till i admin under CMS → Säsongstips.
@@ -32,7 +45,6 @@
   {% endif %}
 
   {% for block in blocks %}
-  {# Closing under tip — Admin → Sidor → Året runt → Innehållsblock #}
   <section class="seasons-closing" aria-labelledby="seasons-closing-{{ block.pk }}">
     <h2 id="seasons-closing-{{ block.pk }}" class="seasons-closing-title">{{ block.title|cms_richtext }}</h2>
     <div class="seasons-closing-body">

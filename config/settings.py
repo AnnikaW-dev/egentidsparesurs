@@ -1,4 +1,4 @@
-"""Django settings for EGentid Spa & Resurs — local + Render production."""
+"""Django settings for EGentid Spa & Service — local + Render production."""
 
 import os
 from pathlib import Path

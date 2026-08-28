@@ -1,4 +1,4 @@
-/* EGentid Spa & Resurs — palette tuned for WCAG 2.1 AA on beige background */
+/* EGentid Spa & Service — palette tuned for WCAG 2.1 AA on beige background */
 
 :root {
   --bg: #c3b09c;
@@ -175,8 +175,7 @@ h1 {
 .brand-logo {
   width: 64px;
   height: 64px;
-  object-fit: cover;
-  border-radius: 50%;
+  object-fit: contain;
   flex-shrink: 0;
 }
 
@@ -1320,6 +1319,68 @@ h1 {
   text-align: left;
 }
 
+.seasons-month-list {
+  margin: 0 auto;
+  max-width: 34rem;
+}
+
+.season-month-divider {
+  border: 0;
+  border-top: 1px solid var(--line);
+  margin: 2rem 0;
+}
+
+/* Året runt — native disclosure (first para visible, Läs mer opens rest) */
+.season-feature-intro {
+  margin-bottom: 0.25rem;
+}
+
+.season-feature-intro p {
+  margin: 0 0 0.85rem;
+}
+
+.season-tip-details {
+  margin-top: 0.35rem;
+}
+
+.season-tip-summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 44px;
+  padding: 0.35rem 0;
+  cursor: pointer;
+  font-weight: 700;
+  color: var(--ink-strong);
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+  list-style: none;
+}
+
+.season-tip-summary::-webkit-details-marker {
+  display: none;
+}
+
+.season-tip-summary::before {
+  content: "▸";
+  font-size: 0.85em;
+  text-decoration: none;
+  flex-shrink: 0;
+}
+
+.season-tip-details[open] > .season-tip-summary::before {
+  content: "▾";
+}
+
+.season-tip-summary:focus-visible {
+  outline: 2px solid var(--ink-strong);
+  outline-offset: 2px;
+}
+
+.season-tip-more {
+  padding-top: 0.5rem;
+}
+
 .season-feature-heading {
   display: flex;
   align-items: center;
@@ -1775,6 +1836,22 @@ h1 {
   font-size: 0.95rem;
   color: var(--ink);
   line-height: 1.45;
+}
+
+.footer-phone .footer-contact-term {
+  font-weight: 600;
+  color: var(--ink-strong);
+}
+
+.footer-phone a {
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+
+.footer-phone a:hover,
+.footer-phone a:focus-visible {
+  color: var(--ink-strong);
 }
 
 .footer-bottom {

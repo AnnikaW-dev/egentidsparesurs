@@ -91,25 +91,17 @@ def service_page(request):
 
 
 def seasons(request):
-    """Året runt — intro, current month tip, and closing block.
+    """Året runt — intro plus tips for current month and the next two.
 
-    Month tip: Admin → Säsongstips (current calendar month).
-    Closing under tip: Admin → Sidor → Året runt → Innehållsblock.
+    Month tips: Admin → CMS → Säsongstips (one row per calendar month).
     """
     page = _get_page(SitePage.PageKey.SEASONS)
-    tip = (
-        SeasonTip.objects.filter(
-            month=timezone.localdate().month,
-            is_visible=True,
-        )
-        .prefetch_related("items")
-        .first()
-    )
+    season_tips = SeasonTip.tips_for_rolling_window()
     blocks = page.blocks.filter(is_visible=True) if page else []
     return render(
         request,
         "pages/seasons.html",
-        {"page": page, "tip": tip, "blocks": blocks},
+        {"page": page, "season_tips": season_tips, "blocks": blocks},
     )
 
 

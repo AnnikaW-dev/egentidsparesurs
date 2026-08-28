@@ -1,39 +1,88 @@
 {% load cms_extras %}
-{# cms/season_tip_feature.html — month tip: icon title, optional body, checklist items, closing CTA #}
+{# cms/season_tip_feature.html — month tip; collapsible=True on Året runt (first para + Läs mer) #}
 {% with hid=heading_id|default:"season-tip-heading" level=heading_level|default:"2" %}
-<section class="season-feature" aria-labelledby="{{ hid }}">
+<section class="season-feature{% if collapsible %} season-feature--collapsible{% endif %}" aria-labelledby="{{ hid }}">
   <h{{ level }} id="{{ hid }}" class="season-feature-heading">
     {% if tip.icon %}<span class="season-feature-icon" aria-hidden="true">{{ tip.icon }}</span>{% endif %}
     <span class="season-feature-title">{{ tip.title|cms_richtext }}</span>
   </h{{ level }}>
-  {% if tip.body %}
-  <div class="season-feature-body">
-    {% include "cms/season_tip_body.html" with tip=tip %}
-  </div>
-  {% endif %}
-  {% if tip.items.all %}
-  <ul class="season-check-list">
-    {% for item in tip.items.all %}
-    <li>
-      <span class="season-check-headline">{{ item.headline|cms_richtext }}</span>
-      {% if item.description %}
-      <span class="season-check-sep" aria-hidden="true"> – </span>
-      <span class="season-check-desc">{{ item.description|cms_richtext }}</span>
+
+  {% if collapsible %}
+    {% with intro=tip.body_intro_sections rest=tip.body_rest_sections %}
+      {% if intro %}
+      <div class="season-feature-intro">
+        {% include "cms/body_sections.html" with sections=intro %}
+      </div>
       {% endif %}
-    </li>
-    {% endfor %}
-  </ul>
-  {% endif %}
-  {% if tip.closing_label or tip.closing_body or tip.closing_cta %}
-  <p class="season-closing">
-    {% if tip.closing_icon %}<span class="season-closing-icon" aria-hidden="true">{{ tip.closing_icon }}</span> {% endif %}
-    {% if tip.closing_label %}<strong class="season-closing-label">{{ tip.closing_label|cms_richtext }}</strong> {% endif %}
-    {% if tip.closing_body %}<span class="season-closing-body">{{ tip.closing_body|cms_richtext }}</span>{% endif %}
-    {% if tip.closing_cta %}
-    {% if tip.closing_body %} {% endif %}
-    <a class="season-closing-cta" href="{% url 'booking' %}"><strong>{{ tip.closing_cta|cms_richtext }}</strong></a>
+      {% if tip.has_collapsible_content %}
+      <details class="season-tip-details">
+        <summary class="season-tip-summary">
+          Läs mer om {{ tip.get_month_display|lower }}
+        </summary>
+        <div class="season-tip-more">
+          {% if rest %}
+          <div class="season-feature-body">
+            {% include "cms/body_sections.html" with sections=rest %}
+          </div>
+          {% endif %}
+          {% if tip.items.all %}
+          <ul class="season-check-list">
+            {% for item in tip.items.all %}
+            <li>
+              <span class="season-check-headline">{{ item.headline|cms_richtext }}</span>
+              {% if item.description %}
+              <span class="season-check-sep" aria-hidden="true"> – </span>
+              <span class="season-check-desc">{{ item.description|cms_richtext }}</span>
+              {% endif %}
+            </li>
+            {% endfor %}
+          </ul>
+          {% endif %}
+          {% if tip.closing_label or tip.closing_body or tip.closing_cta %}
+          <p class="season-closing">
+            {% if tip.closing_icon %}<span class="season-closing-icon" aria-hidden="true">{{ tip.closing_icon }}</span> {% endif %}
+            {% if tip.closing_label %}<strong class="season-closing-label">{{ tip.closing_label|cms_richtext }}</strong> {% endif %}
+            {% if tip.closing_body %}<span class="season-closing-body">{{ tip.closing_body|cms_richtext }}</span>{% endif %}
+            {% if tip.closing_cta %}
+            {% if tip.closing_body %} {% endif %}
+            <a class="season-closing-cta" href="{% url 'booking' %}"><strong>{{ tip.closing_cta|cms_richtext }}</strong></a>
+            {% endif %}
+          </p>
+          {% endif %}
+        </div>
+      </details>
+      {% endif %}
+    {% endwith %}
+  {% else %}
+    {% if tip.body %}
+    <div class="season-feature-body">
+      {% include "cms/season_tip_body.html" with tip=tip %}
+    </div>
     {% endif %}
-  </p>
+    {% if tip.items.all %}
+    <ul class="season-check-list">
+      {% for item in tip.items.all %}
+      <li>
+        <span class="season-check-headline">{{ item.headline|cms_richtext }}</span>
+        {% if item.description %}
+        <span class="season-check-sep" aria-hidden="true"> – </span>
+        <span class="season-check-desc">{{ item.description|cms_richtext }}</span>
+        {% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+    {% if tip.closing_label or tip.closing_body or tip.closing_cta %}
+    <p class="season-closing">
+      {% if tip.closing_icon %}<span class="season-closing-icon" aria-hidden="true">{{ tip.closing_icon }}</span> {% endif %}
+      {% if tip.closing_label %}<strong class="season-closing-label">{{ tip.closing_label|cms_richtext }}</strong> {% endif %}
+      {% if tip.closing_body %}<span class="season-closing-body">{{ tip.closing_body|cms_richtext }}</span>{% endif %}
+      {% if tip.closing_cta %}
+      {% if tip.closing_body %} {% endif %}
+      <a class="season-closing-cta" href="{% url 'booking' %}"><strong>{{ tip.closing_cta|cms_richtext }}</strong></a>
+      {% endif %}
+    </p>
+    {% endif %}
   {% endif %}
 </section>
 {% endwith %}

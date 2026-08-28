@@ -27,7 +27,7 @@ SALON_BODY = (
 # Personlig presentation under Boka — photo left, text right; Admin → Sidor → Om → Innehållsblock
 SALON_PROFILE_TITLE = "En stund som bara är din."
 SALON_PROFILE_BODY = (
-    "Jag heter Emma och står bakom EGentid Spa & Resurs.\n\n"
+    "Jag heter Emma och står bakom EGentid Spa & Service.\n\n"
     "Jag tror att vi ibland behöver stanna upp och ge oss själva lite mer tid – men också "
     "att det kan vara skönt att få hjälp med sådant som tar tid och energi i vardagen.\n\n"
     "Därför har jag skapat EGentid med två delar: spa och återhämtning samt service och "

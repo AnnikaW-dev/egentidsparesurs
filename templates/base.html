@@ -55,7 +55,7 @@
         {% else %}
           <picture>
             <source type="image/webp" srcset="{% static 'img/logo.webp' %}">
-            <img class="brand-logo" src="{% static 'img/logo.jpg' %}" alt="" width="64" height="64" decoding="async">
+            <img class="brand-logo" src="{% static 'img/logo.png' %}" alt="" width="64" height="64" decoding="async">
           </picture>
         {% endif %}
         <span class="brand-text">
@@ -142,7 +142,12 @@
         <p class="footer-label">Kontakt</p>
         <p><a href="{% url 'contact' %}">Kontaktformulär</a></p>
         {% if site.email %}<p><a href="mailto:{{ site.email }}">{{ site.email }}</a></p>{% endif %}
-        {% if site.phone %}<p>{{ site.phone }}</p>{% endif %}
+        {% if site.phone %}
+        <p class="footer-phone">
+          <span class="footer-contact-term">Telefonnummer:</span>
+          <a href="tel:{{ site.phone_tel }}">{{ site.phone }}</a>
+        </p>
+        {% endif %}
       </div>
       <div class="footer-booking">
         {# Adjust: short booking invite; “Boka” links to the booking page #}

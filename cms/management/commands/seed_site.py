@@ -43,6 +43,40 @@ from cms.warming_defaults import (
     WARMING_TITLE,
 )
 
+# Adjust: public brand name — seed upgrades legacy "Resurs" once without --force
+BRAND_NAME = "EGentid Spa & Service"
+BRAND_NAME_LEGACY = "EGentid Spa & Resurs"
+DEFAULT_META_DESCRIPTION = (
+    "Fotvård, spa-pedikyr och värmande manikyr. Boka egentid hos EGentid Spa & Service."
+)
+DEFAULT_META_DESCRIPTION_LEGACY = (
+    "Fotvård, spa-pedikyr och värmande manikyr. Boka egentid hos EGentid Spa & Resurs."
+)
+TREATMENTS_META_DESCRIPTION = (
+    "Fotvård, handvård och massage med priser hos EGentid Spa & Service."
+)
+TREATMENTS_META_DESCRIPTION_LEGACY = (
+    "Fotvård, handvård och massage med priser hos EGentid Spa & Resurs."
+)
+
+
+def _logo_has_white_background(image_field) -> bool:
+    """True when corner pixels are still opaque white (legacy square logo export)."""
+    if _file_missing(image_field):
+        return False
+    try:
+        from PIL import Image
+
+        img = Image.open(image_field.path).convert("RGBA")
+        w, h = img.size
+        for x, y in ((0, 0), (w - 1, 0), (0, h - 1), (w - 1, h - 1)):
+            r, g, b, a = img.getpixel((x, y))
+            if a > 200 and r > 240 and g > 240 and b > 240:
+                return True
+    except Exception:
+        return False
+    return False
+
 
 def _ensure_webp(image_field):
     """Write a .webp sibling next to a saved ImageField (for <picture> tags)."""
@@ -55,12 +89,15 @@ def _ensure_webp(image_field):
     if not path.exists() or path.suffix.lower() not in {".jpg", ".jpeg", ".png"}:
         return
     webp = path.with_suffix(".webp")
-    if webp.exists():
-        return
     try:
         from PIL import Image
 
-        Image.open(path).convert("RGB").save(webp, "WEBP", quality=80, method=6)
+        img = Image.open(path)
+        if path.suffix.lower() == ".png":
+            img = img.convert("RGBA")
+        else:
+            img = img.convert("RGB")
+        img.save(webp, "WEBP", quality=80, method=6)
     except Exception:
         pass
 
@@ -106,7 +143,7 @@ class Command(BaseCommand):
         settings = SiteSettings.load()
         # Rule: never wipe admin SiteSettings text unless --force
         if force:
-            settings.site_name = "EGentid Spa & Resurs"
+            settings.site_name = BRAND_NAME
             settings.tagline = "Skönhet & avkoppling – med en värmande touch!"
             settings.email = "info@egentidsparesurs.se"
             settings.phone = ""
@@ -118,7 +155,7 @@ class Command(BaseCommand):
         else:
             # Fill only blank starter fields (first deploy)
             if not (settings.site_name or "").strip():
-                settings.site_name = "EGentid Spa & Resurs"
+                settings.site_name = BRAND_NAME
             if not (settings.tagline or "").strip():
                 settings.tagline = "Skönhet & avkoppling – med en värmande touch!"
             if not (settings.email or "").strip():
@@ -129,10 +166,33 @@ class Command(BaseCommand):
                 settings.footer_text = (
                     "En lugn oas för fotvård, handvård och värmande behandlingar."
                 )
-        logo_src = static_img / "logo.jpg"
-        # Always restore logo when missing on disk (common after Render redeploy without disk).
-        if logo_src.exists() and _file_missing(settings.logo):
-            _save_image(settings.logo, logo_src, "logo.jpg")
+        if not force:
+            # One-time rename Spa & Resurs → Spa & Service (keeps other admin edits)
+            settings_updates = []
+            if (settings.site_name or "").strip() == BRAND_NAME_LEGACY:
+                settings.site_name = BRAND_NAME
+                settings_updates.append("site_name")
+            if (
+                (settings.default_meta_description or "").strip()
+                == DEFAULT_META_DESCRIPTION_LEGACY
+            ):
+                settings.default_meta_description = DEFAULT_META_DESCRIPTION
+                settings_updates.append("default_meta_description")
+            if settings_updates:
+                settings.save(update_fields=settings_updates)
+        logo_src = static_img / "logo.png"
+        if not logo_src.exists():
+            logo_src = static_img / "logo.jpg"
+        # Restore or upgrade logo from static (e.g. after redeploy or brand refresh).
+        logo_name = (settings.logo.name or "").lower()
+        needs_logo = (
+            force
+            or _file_missing(settings.logo)
+            or logo_name.endswith("logo.jpg")
+            or (not force and _logo_has_white_background(settings.logo))
+        )
+        if logo_src.exists() and needs_logo:
+            _save_image(settings.logo, logo_src, logo_src.name)
         settings.save()
         _ensure_webp(settings.logo)
 
@@ -311,9 +371,7 @@ class Command(BaseCommand):
             if created or force:
                 if key == SitePage.PageKey.TREATMENTS:
                     page.meta_title = ""
-                    page.meta_description = (
-                        "Fotvård, handvård och massage med priser hos EGentid Spa & Resurs."
-                    )
+                    page.meta_description = TREATMENTS_META_DESCRIPTION
                     page.save(update_fields=["meta_title", "meta_description"])
             if data["hero"]:
                 src = static_img / data["hero"]
@@ -349,8 +407,18 @@ class Command(BaseCommand):
             profile.body = SALON_PROFILE_BODY
             profile.is_visible = True
             profile.save(update_fields=["title", "body", "is_visible"])
+        elif not force and BRAND_NAME_LEGACY in (profile.body or ""):
+            profile.body = profile.body.replace(BRAND_NAME_LEGACY, BRAND_NAME)
+            profile.save(update_fields=["body"])
 
         treatments = SitePage.objects.get(key=SitePage.PageKey.TREATMENTS)
+        if (
+            not force
+            and (treatments.meta_description or "").strip()
+            == TREATMENTS_META_DESCRIPTION_LEGACY
+        ):
+            treatments.meta_description = TREATMENTS_META_DESCRIPTION
+            treatments.save(update_fields=["meta_description"])
         # Adjust: Behandlingar & priser copy — Admin → Sidor → Behandlingar & priser
         treatment_blocks = [
             ("Fötter", 1, "", ""),

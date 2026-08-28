@@ -36,7 +36,7 @@ class SeasonTipItemInline(admin.TabularInline):
 class SiteSettingsAdmin(admin.ModelAdmin):
     fieldsets = (
         ("Varumärke", {"fields": ("site_name", "tagline", "logo")}),
-        ("Kontakt", {"fields": ("email", "phone", "address")}),
+        ("Kontakt", {"fields": ("email", "phone", "address"), "description": "E-post och telefonnummer visas i sidfoten."}),
         (
             "Öppettider i sidfot",
             {
@@ -177,8 +177,9 @@ class SeasonTipAdmin(admin.ModelAdmin):
             {
                 "fields": ("month", "title", "icon", "is_visible"),
                 "description": (
-                    "Året runt visar automatiskt tipset för innevarande kalendermånad. "
-                    "Öppna t.ex. Augusti för att redigera den text som syns i augusti."
+                    "Året runt visar automatiskt innevarande månad plus de två nästkommande. "
+                    "Första stycket i brödtext syns direkt; resten bakom Läs mer. "
+                    "Redigera en rad per kalendermånad."
                 ),
             },
         ),
