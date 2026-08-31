@@ -23,6 +23,7 @@ class StaticViewSitemap(Sitemap):
         ("contact", 0.7),
         ("service", 0.7),
         ("accessibility", 0.3),
+        ("privacy", 0.3),
     )
 
     def items(self):

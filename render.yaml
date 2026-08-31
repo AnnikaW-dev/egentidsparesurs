@@ -5,7 +5,8 @@
 # 1. Open https://YOUR-SERVICE.onrender.com/admin/
 # 2. Log in with DJANGO_SUPERUSER_USERNAME / DJANGO_SUPERUSER_PASSWORD (see Environment)
 # 3. SEED_ON_DEPLOY may stay true — seed only fills gaps and keeps admin edits
-# 4. Admin → Webbplatsinställningar → set public_site_url to your https URL
+# 4. Admin → Webbplatsinställningar → set public_site_url if you use a custom domain
+#    (otherwise seed fills it from PUBLIC_SITE_URL / RENDER_EXTERNAL_URL)
 # 5. Render → Environment → set SENDGRID_API_KEY (or EMAIL_* SMTP vars) for booking/contact mail
 # Reset content intentionally: python manage.py seed_site --force
 
@@ -61,6 +62,9 @@ services:
       - key: DEFAULT_FROM_EMAIL
         value: info@egentidspaservice.se
       - key: CONTACT_INBOX
+        value: info@egentidspaservice.se
+      - key: PUBLIC_SITE_URL
+        # Set to your live https URL (custom domain when you have one). Empty = Render URL.
         sync: false
       - key: SENDGRID_API_KEY
         sync: false

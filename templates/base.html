@@ -11,6 +11,8 @@
   <meta name="description" content="{% block meta_description %}{{ seo_description }}{% endblock %}">
   <meta name="robots" content="{% block robots %}index, follow{% endblock %}">
   <link rel="canonical" href="{% block canonical %}{{ canonical_url }}{% endblock %}">
+  <link rel="icon" href="{% static 'img/logo.png' %}" type="image/png">
+  <link rel="apple-touch-icon" href="{% static 'img/logo.png' %}">
 
   {# Open Graph / social sharing #}
   <meta property="og:locale" content="sv_SE">
@@ -144,7 +146,7 @@
         {% if site.email %}<p><a href="mailto:{{ site.email }}">{{ site.email }}</a></p>{% endif %}
         {% if site.phone %}
         <p class="footer-phone">
-          <span class="footer-contact-term">Telefonnummer:</span>
+          <span class="footer-contact-term">Tel:</span>
           <a href="tel:{{ site.phone_tel }}">{{ site.phone }}</a>
         </p>
         {% endif %}
@@ -187,6 +189,7 @@
     <div class="footer-bottom">
       <p class="footer-copy">
         &copy; {% now "Y" %} {{ site.site_name }}
+        · <a href="{% url 'privacy' %}">Integritet</a>
         · <a href="{% url 'accessibility' %}">Tillgänglighet</a>
       </p>
       <p class="footer-credit">

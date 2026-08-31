@@ -16,6 +16,7 @@ class ContactFormTests(TestCase):
         response = self.client.get(reverse("contact"))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Skicka meddelande")
+        self.assertContains(response, "integritetspolicyn")
 
     def test_contact_form_saves_message(self):
         response = self.client.post(
@@ -72,6 +73,29 @@ class AccessibilityPageTests(TestCase):
         self.assertContains(response, "WCAG")
         self.assertContains(response, "För dig som redigerar innehåll")
         self.assertContains(response, "Galleribilder")
+
+
+class PrivacyPageTests(TestCase):
+    """Public integritetspolicy (GDPR) for contact and booking data."""
+
+    def test_privacy_page_renders(self):
+        response = Client().get(reverse("privacy"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Integritetspolicy")
+        self.assertContains(response, "Personuppgiftsansvarig")
+        self.assertContains(response, "IMY")
+
+
+class FooterContactTests(TestCase):
+    """Production footer shows phone after seed/default SiteSettings."""
+
+    def test_footer_shows_phone(self):
+        SiteSettings.load()
+        response = Client().get(reverse("home"))
+        self.assertContains(response, "Tel:")
+        self.assertContains(response, "072-3170120")
+        self.assertContains(response, "href=\"tel:0723170120\"")
+        self.assertContains(response, "Integritet")
 
 
 @override_settings(CONTACT_INBOX="info@egentidspaservice.se")

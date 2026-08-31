@@ -990,6 +990,26 @@ h1 {
   text-align: center;
 }
 
+/* GDPR notice under contact / booking submit */
+.form-legal-note {
+  margin: 0.75rem 0 0;
+  font-size: 0.88rem;
+  color: var(--ink-muted);
+  text-align: center;
+  max-width: 28rem;
+}
+
+.form-legal-note a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 0.12em;
+}
+
+.form-legal-note a:hover,
+.form-legal-note a:focus-visible {
+  color: var(--ink-strong);
+}
+
 /* Booking confirmation channel — email / SMS checkboxes */
 .confirm-via {
   border: 0;

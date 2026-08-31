@@ -1,0 +1,19 @@
+{# templates/404.html — production missing-page screen (DEBUG=False) #}
+{% extends "base.html" %}
+
+{% block title %}Sidan hittades inte – {{ site.site_name }}{% endblock %}
+{% block robots %}noindex, nofollow{% endblock %}
+{% block meta_description %}Sidan du söker finns inte.{% endblock %}
+
+{% block content %}
+<article class="page-article">
+  <header class="page-header">
+    <h1>Sidan hittades inte</h1>
+    <p class="lead">Länken kan vara fel eller sidan kan ha flyttats.</p>
+  </header>
+  <p>
+    Gå tillbaka till <a href="{% url 'home' %}">startsida</a>
+    eller <a href="{% url 'contact' %}">kontakta oss</a>.
+  </p>
+</article>
+{% endblock %}

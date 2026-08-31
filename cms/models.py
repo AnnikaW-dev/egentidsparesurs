@@ -20,6 +20,7 @@ class SiteSettings(models.Model):
     phone = models.CharField(
         max_length=40,
         blank=True,
+        default="072-3170120",
         verbose_name="Telefonnummer",
         help_text="Visas i sidfoten under Kontakt. Lämna tomt för att dölja raden.",
     )

@@ -1,9 +1,13 @@
 """Tests for CMS helpers, including accessibility alt-text fallbacks."""
 
-from django.test import TestCase
+import os
+from unittest.mock import patch
+
+from django.test import RequestFactory, TestCase
 
 from cms.a11y import plain_cms_text, resolve_image_alt
-from cms.models import GalleryImage
+from cms.models import GalleryImage, SiteSettings
+from cms.seo import public_base_url
 
 
 class A11yAltTextTests(TestCase):
@@ -29,3 +33,27 @@ class A11yAltTextTests(TestCase):
 
         bare = GalleryImage.objects.create(title="", caption="", sort_order=1)
         self.assertTrue(bare.missing_alt_warning())
+
+
+class PublicBaseUrlTests(TestCase):
+    """Canonical URL for JSON-LD: CMS field, then env, then request host."""
+
+    def setUp(self):
+        self.site = SiteSettings.load()
+        self.request = RequestFactory().get("/")
+
+    def test_uses_cms_public_site_url(self):
+        self.site.public_site_url = "https://egentid.example"
+        self.site.save()
+        self.assertEqual(public_base_url(self.request, self.site), "https://egentid.example")
+
+    def test_falls_back_to_env(self):
+        self.site.public_site_url = ""
+        self.site.save()
+        env = {"PUBLIC_SITE_URL": "https://from-env.example"}
+        with patch.dict(os.environ, env, clear=False):
+            os.environ.pop("RENDER_EXTERNAL_URL", None)
+            self.assertEqual(
+                public_base_url(self.request, self.site),
+                "https://from-env.example",
+            )

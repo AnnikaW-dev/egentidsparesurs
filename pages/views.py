@@ -118,6 +118,11 @@ def accessibility(request):
     return render(request, "pages/accessibility.html")
 
 
+def privacy(request):
+    """Integritetspolicy — GDPR notice for contact and booking data."""
+    return render(request, "pages/privacy.html")
+
+
 @require_http_methods(["GET", "POST"])
 def contact(request):
     """Show contact form and save submissions for staff in admin.

@@ -1,5 +1,6 @@
 """Seed default pages, services, schedule, and copy from the WordPress site."""
 
+import os
 from datetime import date, time, timedelta
 from pathlib import Path
 
@@ -49,6 +50,7 @@ BRAND_NAME = "EGentid Spa & Service"
 BRAND_NAME_LEGACY = "EGentid Spa & Resurs"
 CONTACT_EMAIL = "info@egentidspaservice.se"
 CONTACT_EMAIL_LEGACY = "info@egentidsparesurs.se"
+CONTACT_PHONE = "072-3170120"
 DEFAULT_META_DESCRIPTION = (
     "Fotvård, spa-pedikyr och värmande manikyr. Boka egentid hos EGentid Spa & Service."
 )
@@ -61,6 +63,18 @@ TREATMENTS_META_DESCRIPTION = (
 TREATMENTS_META_DESCRIPTION_LEGACY = (
     "Fotvård, handvård och massage med priser hos EGentid Spa & Resurs."
 )
+
+
+def _env_public_site_url() -> str:
+    """Production base URL from env (no trailing slash). Empty if unset.
+
+    Adjust: PUBLIC_SITE_URL on Render, or custom domain in admin SEO field.
+    """
+    for name in ("PUBLIC_SITE_URL", "RENDER_EXTERNAL_URL"):
+        raw = os.environ.get(name, "").strip().rstrip("/")
+        if raw:
+            return raw
+    return ""
 
 
 def _logo_has_white_background(image_field) -> bool:
@@ -149,7 +163,10 @@ class Command(BaseCommand):
             settings.site_name = BRAND_NAME
             settings.tagline = "Skönhet & avkoppling – med en värmande touch!"
             settings.email = CONTACT_EMAIL
-            settings.phone = ""
+            settings.phone = CONTACT_PHONE
+            env_url = _env_public_site_url()
+            if env_url:
+                settings.public_site_url = env_url
             settings.address = "Egen ingång på nedervåningen"
             settings.opening_hours = ""
             settings.footer_text = (
@@ -163,6 +180,12 @@ class Command(BaseCommand):
                 settings.tagline = "Skönhet & avkoppling – med en värmande touch!"
             if settings.email in ("", CONTACT_EMAIL_LEGACY):
                 settings.email = CONTACT_EMAIL
+            if not (settings.phone or "").strip():
+                settings.phone = CONTACT_PHONE
+            if not (settings.public_site_url or "").strip():
+                env_url = _env_public_site_url()
+                if env_url:
+                    settings.public_site_url = env_url
             if not (settings.address or "").strip():
                 settings.address = "Egen ingång på nedervåningen"
             if not (settings.footer_text or "").strip():

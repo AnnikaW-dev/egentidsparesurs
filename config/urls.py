@@ -33,6 +33,7 @@ urlpatterns = [
     path("kontakt/", page_views.contact, name="contact"),
     path("service/", page_views.service_page, name="service"),
     path("tillganglighet/", page_views.accessibility, name="accessibility"),
+    path("integritet/", page_views.privacy, name="privacy"),
     path("boka/", booking_views.booking_page, name="booking"),
     path("boka/bekraftelse/<int:pk>/", booking_views.booking_success, name="booking_success"),
     path("dashboard/", booking_views.dashboard_home, name="dashboard"),

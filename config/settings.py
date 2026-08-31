@@ -3,8 +3,10 @@
 import os
 import sys
 from pathlib import Path
+from urllib.parse import urlparse
 
 import dj_database_url
+from django.core.exceptions import ImproperlyConfigured
 from dotenv import load_dotenv
 
 from config.mail import apply_email_config
@@ -28,7 +30,9 @@ SECRET_KEY = os.environ.get(
     "SECRET_KEY",
     "django-insecure-(9m5p%*dh6*f^m!45*u8q@9lvb@$(w%w(tgrc1d&1s1ru4m#%^",
 )
-DEBUG = env_bool("DEBUG", default=True)
+# Local default is DEBUG on; Render sets RENDER=true so production defaults off.
+_on_render = bool(os.environ.get("RENDER", "").strip())
+DEBUG = env_bool("DEBUG", default=not _on_render)
 
 ALLOWED_HOSTS = [
     h.strip()
@@ -49,6 +53,30 @@ if render_host:
     origin = f"https://{render_host}"
     if origin not in CSRF_TRUSTED_ORIGINS:
         CSRF_TRUSTED_ORIGINS.append(origin)
+
+# Custom domain / canonical URL — also used by seed for SiteSettings.public_site_url.
+PUBLIC_SITE_URL = os.environ.get("PUBLIC_SITE_URL", "").strip().rstrip("/")
+
+
+def _trust_public_origin(url: str) -> None:
+    """Add host + https origin from a full URL (PUBLIC_SITE_URL or Render)."""
+    raw = (url or "").strip()
+    if not raw:
+        return
+    if "://" not in raw:
+        raw = "https://" + raw
+    parsed = urlparse(raw)
+    host = parsed.hostname
+    if host and host not in ALLOWED_HOSTS:
+        ALLOWED_HOSTS.append(host)
+    if parsed.scheme and parsed.netloc:
+        origin = f"{parsed.scheme}://{parsed.netloc}"
+        if origin not in CSRF_TRUSTED_ORIGINS:
+            CSRF_TRUSTED_ORIGINS.append(origin)
+
+
+_trust_public_origin(PUBLIC_SITE_URL)
+_trust_public_origin(os.environ.get("RENDER_EXTERNAL_URL", ""))
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -183,12 +211,40 @@ ELKS_FROM = os.environ.get("ELKS_FROM", "EGentid")
 
 # HTTPS / cookies when not in DEBUG (Render terminates TLS at the proxy).
 if not DEBUG:
+    if SECRET_KEY.startswith("django-insecure-"):
+        raise ImproperlyConfigured(
+            "Set a real SECRET_KEY in the environment before going live (DEBUG is false)."
+        )
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
     SECURE_SSL_REDIRECT = env_bool("SECURE_SSL_REDIRECT", default=True)
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
     SECURE_CONTENT_TYPE_NOSNIFF = True
+    SECURE_REFERRER_POLICY = "strict-origin-when-cross-origin"
     # Start with a modest HSTS; raise once the custom domain is stable.
     SECURE_HSTS_SECONDS = int(os.environ.get("SECURE_HSTS_SECONDS", "3600"))
     SECURE_HSTS_INCLUDE_SUBDOMAINS = False
     SECURE_HSTS_PRELOAD = False
+
+# Render and local both capture stdout.
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "simple": {"format": "[{levelname}] {name}: {message}", "style": "{"},
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "simple",
+        },
+    },
+    "root": {
+        "handlers": ["console"],
+        "level": "INFO",
+    },
+    "loggers": {
+        "django.request": {"level": "ERROR", "propagate": True},
+        "django.security": {"level": "WARNING", "propagate": True},
+    },
+}

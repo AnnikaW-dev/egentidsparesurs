@@ -41,8 +41,10 @@ This repo includes `render.yaml`, `build.sh`, and `start.sh`.
    (created automatically on start — no Shell needed)
 5. Change that password after first login. Deploy seed keeps admin CMS edits
    (use `python manage.py seed_site --force` only to intentionally reset content).
-6. In Django Admin → **Webbplatsinställningar → SEO**, set **public_site_url** to your `https://…` URL.
-7. Optional: add a custom domain in Render, then add it to `ALLOWED_HOSTS` and `CSRF_TRUSTED_ORIGINS`.
+6. Set **SENDGRID_API_KEY** (or SMTP vars) on the web service so booking and contact mail actually send.
+7. Optional custom domain: add it in Render, set `PUBLIC_SITE_URL=https://din-domän.se`,
+   and add the domain to `ALLOWED_HOSTS` / `CSRF_TRUSTED_ORIGINS` if it is not already picked up.
+   Admin → Webbplatsinställningar → SEO **public_site_url** can also be set by hand.
 
 **No Shell on free Render?** That is fine. Superuser and optional `seed_site` run from `start.sh` using env vars.
 **Notes**

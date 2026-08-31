@@ -1,6 +1,7 @@
 """SEO helpers: absolute URLs and JSON-LD for LocalBusiness."""
 
 import json
+import os
 
 from django.urls import reverse
 
@@ -10,6 +11,21 @@ def absolute_url(request, path=None):
     if path is None:
         path = request.path
     return request.build_absolute_uri(path)
+
+
+def public_base_url(request, site):
+    """Canonical site origin for JSON-LD and sitemap hints.
+
+    Prefer CMS public_site_url, then PUBLIC_SITE_URL / Render URL, then the request.
+    """
+    stored = (getattr(site, "public_site_url", "") or "").strip().rstrip("/")
+    if stored:
+        return stored
+    for name in ("PUBLIC_SITE_URL", "RENDER_EXTERNAL_URL"):
+        raw = os.environ.get(name, "").strip().rstrip("/")
+        if raw:
+            return raw
+    return absolute_url(request, reverse("home")).rstrip("/")
 
 
 def local_business_json_ld(request, site):
@@ -23,7 +39,7 @@ def local_business_json_ld(request, site):
         "@type": "BeautySalon",
         "name": site.site_name,
         "description": site.default_meta_description or site.tagline,
-        "url": site.public_site_url or absolute_url(request, reverse("home")),
+        "url": public_base_url(request, site),
         "image": absolute_url(request, site.logo.url) if site.logo else None,
         "email": site.email or None,
         "telephone": site.phone or None,
