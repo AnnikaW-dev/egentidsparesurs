@@ -1079,16 +1079,23 @@ h1 {
   border-top: 1px solid var(--line);
 }
 
-/* Behandlingar — centered copy + clear heading hierarchy */
+/* Behandlingar — centered header/intro; treatment rows are image + copy */
 .treatments-page {
   text-align: center;
-  max-width: 42rem;
+  max-width: 52rem; /* Adjust: image column + copy like the live WordPress layout */
   margin-left: auto;
   margin-right: auto;
 }
 
 .treatments-page .page-header {
-  margin-bottom: 1.35rem;
+  margin-bottom: 1rem;
+}
+
+.treatments-page .page-hero {
+  width: 100%;
+  max-height: 340px;
+  object-fit: cover;
+  margin: 0.75rem auto 1.35rem;
 }
 
 /* Page title — strongest signal */
@@ -1554,7 +1561,7 @@ h1 {
   border-bottom: 1px solid var(--line);
 }
 
-/* Behandlingar + prislista — treatment cards from CMS ContentBlock rows */
+/* Behandlingar + prislista — treatment cards: image left, copy right, divider between */
 .treatments-page .treatments-lead,
 .prices-page .prices-lead {
   font-weight: 700;
@@ -1564,36 +1571,38 @@ h1 {
 .treatments-intro,
 .prices-intro {
   text-align: center;
-  margin-bottom: 2rem;
+  margin: 0 auto 1.75rem;
+  max-width: 38rem;
 }
 
 .treatments-category {
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: clamp(1.35rem, 3vw, 1.65rem);
+  font-size: clamp(1.2rem, 2.6vw, 1.45rem);
   color: var(--ink-strong);
   text-align: center;
-  margin: 2.25rem 0 1rem;
-  padding-top: 0.25rem;
+  margin: 2rem 0 0.35rem;
+  padding: 1.1rem 0 0;
+  border-top: 1px solid var(--ink-strong);
 }
 
 .treatments-page {
-  max-width: 56rem; /* Adjust: room for image beside treatment copy */
+  max-width: 52rem;
 }
 
 .treatment-card,
 .price-card {
-  margin: 0 0 2rem;
-  padding: 1.25rem 0 0;
-  border-top: 1px solid var(--line);
+  text-align: left;
+  margin: 0;
+  padding: 1.35rem 0 1.5rem;
+  border-top: 1px solid var(--ink-strong);
 }
 
 .treatment-card--split {
   display: grid;
-  grid-template-columns: minmax(10rem, 0.9fr) minmax(0, 1.2fr);
-  gap: 1.15rem 1.5rem;
+  grid-template-columns: minmax(8.5rem, 0.38fr) minmax(0, 1fr);
+  gap: 1.15rem 1.6rem;
   align-items: start;
-  text-align: left;
 }
 
 .treatment-card-media {
@@ -1602,8 +1611,8 @@ h1 {
 
 .treatment-card-image {
   width: 100%;
-  height: 100%;
-  max-height: 280px;
+  height: auto;
+  max-height: 220px;
   object-fit: cover;
   margin: 0;
   display: block;
@@ -1619,27 +1628,39 @@ h1 {
   margin-left: 0;
   margin-right: 0;
   max-width: none;
+  text-align: left;
 }
 
 .treatment-card-title,
 .price-card-title {
-  font-family: var(--font-display);
-  font-size: 1.25rem;
+  font-family: var(--font-body);
+  font-size: 1.12rem;
   font-weight: 700;
-  margin: 0 0 0.35rem;
+  margin: 0 0 0.25rem;
   color: var(--ink-strong);
 }
 
 .treatment-card-meta,
 .price-card-meta {
-  font-weight: 500;
-  color: var(--ink-muted);
-  margin: 0 0 0.85rem;
+  font-weight: 400;
+  color: var(--ink);
+  margin: 0 0 0.75rem;
 }
 
 .treatment-card-body p,
 .price-card-body p {
-  margin: 0 0 0.85rem;
+  margin: 0 0 0.7rem;
+}
+
+.treatment-card-body .body-section-heading {
+  font-family: var(--font-body);
+  font-size: 1rem;
+  font-weight: 700;
+  margin: 0.7rem 0 0.35rem;
+}
+
+.treatment-card-body .body-section-checks li::before {
+  content: "✓";
 }
 
 .treatment-card--info .treatment-card-title,
@@ -1650,6 +1671,7 @@ h1 {
 .treatment-card-action,
 .price-card-action {
   margin: 1rem 0 0;
+  text-align: left;
 }
 
 .muted {
@@ -2034,7 +2056,7 @@ h1 {
   }
 
   .treatment-card-image {
-    max-height: 240px;
+    max-height: 200px;
   }
 
   .brand-tagline {

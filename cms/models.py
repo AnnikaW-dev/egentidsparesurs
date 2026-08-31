@@ -4,7 +4,7 @@ from django.db import models
 from django.utils import timezone
 
 from .a11y import plain_cms_text, resolve_image_alt
-from .text_format import BOLD_MARKUP_HINT, parse_body_sections
+from .text_format import BOLD_MARKUP_HINT, normalize_newlines, parse_body_sections
 
 
 class SiteSettings(models.Model):
@@ -174,8 +174,12 @@ class SitePage(models.Model):
         return self.get_key_display()
 
     def body_paragraphs(self):
-        """Split body into non-empty paragraphs for templates."""
-        return [p.strip() for p in self.body.split("\n\n") if p.strip()]
+        """Split body into non-empty paragraphs for templates.
+
+        Admin on Windows saves CRLF; normalize so a blank line still starts a new paragraph.
+        """
+        text = normalize_newlines(self.body)
+        return [p.strip() for p in text.split("\n\n") if p.strip()]
 
     def body_sections(self):
         """Parse ## / lists / paragraphs for richer CMS pages (e.g. Värmande)."""
@@ -255,13 +259,16 @@ class ContentBlock(models.Model):
         return f"{self.page}: {self.title}"
 
     def body_paragraphs(self):
-        return [p.strip() for p in self.body.split("\n\n") if p.strip()]
+        """Split body into paragraphs; CRLF from admin counts as a normal line break."""
+        text = normalize_newlines(self.body)
+        return [p.strip() for p in text.split("\n\n") if p.strip()]
 
     def price_meta(self):
         """First paragraph when it looks like a price line (Prislista / Behandlingar)."""
         paras = self.body_paragraphs()
         if paras and "kr" in paras[0].lower():
-            return paras[0]
+            # Match live WordPress look: 425 kr | ca 60 min
+            return paras[0].replace(" · ", " | ").replace(" • ", " | ")
         return ""
 
     def body_sections(self):

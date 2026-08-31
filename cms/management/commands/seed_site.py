@@ -564,6 +564,20 @@ class Command(BaseCommand):
                         if src.exists():
                             _save_image(block.image, src, image_name)
 
+        # Restore treatment photos if the media file is missing (local disk / redeploy).
+        restore_photo = {
+            title: image_name
+            for title, _order, _body, image_name in treatment_blocks
+            if image_name
+        }
+        for block in treatments.blocks.all():
+            src_name = restore_photo.get(block.title)
+            if not src_name:
+                continue
+            src = static_img / src_name
+            if src.exists() and _file_missing(block.image):
+                _save_image(block.image, src, src_name)
+
         # Gallery — static/img/gallery/ + Admin → Galleribilder
         gallery_dir = static_img / "gallery"
         legacy_gallery_names = {"gallery-1.jpg", "hand-massage.jpg", "hero-feet.jpg"}

@@ -11,6 +11,11 @@ BOLD_MARKUP_HINT = "Fet stil: skriv **text** (dubbla asterisker runt ordet)."
 _BOLD_RE = re.compile(r"\*\*(.+?)\*\*")
 
 
+def normalize_newlines(text: str) -> str:
+    """Turn Windows CRLF from admin into LF so blank lines still split paragraphs."""
+    return (text or "").replace("\r\n", "\n").replace("\r", "\n")
+
+
 def format_inline_markup(text: str, *, newlines: bool = False):
     """Escape HTML, then turn **bold** into <strong>. Safe for templates.
 
