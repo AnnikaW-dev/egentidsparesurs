@@ -222,6 +222,29 @@ class SitePage(models.Model):
             return resolve_image_alt(fallback=title_fallback)
         return ""
 
+    def hero_carousel_items(self):
+        """Hero photos for Hem / Behandlingar.
+
+        One image → still photo. Two or more (page hero + extra slides) → carousel.
+        Extra slides: Admin → Sidor → Hero-karusell.
+        """
+        items = []
+        seen = set()
+
+        def add(image, alt):
+            if not image:
+                return
+            key = getattr(image, "name", None) or id(image)
+            if not key or key in seen:
+                return
+            seen.add(key)
+            items.append({"image": image, "alt": alt or ""})
+
+        add(self.resolved_hero_image, self.resolved_hero_alt)
+        for slide in self.hero_slides.all():
+            add(slide.resolved_image, slide.resolved_alt(self.title))
+        return items
+
 
 class ContentBlock(models.Model):
     """Optional titled section on a page (e.g. hand treatment highlight)."""
@@ -393,6 +416,58 @@ class GalleryImage(models.Model):
         return self.is_visible and not plain_cms_text(self.caption) and not plain_cms_text(
             self.title
         )
+
+
+class PageHeroSlide(models.Model):
+    """Extra hero photo on a page. Two or more images become a carousel."""
+
+    page = models.ForeignKey(
+        SitePage,
+        on_delete=models.CASCADE,
+        related_name="hero_slides",
+    )
+    gallery_image = models.ForeignKey(
+        GalleryImage,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="page_hero_slides",
+        verbose_name="Bild från galleri",
+        help_text="Välj från Galleribilder. Bildtexten används som alt-text.",
+    )
+    image = models.ImageField(
+        upload_to="heroes/",
+        blank=True,
+        verbose_name="Egen bild",
+        help_text="Används om ingen bild är vald från Galleriet.",
+    )
+    sort_order = models.PositiveIntegerField(default=0, verbose_name="Ordning")
+
+    class Meta:
+        ordering = ["sort_order", "id"]
+        verbose_name = "extra hero-bild"
+        verbose_name_plural = "hero-karusell (fler än en bild = bildspel)"
+
+    def __str__(self):
+        return f"{self.page}: hero {self.sort_order}"
+
+    @property
+    def resolved_image(self):
+        """Gallery pick first, else uploaded file."""
+        if self.gallery_image_id:
+            gallery = self.gallery_image
+            if gallery and gallery.image:
+                return gallery.image
+        return self.image
+
+    def resolved_alt(self, page_title: str = "") -> str:
+        """Alt text: gallery caption → page title → default."""
+        title_fallback = plain_cms_text(page_title)
+        if self.gallery_image_id and self.gallery_image:
+            return self.gallery_image.alt_text(fallback=title_fallback)
+        if self.image:
+            return resolve_image_alt(fallback=title_fallback)
+        return resolve_image_alt(fallback=title_fallback)
 
 
 class SeasonTip(models.Model):

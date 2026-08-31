@@ -15,7 +15,8 @@ def _get_page(key):
     """Load a published CMS page by key, or None if missing."""
     return (
         SitePage.objects.filter(key=key, is_published=True)
-        .prefetch_related("blocks")
+        .select_related("hero_gallery_image")
+        .prefetch_related("blocks", "hero_slides__gallery_image")
         .first()
     )
 

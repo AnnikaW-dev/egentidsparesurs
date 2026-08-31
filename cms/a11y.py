@@ -15,7 +15,8 @@ A11Y_GALLERY_CAPTION_HELP = (
 
 A11Y_PAGE_IMAGE_HELP = (
     "Tillgänglighet: välj Hero från galleri när du kan — då används bildtexten "
-    "från Galleribilder. Egen uppladdning får sidans titel som alt-text."
+    "från Galleribilder. Extra hero-rader (Hem / Behandlingar) blir ett bildspel. "
+    "Egen uppladdning får sidans titel som alt-text."
 )
 
 A11Y_BLOCK_IMAGE_HELP = (

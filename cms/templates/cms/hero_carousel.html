@@ -1,0 +1,74 @@
+{# cms/hero_carousel.html — one still hero, or a carousel when admin adds 2+ images #}
+{% load media_extras %}
+{% if items %}
+  {% if items|length == 1 %}
+    <picture>
+      <source type="image/webp" srcset="{{ items.0.image|as_webp }}">
+      <img
+        class="{{ img_class }}"
+        src="{{ items.0.image.url }}"
+        alt="{{ items.0.alt }}"
+        {% if fetchpriority %}fetchpriority="high"{% else %}loading="eager"{% endif %}
+        decoding="async"
+      >
+    </picture>
+  {% else %}
+    <div
+      class="hero-carousel"
+      data-hero-carousel
+      role="region"
+      aria-roledescription="karusell"
+      aria-label="Hero-bilder"
+    >
+      <div class="hero-carousel-viewport">
+        {% for item in items %}
+        <div
+          class="hero-carousel-slide{% if forloop.first %} is-active{% endif %}"
+          data-hero-slide
+          {% if not forloop.first %}hidden{% endif %}
+        >
+          <picture>
+            <source type="image/webp" srcset="{{ item.image|as_webp }}">
+            <img
+              class="{{ img_class }}"
+              src="{{ item.image.url }}"
+              alt="{{ item.alt }}"
+              {% if forloop.first %}{% if fetchpriority %}fetchpriority="high"{% else %}loading="eager"{% endif %}{% else %}loading="lazy"{% endif %}
+              decoding="async"
+            >
+          </picture>
+        </div>
+        {% endfor %}
+      </div>
+      <div class="hero-carousel-controls">
+        <button type="button" class="hero-carousel-btn" data-hero-prev aria-label="Föregående bild">
+          <span aria-hidden="true">‹</span>
+        </button>
+        <div class="hero-carousel-dots" role="group" aria-label="Välj bild">
+          {% for item in items %}
+          <button
+            type="button"
+            class="hero-carousel-dot"
+            data-hero-dot
+            aria-label="Bild {{ forloop.counter }} av {{ items|length }}"
+            {% if forloop.first %}aria-current="true"{% endif %}
+          ></button>
+          {% endfor %}
+        </div>
+        <button type="button" class="hero-carousel-btn" data-hero-next aria-label="Nästa bild">
+          <span aria-hidden="true">›</span>
+        </button>
+        <button
+          type="button"
+          class="hero-carousel-pause"
+          data-hero-pause
+          aria-pressed="false"
+          aria-label="Pausa bildspel"
+        >
+          Pausa
+        </button>
+      </div>
+      <p class="visually-hidden" role="status" data-hero-status>Bild 1 av {{ items|length }}</p>
+    </div>
+  {% endif %}
+{% endif %}

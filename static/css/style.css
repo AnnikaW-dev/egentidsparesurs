@@ -362,6 +362,110 @@ h1 {
   margin: 1rem auto 1.25rem;
 }
 
+/* Hero carousel — 2+ images on Hem / Behandlingar (Admin → Sidor → Hero-karusell) */
+.hero-carousel {
+  position: relative;
+  margin: 1rem auto 1.25rem;
+  max-width: 100%;
+}
+
+.hero .hero-carousel {
+  margin-top: 0.75rem;
+}
+
+.hero-carousel-viewport {
+  position: relative;
+}
+
+.hero-carousel-slide[hidden] {
+  display: none;
+}
+
+.hero-carousel-slide .hero-image,
+.hero-carousel-slide .page-hero {
+  margin: 0;
+}
+
+.hero-carousel-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem 0.75rem;
+  margin-top: 0.65rem;
+}
+
+.hero-carousel-btn,
+.hero-carousel-pause {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 0.75rem;
+  border: 1px solid var(--ink-strong);
+  background: var(--bg-panel);
+  color: var(--ink-strong);
+  font: inherit;
+  cursor: pointer;
+}
+
+.hero-carousel-btn {
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.hero-carousel-btn:hover,
+.hero-carousel-pause:hover,
+.hero-carousel-btn:focus-visible,
+.hero-carousel-pause:focus-visible {
+  background: var(--ink-strong);
+  color: #fff;
+}
+
+.hero-carousel-dots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  justify-content: center;
+}
+
+.hero-carousel-dot {
+  width: 12px;
+  height: 12px;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  position: relative;
+}
+
+.hero-carousel-dot::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 12px;
+  height: 12px;
+  margin: -6px 0 0 -6px;
+  border-radius: 50%;
+  border: 2px solid var(--ink-strong);
+  background: transparent;
+}
+
+.hero-carousel-dot[aria-current="true"]::after {
+  background: var(--ink-strong);
+}
+
+.hero-carousel-pause[aria-pressed="true"] {
+  font-weight: 700;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-carousel-slide {
+    transition: none;
+  }
+}
+
 /* Home: subtitle sits above hero image — tighten gap under title */
 .hero > .lead + picture .hero-image,
 .hero > .lead + .hero-image {

@@ -16,17 +16,12 @@
     {% if page and page.subtitle %}<p class="lead treatments-lead">{{ page.subtitle|cms_richtext }}</p>{% endif %}
   </header>
 
-  {% if page and page.resolved_hero_image %}
-    <picture>
-      <source type="image/webp" srcset="{{ page.resolved_hero_image|as_webp }}">
-      <img
-        class="page-hero"
-        src="{{ page.resolved_hero_image.url }}"
-        alt="{{ page.resolved_hero_alt }}"
-        loading="eager"
-        decoding="async"
-      >
-    </picture>
+  {% if page %}
+  {% with items=page.hero_carousel_items %}
+  {% if items %}
+    {% include "cms/hero_carousel.html" with items=items img_class="page-hero" %}
+  {% endif %}
+  {% endwith %}
   {% endif %}
 
   {% if page %}

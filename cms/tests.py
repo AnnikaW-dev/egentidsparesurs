@@ -3,11 +3,25 @@
 import os
 from unittest.mock import patch
 
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import RequestFactory, TestCase
 
 from cms.a11y import plain_cms_text, resolve_image_alt
-from cms.models import ContentBlock, GalleryImage, SitePage, SiteSettings
+from cms.models import ContentBlock, GalleryImage, PageHeroSlide, SitePage, SiteSettings
 from cms.seo import public_base_url
+
+# 1×1 PNG — enough for ImageField without a real photo.
+_PNG = (
+    b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01"
+    b"\x00\x00\x00\x01\x08\x06\x00\x00\x00\x1f\x15\xc4\x89"
+    b"\x00\x00\x00\nIDATx\x9cc\x00\x01\x00\x00\x05\x00\x01"
+    b"\r\n-\xb4\x00\x00\x00\x00IEND\xaeB`\x82"
+)
+
+
+def _png(name):
+    """Tiny PNG upload for hero/carousel tests."""
+    return SimpleUploadedFile(name, _PNG, content_type="image/png")
 
 
 class A11yAltTextTests(TestCase):
@@ -82,3 +96,46 @@ class PublicBaseUrlTests(TestCase):
                 public_base_url(self.request, self.site),
                 "https://from-env.example",
             )
+
+
+class HeroCarouselItemsTests(TestCase):
+    """One hero stays still; extra Hero-karusell rows become a slideshow."""
+
+    def setUp(self):
+        self.page = SitePage.objects.create(
+            key=SitePage.PageKey.HOME,
+            title="Hem",
+            is_published=True,
+            hero_image=_png("hero-main.png"),
+        )
+
+    def test_single_hero_is_one_item(self):
+        items = self.page.hero_carousel_items()
+        self.assertEqual(len(items), 1)
+        self.assertEqual(items[0]["alt"], "Hem")
+
+    def test_extra_slide_makes_two_items(self):
+        PageHeroSlide.objects.create(
+            page=self.page,
+            image=_png("hero-extra.png"),
+            sort_order=1,
+        )
+        items = self.page.hero_carousel_items()
+        self.assertEqual(len(items), 2)
+
+    def test_same_gallery_image_is_not_duplicated(self):
+        gallery = GalleryImage.objects.create(
+            title="Fotbad",
+            caption="Paraffinbad",
+            image=_png("shared-hero.png"),
+        )
+        page = SitePage.objects.create(
+            key=SitePage.PageKey.TREATMENTS,
+            title="Behandlingar",
+            is_published=True,
+            hero_gallery_image=gallery,
+        )
+        PageHeroSlide.objects.create(page=page, gallery_image=gallery, sort_order=1)
+        items = page.hero_carousel_items()
+        self.assertEqual(len(items), 1)
+        self.assertEqual(items[0]["alt"], "Paraffinbad")

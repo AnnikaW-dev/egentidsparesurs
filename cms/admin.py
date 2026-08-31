@@ -7,12 +7,25 @@ from .models import (
     ContentBlock,
     GalleryImage,
     MonthHook,
+    PageHeroSlide,
     SeasonTip,
     SeasonTipItem,
     SitePage,
     SiteSettings,
 )
 from .text_format import BOLD_MARKUP_HINT
+
+
+class PageHeroSlideInline(admin.TabularInline):
+    model = PageHeroSlide
+    extra = 1
+    fields = ("gallery_image", "image", "sort_order")
+    autocomplete_fields = ("gallery_image",)
+    verbose_name = "extra hero-bild"
+    verbose_name_plural = (
+        "Hero-karusell — lägg till fler bilder för bildspel på Hem och Behandlingar "
+        "(en bild = stilla hero)"
+    )
 
 
 class ContentBlockInline(admin.TabularInline):
@@ -82,17 +95,25 @@ class SitePageAdmin(admin.ModelAdmin):
     autocomplete_fields = ("hero_gallery_image",)
     inlines = [ContentBlockInline]
 
+    def get_inlines(self, request, obj=None):
+        """Hero carousel only on Hem and Behandlingar — other pages keep a single hero."""
+        if obj and obj.key in (SitePage.PageKey.HOME, SitePage.PageKey.TREATMENTS):
+            return [PageHeroSlideInline, ContentBlockInline]
+        return [ContentBlockInline]
+
     def get_fieldsets(self, request, obj=None):
         """Extra notes for Startsida, Behandlingar and Värmande."""
         home_note = ""
         block_note = ""
         if obj and obj.key == SitePage.PageKey.HOME:
             home_note = (
+                "Hero: en bild = stilla. Fler rader under Hero-karusell = bildspel. "
                 "Blocket ”Känner du igen det här?” under knapparna, och hela "
                 "månadslistan på Året runt, redigeras under CMS → Känner du igen."
             )
         if obj and obj.key == SitePage.PageKey.TREATMENTS:
             block_note = (
+                "Hero: en bild = stilla. Fler rader under Hero-karusell = bildspel. "
                 "Behandlingar redigeras som Innehållsblock nedan. "
                 "Första raden i brödtext = pris (t.ex. 425 kr | ca 60 min). "
                 "Använd ## för underrubrik, ✔ för checklista, tom rad mellan stycken. "

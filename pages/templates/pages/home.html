@@ -20,11 +20,13 @@
 {% endblock %}
 
 {% block extra_head %}
-  {% if page.resolved_hero_image %}
-    <link rel="preload" as="image" href="{{ page.resolved_hero_image|as_webp }}" type="image/webp" fetchpriority="high">
+  {% with items=page.hero_carousel_items %}
+  {% if items %}
+    <link rel="preload" as="image" href="{{ items.0.image|as_webp }}" type="image/webp" fetchpriority="high">
   {% else %}
     <link rel="preload" as="image" href="{% static 'img/hero-feet.webp' %}" type="image/webp" fetchpriority="high">
   {% endif %}
+  {% endwith %}
 {% endblock %}
 
 {% block content %}
@@ -32,19 +34,9 @@
   <h1 id="home-heading">{{ page.title|cms_richtext }}</h1>
   {# Subtitle sits above the hero image — Adjust in Admin → Startsida → Underrubrik #}
   {% if page.subtitle %}<p class="lead">{{ page.subtitle|cms_richtext }}</p>{% endif %}
-  {% if page.resolved_hero_image %}
-    <picture>
-      <source type="image/webp" srcset="{{ page.resolved_hero_image|as_webp }}">
-      <img
-        class="hero-image"
-        src="{{ page.resolved_hero_image.url }}"
-        alt="{{ page.resolved_hero_alt }}"
-        width="1047"
-        height="1400"
-        fetchpriority="high"
-        decoding="async"
-      >
-    </picture>
+  {% with items=page.hero_carousel_items %}
+  {% if items %}
+    {% include "cms/hero_carousel.html" with items=items img_class="hero-image" fetchpriority=True %}
   {% else %}
     <picture>
       <source type="image/webp" srcset="{% static 'img/hero-feet.webp' %}">
@@ -59,6 +51,7 @@
       >
     </picture>
   {% endif %}
+  {% endwith %}
   {% for para in page.body_paragraphs %}
     <p class="prose">{{ para|cms_richtext }}</p>
   {% endfor %}
