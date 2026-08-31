@@ -46,27 +46,16 @@
           <span aria-hidden="true">›</span>
         </button>
       </div>
-      <div class="hero-carousel-controls">
-        <div class="hero-carousel-dots" role="group" aria-label="Välj bild">
-          {% for item in items %}
-          <button
-            type="button"
-            class="hero-carousel-dot"
-            data-hero-dot
-            aria-label="Bild {{ forloop.counter }} av {{ items|length }}"
-            {% if forloop.first %}aria-current="true"{% endif %}
-          ></button>
-          {% endfor %}
-        </div>
+      <div class="hero-carousel-dots" role="group" aria-label="Välj bild">
+        {% for item in items %}
         <button
           type="button"
-          class="hero-carousel-pause"
-          data-hero-pause
-          aria-pressed="false"
-          aria-label="Pausa bildspel"
-        >
-          Pausa
-        </button>
+          class="hero-carousel-dot"
+          data-hero-dot
+          aria-label="Bild {{ forloop.counter }} av {{ items|length }}"
+          {% if forloop.first %}aria-current="true"{% endif %}
+        ></button>
+        {% endfor %}
       </div>
       <p class="visually-hidden" role="status" data-hero-status>Bild 1 av {{ items|length }}</p>
     </div>

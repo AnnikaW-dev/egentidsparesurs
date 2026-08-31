@@ -422,37 +422,12 @@ h1 {
   color: #fff;
 }
 
-.hero-carousel-controls {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem 0.75rem;
-  margin-top: 0.65rem;
-}
-
-.hero-carousel-pause {
-  min-width: 44px;
-  min-height: 44px;
-  padding: 0 0.75rem;
-  border: 1px solid var(--ink-strong);
-  background: var(--bg-panel);
-  color: var(--ink-strong);
-  font: inherit;
-  cursor: pointer;
-}
-
-.hero-carousel-pause:hover,
-.hero-carousel-pause:focus-visible {
-  background: var(--ink-strong);
-  color: #fff;
-}
-
 .hero-carousel-dots {
   display: flex;
   flex-wrap: wrap;
   gap: 0.35rem;
   justify-content: center;
+  margin-top: 0.65rem;
 }
 
 .hero-carousel-dot {
@@ -482,10 +457,6 @@ h1 {
 
 .hero-carousel-dot[aria-current="true"]::after {
   background: var(--ink-strong);
-}
-
-.hero-carousel-pause[aria-pressed="true"] {
-  font-weight: 700;
 }
 
 @media (prefers-reduced-motion: reduce) {

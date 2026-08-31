@@ -137,7 +137,7 @@ class HeroCarouselPageTests(TestCase):
         response = Client().get(reverse("home"))
         self.assertContains(response, "data-hero-carousel")
         self.assertContains(response, "Föregående bild")
-        self.assertContains(response, "Pausa bildspel")
+        self.assertNotContains(response, "Pausa bildspel")
         self.assertContains(response, "hero-carousel.js")
 
     def test_treatments_two_images_shows_carousel(self):
