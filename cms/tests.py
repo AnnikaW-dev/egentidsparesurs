@@ -184,3 +184,32 @@ class SiteSnapshotTests(TestCase):
             self.assertEqual(page.body, "Lokal brödtext från admin.")
             self.assertTrue(page.hero_image)
             self.assertTrue(Path(page.hero_image.path).is_file())
+
+
+class SitePageAdminGalleryPickTests(TestCase):
+    """Hero and carousel gallery picks must be a visible dropdown, not autocomplete search."""
+
+    def test_home_admin_lists_gallery_images_in_select(self):
+        from django.contrib.auth import get_user_model
+        from django.test import Client
+        from django.urls import reverse
+
+        get_user_model().objects.create_superuser("admin", "admin@example.com", "secret")
+        page = SitePage.objects.create(
+            key=SitePage.PageKey.HOME,
+            title="Hem",
+            is_published=True,
+        )
+        GalleryImage.objects.create(
+            title="Fotbad i salongen",
+            caption="Fotbad",
+            image=_png("admin-gallery.jpg"),
+        )
+        client = Client()
+        self.assertTrue(client.login(username="admin", password="secret"))
+        response = client.get(reverse("admin:cms_sitepage_change", args=[page.pk]))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Fotbad i salongen")
+        self.assertContains(response, "välj från galleri")
+        self.assertContains(response, "hero_slides-0-gallery_image")
+        self.assertNotContains(response, "admin/autocomplete/")

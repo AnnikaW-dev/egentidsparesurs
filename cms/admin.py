@@ -16,25 +16,41 @@ from .models import (
 from .text_format import BOLD_MARKUP_HINT
 
 
+def _gallery_fk_field(db_field, request, kwargs, super_fn):
+    """Plain dropdown of Galleribilder — autocomplete search is easy to miss in inlines."""
+    if db_field.name in ("gallery_image", "hero_gallery_image"):
+        kwargs["queryset"] = GalleryImage.objects.order_by("sort_order", "id")
+        kwargs["empty_label"] = "— välj från galleri —"
+    return super_fn(db_field, request, **kwargs)
+
+
 class PageHeroSlideInline(admin.TabularInline):
     model = PageHeroSlide
     extra = 1
     fields = ("gallery_image", "image", "sort_order")
-    autocomplete_fields = ("gallery_image",)
     verbose_name = "extra hero-bild"
     verbose_name_plural = (
         "Hero-karusell — lägg till fler bilder för bildspel på Hem och Behandlingar "
         "(en bild = stilla hero)"
     )
 
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        return _gallery_fk_field(
+            db_field, request, kwargs, super().formfield_for_foreignkey
+        )
+
 
 class ContentBlockInline(admin.TabularInline):
     model = ContentBlock
     extra = 1
     fields = ("title", "body", "gallery_image", "image", "sort_order", "is_visible")
-    autocomplete_fields = ("gallery_image",)
     verbose_name = "behandling / innehållsblock"
     verbose_name_plural = "behandlingar / innehållsblock (bildtext följer från Galleriet)"
+
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        return _gallery_fk_field(
+            db_field, request, kwargs, super().formfield_for_foreignkey
+        )
 
 
 class SeasonTipItemInline(admin.TabularInline):
@@ -92,8 +108,12 @@ class SitePageAdmin(admin.ModelAdmin):
     list_display = ("title", "key", "is_published", "updated_at")
     list_filter = ("is_published",)
     search_fields = ("title", "body", "meta_title", "meta_description")
-    autocomplete_fields = ("hero_gallery_image",)
     inlines = [ContentBlockInline]
+
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        return _gallery_fk_field(
+            db_field, request, kwargs, super().formfield_for_foreignkey
+        )
 
     def get_inlines(self, request, obj=None):
         """Hero carousel only on Hem and Behandlingar — other pages keep a single hero."""
