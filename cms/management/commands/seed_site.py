@@ -51,6 +51,8 @@ BRAND_NAME_LEGACY = "EGentid Spa & Resurs"
 CONTACT_EMAIL = "info@egentidspaservice.se"
 CONTACT_EMAIL_LEGACY = "info@egentidsparesurs.se"
 CONTACT_PHONE = "072-3170120"
+CONTACT_ADDRESS = "Egen ingång en trappa ner"
+CONTACT_ADDRESS_LEGACY = "Egen ingång på nedervåningen"
 DEFAULT_META_DESCRIPTION = (
     "Fotvård, spa-pedikyr och värmande manikyr. Boka egentid hos EGentid Spa & Service."
 )
@@ -167,7 +169,7 @@ class Command(BaseCommand):
             env_url = _env_public_site_url()
             if env_url:
                 settings.public_site_url = env_url
-            settings.address = "Egen ingång på nedervåningen"
+            settings.address = CONTACT_ADDRESS
             settings.opening_hours = ""
             settings.footer_text = (
                 "En lugn oas för fotvård, handvård och värmande behandlingar."
@@ -186,8 +188,10 @@ class Command(BaseCommand):
                 env_url = _env_public_site_url()
                 if env_url:
                     settings.public_site_url = env_url
-            if not (settings.address or "").strip():
-                settings.address = "Egen ingång på nedervåningen"
+            if not (settings.address or "").strip() or (
+                settings.address or ""
+            ).strip() == CONTACT_ADDRESS_LEGACY:
+                settings.address = CONTACT_ADDRESS
             if not (settings.footer_text or "").strip():
                 settings.footer_text = (
                     "En lugn oas för fotvård, handvård och värmande behandlingar."
@@ -204,6 +208,9 @@ class Command(BaseCommand):
             ):
                 settings.default_meta_description = DEFAULT_META_DESCRIPTION
                 settings_updates.append("default_meta_description")
+            if (settings.address or "").strip() == CONTACT_ADDRESS_LEGACY:
+                settings.address = CONTACT_ADDRESS
+                settings_updates.append("address")
             if settings_updates:
                 settings.save(update_fields=settings_updates)
         logo_src = static_img / "logo.png"
