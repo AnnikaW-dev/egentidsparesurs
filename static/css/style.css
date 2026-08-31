@@ -384,6 +384,42 @@ h1 {
 .hero-carousel-slide .hero-image,
 .hero-carousel-slide .page-hero {
   margin: 0;
+  display: block;
+}
+
+/* Side arrows on the photo — no box; 44px hit area for touch/keyboard */
+.hero-carousel-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 1;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #fff;
+  font: inherit;
+  font-size: 2.75rem;
+  line-height: 1;
+  cursor: pointer;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.85);
+}
+
+.hero-carousel-btn--prev {
+  left: 0.15rem;
+}
+
+.hero-carousel-btn--next {
+  right: 0.15rem;
+}
+
+.hero-carousel-btn:hover,
+.hero-carousel-btn:focus-visible {
+  background: transparent;
+  color: #fff;
 }
 
 .hero-carousel-controls {
@@ -395,7 +431,6 @@ h1 {
   margin-top: 0.65rem;
 }
 
-.hero-carousel-btn,
 .hero-carousel-pause {
   min-width: 44px;
   min-height: 44px;
@@ -407,14 +442,7 @@ h1 {
   cursor: pointer;
 }
 
-.hero-carousel-btn {
-  font-size: 1.5rem;
-  line-height: 1;
-}
-
-.hero-carousel-btn:hover,
 .hero-carousel-pause:hover,
-.hero-carousel-btn:focus-visible,
 .hero-carousel-pause:focus-visible {
   background: var(--ink-strong);
   color: #fff;

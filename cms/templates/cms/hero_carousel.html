@@ -39,11 +39,14 @@
           </picture>
         </div>
         {% endfor %}
-      </div>
-      <div class="hero-carousel-controls">
-        <button type="button" class="hero-carousel-btn" data-hero-prev aria-label="Föregående bild">
+        <button type="button" class="hero-carousel-btn hero-carousel-btn--prev" data-hero-prev aria-label="Föregående bild">
           <span aria-hidden="true">‹</span>
         </button>
+        <button type="button" class="hero-carousel-btn hero-carousel-btn--next" data-hero-next aria-label="Nästa bild">
+          <span aria-hidden="true">›</span>
+        </button>
+      </div>
+      <div class="hero-carousel-controls">
         <div class="hero-carousel-dots" role="group" aria-label="Välj bild">
           {% for item in items %}
           <button
@@ -55,9 +58,6 @@
           ></button>
           {% endfor %}
         </div>
-        <button type="button" class="hero-carousel-btn" data-hero-next aria-label="Nästa bild">
-          <span aria-hidden="true">›</span>
-        </button>
         <button
           type="button"
           class="hero-carousel-pause"
