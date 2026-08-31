@@ -139,3 +139,48 @@ class HeroCarouselItemsTests(TestCase):
         items = page.hero_carousel_items()
         self.assertEqual(len(items), 1)
         self.assertEqual(items[0]["alt"], "Paraffinbad")
+
+
+class SiteSnapshotTests(TestCase):
+    """Local CMS snapshot round-trip for Render deploy."""
+
+    def test_export_apply_restores_page_text(self):
+        import tempfile
+        from pathlib import Path
+
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        from django.test import override_settings
+        from PIL import Image
+
+        from cms.snapshot import apply_snapshot, export_snapshot
+
+        tmp = Path(tempfile.mkdtemp())
+        media = tmp / "media"
+        snap = tmp / "snap"
+        media.mkdir()
+
+        buf = __import__("io").BytesIO()
+        Image.new("RGB", (80, 80), (180, 120, 80)).save(buf, "JPEG", quality=85)
+        jpeg = SimpleUploadedFile("hero.jpg", buf.getvalue(), content_type="image/jpeg")
+
+        with override_settings(MEDIA_ROOT=str(media)):
+            SitePage.objects.filter(key=SitePage.PageKey.HOME).delete()
+            SitePage.objects.create(
+                key=SitePage.PageKey.HOME,
+                title="Lokal hero-titel",
+                subtitle="Lokal underrubrik",
+                body="Lokal brödtext från admin.",
+                is_published=True,
+                hero_image=jpeg,
+            )
+            export_snapshot(dest=snap)
+            SitePage.objects.filter(key=SitePage.PageKey.HOME).update(
+                title="Annan titel",
+                body="",
+            )
+            apply_snapshot(src=snap)
+            page = SitePage.objects.get(key=SitePage.PageKey.HOME)
+            self.assertEqual(page.title, "Lokal hero-titel")
+            self.assertEqual(page.body, "Lokal brödtext från admin.")
+            self.assertTrue(page.hero_image)
+            self.assertTrue(Path(page.hero_image.path).is_file())

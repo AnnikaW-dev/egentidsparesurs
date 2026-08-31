@@ -24,15 +24,14 @@ REQUIRED_PAGE_KEYS = (
 
 class Command(BaseCommand):
     help = (
-        "Seed missing pages/media when needed. Never overwrites admin CMS text "
-        "(seed_site preserves edits unless run with --force)."
+        "Seed missing pages/media when needed. Then apply cms/content_snapshot "
+        "so Render matches the committed local site. Never uses seed_site --force."
     )
 
     def handle(self, *args, **options):
         """
-        Adjust: SEED_ON_DEPLOY=true runs a safe seed (fills gaps only).
-        Admin edits are kept. To reset content intentionally:
-        python manage.py seed_site --force
+        Seed fills gaps. The git snapshot then copies local CMS onto this database.
+        Adjust: SEED_ON_DEPLOY=true also runs seed_site (without --force).
         """
         want_seed = os.environ.get("SEED_ON_DEPLOY", "").strip().lower() in (
             "1",
@@ -42,26 +41,28 @@ class Command(BaseCommand):
         )
         missing_keys = self._missing_page_keys()
         media_missing = self._media_missing()
+        should_seed = bool(missing_keys or media_missing or want_seed)
 
-        if not missing_keys and not media_missing and not want_seed:
-            self.stdout.write("Site content and media present — skip seed.")
-            return
-
-        if missing_keys:
-            reason = f"missing pages: {', '.join(missing_keys)}"
-        elif media_missing:
-            reason = "missing media"
-        else:
-            reason = "SEED_ON_DEPLOY (safe fill-only seed)"
-
-        self.stdout.write(f"Seeding site content ({reason})...")
         try:
-            # Never pass --force here — deploy must not wipe admin edits.
-            call_command("seed_site")
+            if should_seed:
+                if missing_keys:
+                    reason = f"missing pages: {', '.join(missing_keys)}"
+                elif media_missing:
+                    reason = "missing media"
+                else:
+                    reason = "SEED_ON_DEPLOY (safe fill-only seed)"
+                self.stdout.write(f"Seeding site content ({reason})...")
+                # Never pass --force here — seed must not wipe text before snapshot apply.
+                call_command("seed_site")
+            else:
+                self.stdout.write("Site content and media present — skip seed.")
+
+            # Always apply committed local CMS so Render matches this repo.
+            call_command("apply_site_snapshot")
         except Exception as exc:
-            self.stderr.write(self.style.ERROR(f"seed_site failed: {exc}"))
+            self.stderr.write(self.style.ERROR(f"site content failed: {exc}"))
             traceback.print_exc()
-            raise CommandError(f"seed_site failed: {exc}") from exc
+            raise CommandError(f"site content failed: {exc}") from exc
 
         still_missing = self._missing_page_keys()
         if still_missing:

@@ -4,7 +4,7 @@
 # After first deploy:
 # 1. Open https://YOUR-SERVICE.onrender.com/admin/
 # 2. Log in with DJANGO_SUPERUSER_USERNAME / DJANGO_SUPERUSER_PASSWORD (see Environment)
-# 3. SEED_ON_DEPLOY may stay true — seed only fills gaps and keeps admin edits
+# 3. Each deploy applies cms/content_snapshot (local pages/gallery/images)
 # 4. Admin → Webbplatsinställningar → set public_site_url if you use a custom domain
 #    (otherwise seed fills it from PUBLIC_SITE_URL / RENDER_EXTERNAL_URL)
 # 5. Render → Environment → set SENDGRID_API_KEY (or EMAIL_* SMTP vars) for booking/contact mail
