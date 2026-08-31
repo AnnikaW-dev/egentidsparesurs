@@ -97,6 +97,8 @@ class PrivacyPageTests(TestCase):
         self.assertContains(response, "Integritetspolicy")
         self.assertContains(response, "Personuppgiftsansvarig")
         self.assertContains(response, "IMY")
+        self.assertContains(response, "Cookies")
+        self.assertContains(response, "statistik, reklam eller spårning")
 
 
 class FooterContactTests(TestCase):
