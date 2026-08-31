@@ -143,7 +143,12 @@
       <div class="footer-contact">
         <p class="footer-label">Kontakt</p>
         <p><a href="{% url 'contact' %}">Kontaktformulär</a></p>
-        {% if site.email %}<p><a href="mailto:{{ site.email }}">{{ site.email }}</a></p>{% endif %}
+        {% if site.email %}
+        <p class="footer-email">
+          <span class="footer-contact-term">Mail:</span>
+          <a href="mailto:{{ site.email }}">{{ site.email }}</a>
+        </p>
+        {% endif %}
         {% if site.phone %}
         <p class="footer-phone">
           <span class="footer-contact-term">Tel:</span>

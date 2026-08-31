@@ -92,6 +92,8 @@ class FooterContactTests(TestCase):
     def test_footer_shows_phone(self):
         SiteSettings.load()
         response = Client().get(reverse("home"))
+        self.assertContains(response, "Mail:")
+        self.assertContains(response, "info@egentidspaservice.se")
         self.assertContains(response, "Tel:")
         self.assertContains(response, "072-3170120")
         self.assertContains(response, "href=\"tel:0723170120\"")

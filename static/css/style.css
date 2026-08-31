@@ -1869,17 +1869,21 @@ h1 {
   line-height: 1.45;
 }
 
+.footer-email .footer-contact-term,
 .footer-phone .footer-contact-term {
   font-weight: 600;
   color: var(--ink-strong);
 }
 
+.footer-email a,
 .footer-phone a {
   color: var(--ink);
   text-decoration: underline;
   text-underline-offset: 0.15em;
 }
 
+.footer-email a:hover,
+.footer-email a:focus-visible,
 .footer-phone a:hover,
 .footer-phone a:focus-visible {
   color: var(--ink-strong);
