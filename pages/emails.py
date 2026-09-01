@@ -44,10 +44,11 @@ def send_contact_notification(message) -> bool:
     try:
         mail.send(fail_silently=False)
         return True
-    except Exception:
+    except Exception as exc:
         logger.exception(
-            "Failed to send contact notification for message %s to %s",
+            "Failed to send contact notification for message %s to %s: %s",
             message.pk,
             to_email,
+            exc,
         )
         return False

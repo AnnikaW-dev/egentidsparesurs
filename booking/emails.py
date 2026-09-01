@@ -39,10 +39,11 @@ def send_booking_confirmation(booking) -> bool:
     try:
         message.send(fail_silently=False)
         return True
-    except Exception:
+    except Exception as exc:
         logger.exception(
-            "Failed to send booking confirmation for booking %s to %s",
+            "Failed to send booking confirmation for booking %s to %s: %s",
             booking.pk,
             booking.customer_email,
+            exc,
         )
         return False

@@ -23,6 +23,23 @@ class EmailConfigTests(SimpleTestCase):
         self.assertEqual(config["password"], "sg.test-key")
         self.assertTrue(smtp_is_configured(config))
 
+    def test_gmail_overrides_from_when_it_is_not_the_gmail_account(self):
+        env = {
+            "EMAIL_HOST": "smtp.gmail.com",
+            "EMAIL_HOST_USER": "owner@gmail.com",
+            "EMAIL_HOST_PASSWORD": "app-password",
+            "DEFAULT_FROM_EMAIL": "info@egentidspaservice.se",
+        }
+        with patch.dict(os.environ, env, clear=False):
+            os.environ.pop("SENDGRID_API_KEY", None)
+            os.environ.pop("SERVER_EMAIL", None)
+            with self.assertWarns(UserWarning):
+                config = resolve_email_config(debug=False)
+
+        self.assertEqual(config["default_from"], "owner@gmail.com")
+        self.assertEqual(config["server_email"], "owner@gmail.com")
+        self.assertTrue(smtp_is_configured(config))
+
     def test_apply_email_config_sets_flag(self):
         import config.settings as settings_module
 

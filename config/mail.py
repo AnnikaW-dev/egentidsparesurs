@@ -3,12 +3,17 @@
 """Map EMAIL_* / SENDGRID_API_KEY env vars to Django mail settings.
 
 Adjust: set SENDGRID_API_KEY on Render, or full SMTP vars for another provider.
+Gmail: EMAIL_HOST=smtp.gmail.com plus an App Password; From is forced to EMAIL_HOST_USER.
 """
 
 from __future__ import annotations
 
 import os
+import warnings
 from typing import TypedDict
+
+# Adjust: Gmail SMTP only allows From = the signed-in Gmail (unless “Send mail as” is set).
+GMAIL_SMTP_HOSTS = frozenset({"smtp.gmail.com", "smtp.googlemail.com"})
 
 
 class EmailConfig(TypedDict):
@@ -22,6 +27,15 @@ class EmailConfig(TypedDict):
     timeout: int
     default_from: str
     server_email: str
+
+
+def _from_matches_smtp_user(default_from: str, user: str) -> bool:
+    """True when From is the SMTP account, including 'Name <addr>' form."""
+    if not user:
+        return True
+    lower_from = default_from.strip().lower()
+    lower_user = user.strip().lower()
+    return lower_from == lower_user or f"<{lower_user}>" in lower_from
 
 
 def env_bool(name: str, default: bool = False) -> bool:
@@ -46,6 +60,19 @@ def resolve_email_config(*, debug: bool) -> EmailConfig:
         host = "smtp.sendgrid.net"
         user = "apikey"
         password = sendgrid_key
+
+    # Gmail rejects mail whose From is not the authenticated Gmail address.
+    if host.lower() in GMAIL_SMTP_HOSTS and user and not _from_matches_smtp_user(
+        default_from, user
+    ):
+        warnings.warn(
+            f"Gmail SMTP cannot send as {default_from!r}; using {user!r} as DEFAULT_FROM_EMAIL.",
+            UserWarning,
+            stacklevel=2,
+        )
+        default_from = user
+        if not os.environ.get("SERVER_EMAIL", "").strip():
+            server_email = user
 
     if debug:
         backend = os.environ.get(

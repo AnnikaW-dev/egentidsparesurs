@@ -27,6 +27,17 @@ class Command(BaseCommand):
                     f"(from {settings.DEFAULT_FROM_EMAIL})"
                 )
             )
+            inbox = (getattr(settings, "CONTACT_INBOX", "") or "").strip()
+            host = (settings.EMAIL_HOST or "").lower()
+            user = (settings.EMAIL_HOST_USER or "").strip()
+            if host in ("smtp.gmail.com", "smtp.googlemail.com") and inbox and user:
+                if inbox.lower() != user.lower() and f"<{user.lower()}>" not in inbox.lower():
+                    self.stderr.write(
+                        self.style.WARNING(
+                            f"CONTACT_INBOX is {inbox} while Gmail sends as {user}. "
+                            "Set CONTACT_INBOX to that Gmail or contact form mail may bounce."
+                        )
+                    )
             return
 
         msg = (
