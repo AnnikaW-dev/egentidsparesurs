@@ -61,6 +61,11 @@ def resolve_email_config(*, debug: bool) -> EmailConfig:
         user = "apikey"
         password = sendgrid_key
 
+    if host.lower() in GMAIL_SMTP_HOSTS:
+        # Render/UI pastes often include quotes; Google shows App Passwords with spaces.
+        user = user.strip().strip("\"'")
+        password = "".join(password.split()).strip("\"'")
+
     # Gmail rejects mail whose From is not the authenticated Gmail address.
     if host.lower() in GMAIL_SMTP_HOSTS and user and not _from_matches_smtp_user(
         default_from, user

@@ -40,6 +40,20 @@ class EmailConfigTests(SimpleTestCase):
         self.assertEqual(config["server_email"], "owner@gmail.com")
         self.assertTrue(smtp_is_configured(config))
 
+    def test_gmail_strips_spaces_and_quotes_from_app_password(self):
+        env = {
+            "EMAIL_HOST": "smtp.gmail.com",
+            "EMAIL_HOST_USER": '"owner@gmail.com"',
+            "EMAIL_HOST_PASSWORD": "abcd efgh ijkl mnop",
+            "DEFAULT_FROM_EMAIL": "owner@gmail.com",
+        }
+        with patch.dict(os.environ, env, clear=False):
+            os.environ.pop("SENDGRID_API_KEY", None)
+            config = resolve_email_config(debug=False)
+
+        self.assertEqual(config["user"], "owner@gmail.com")
+        self.assertEqual(config["password"], "abcdefghijklmnop")
+
     def test_apply_email_config_sets_flag(self):
         import config.settings as settings_module
 
