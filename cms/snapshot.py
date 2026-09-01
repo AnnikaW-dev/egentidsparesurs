@@ -2,8 +2,8 @@
 
 """Copy SiteSettings, pages, blocks, gallery, tips, and media into a snapshot folder.
 
-Local admin edits live in SQLite + media/ (not deployed). Render gets this snapshot
-on boot via apply_site_snapshot. Re-export after content changes, then push.
+Use export_site_snapshot locally, then apply_site_snapshot on a fresh Render database
+or when APPLY_CONTENT_SNAPSHOT=true. Everyday admin edits on Render stay in Postgres.
 
 Skip: bookings, users, contact messages, and tiny test uploads.
 Never copy local public_site_url onto production.

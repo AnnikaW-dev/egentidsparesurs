@@ -213,3 +213,40 @@ class SitePageAdminGalleryPickTests(TestCase):
         self.assertContains(response, "välj från galleri")
         self.assertContains(response, "hero_slides-0-gallery_image")
         self.assertNotContains(response, "admin/autocomplete/")
+
+
+class EnsureSiteContentTests(TestCase):
+    """Render restarts must not wipe admin CMS; snapshot only on fresh DB or env flag."""
+
+    def setUp(self):
+        from cms.management.commands.ensure_site_content import REQUIRED_PAGE_KEYS
+
+        for key in REQUIRED_PAGE_KEYS:
+            SitePage.objects.create(key=key, title=key, is_published=True)
+
+    @patch("cms.management.commands.ensure_site_content.call_command")
+    @patch(
+        "cms.management.commands.ensure_site_content.Command._media_missing",
+        return_value=False,
+    )
+    def test_restart_does_not_reapply_snapshot(self, _media, mock_call):
+        with patch.dict(
+            os.environ, {"SEED_ON_DEPLOY": "", "APPLY_CONTENT_SNAPSHOT": ""}, clear=False
+        ):
+            from django.core.management import call_command as run
+
+            run("ensure_site_content")
+        self.assertEqual(mock_call.call_args_list, [])
+
+    @patch("cms.management.commands.ensure_site_content.call_command")
+    @patch(
+        "cms.management.commands.ensure_site_content.Command._media_missing",
+        return_value=False,
+    )
+    def test_env_flag_reapplies_snapshot(self, _media, mock_call):
+        with patch.dict(os.environ, {"APPLY_CONTENT_SNAPSHOT": "true"}, clear=False):
+            from django.core.management import call_command as run
+
+            run("ensure_site_content")
+        names = [c.args[0] for c in mock_call.call_args_list]
+        self.assertEqual(names, ["apply_site_snapshot"])

@@ -39,9 +39,10 @@ This repo includes `render.yaml`, `build.sh`, and `start.sh`.
    - Username: value of `DJANGO_SUPERUSER_USERNAME` (default `admin`)
    - Password: from Render → your web service → **Environment** → `DJANGO_SUPERUSER_PASSWORD`  
    (created automatically on start — no Shell needed)
-5. Change that password after first login. Each deploy applies `cms/content_snapshot/`
-   (your local pages, gallery, and images). Re-export with
-   `python manage.py export_site_snapshot` after local admin edits, then push.
+5. Change that password after first login. A **new** database gets `cms/content_snapshot/`
+   once. After that, text and images you edit in Render admin stay in Postgres + the disk
+   across restarts. To replace the live site from this repo, set
+   `APPLY_CONTENT_SNAPSHOT=true` for one deploy (or run `python manage.py apply_site_snapshot`).
    `python manage.py seed_site --force` still resets to hardcoded defaults only.
 6. Set **SENDGRID_API_KEY** (or SMTP vars) on the web service so booking and contact mail actually send.
 7. Optional custom domain: add it in Render, set `PUBLIC_SITE_URL=https://din-domän.se`,
@@ -60,8 +61,8 @@ This repo includes `render.yaml`, `build.sh`, and `start.sh`.
 | What | Where |
 |------|--------|
 | Logo, contact, footer, SEO | Admin → Webbplatsinställningar |
-| Page titles & body text | Admin → Sidor, then `python manage.py export_site_snapshot` and push |
-| Gallery photos | Admin → Galleribilder, then export snapshot and push |
+| Page titles & body text | Admin → Sidor (on Render these survive restarts) |
+| Gallery photos | Admin → Galleribilder |
 | Treatment list & prices | Admin → Behandlingar |
 | Weekly hours + generate slots | `/dashboard/tillganglighet/` |
 

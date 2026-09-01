@@ -14,7 +14,7 @@ python manage.py migrate --no-input
 echo "Ensuring superuser (from DJANGO_SUPERUSER_* env)..."
 python manage.py ensure_superuser || true
 
-# Seed fills gaps; apply_site_snapshot copies committed local CMS onto this database.
+# Seed missing pages; do not overwrite admin CMS on every restart.
 echo "Ensuring starter content if needed..."
 if ! python manage.py ensure_site_content; then
   echo "WARNING: ensure_site_content failed — pages may show 'Webbplatsen förbereds'."

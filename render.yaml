@@ -4,7 +4,8 @@
 # After first deploy:
 # 1. Open https://YOUR-SERVICE.onrender.com/admin/
 # 2. Log in with DJANGO_SUPERUSER_USERNAME / DJANGO_SUPERUSER_PASSWORD (see Environment)
-# 3. Each deploy applies cms/content_snapshot (local pages/gallery/images)
+# 3. First boot loads cms/content_snapshot; later restarts keep admin CMS edits
+#    (set APPLY_CONTENT_SNAPSHOT=true only to replace the live site from git)
 # 4. Admin → Webbplatsinställningar → set public_site_url if you use a custom domain
 #    (otherwise seed fills it from PUBLIC_SITE_URL / RENDER_EXTERNAL_URL)
 # 5. Render → Environment → set SENDGRID_API_KEY (or EMAIL_* SMTP vars) for booking/contact mail
@@ -54,9 +55,12 @@ services:
         value: admin@egentidsparesurs.se
       - key: DJANGO_SUPERUSER_PASSWORD
         generateValue: true
-      # true = run safe seed on boot (fills gaps only; does not wipe admin edits)
+      # true = also run fill-only seed on every boot (does not wipe admin page text)
       - key: SEED_ON_DEPLOY
-        value: "true"
+        value: "false"
+      # true = overwrite live CMS from cms/content_snapshot (wipes Render admin edits)
+      - key: APPLY_CONTENT_SNAPSHOT
+        value: "false"
       # Outgoing mail — set SENDGRID_API_KEY in Render dashboard (sync: false keeps it secret).
       # Verify DEFAULT_FROM_EMAIL as a sender in SendGrid (Single Sender or domain auth).
       - key: DEFAULT_FROM_EMAIL
