@@ -19,6 +19,8 @@ from .models import (
     Service,
     TimeSlot,
     WeeklyAvailability,
+    occupy_slot_run,
+    slot_run_covering,
     sync_future_slots,
     sync_slots_for_range,
 )
@@ -43,23 +45,37 @@ def booking_page(request):
         selected_service = get_object_or_404(Service, slug=service_slug, is_active=True)
 
     selected_slot = None
+    needed_minutes = None
     if slot_id and selected_service:
         selected_slot = get_object_or_404(TimeSlot, pk=slot_id)
-        if not selected_slot.is_open:
-            messages.error(request, "Den tiden är inte längre ledig. Välj en annan lucka.")
+        needed_minutes = selected_service.calendar_minutes()
+        if not slot_run_covering(selected_slot, needed_minutes):
+            messages.error(
+                request,
+                "Den tiden räcker inte för behandlingen, eller är inte längre ledig. Välj en annan lucka.",
+            )
             return redirect(f"{request.path}?service={selected_service.slug}")
 
     now = timezone.now()
     horizon = now + timedelta(days=PUBLIC_SLOT_HORIZON_DAYS)
-    open_slots = (
-        TimeSlot.objects.filter(start__gte=now, start__lte=horizon, is_blocked=False)
+    open_slots = list(
+        TimeSlot.objects.filter(
+            start__gte=now,
+            start__lte=horizon,
+            is_blocked=False,
+            held_by__isnull=True,
+        )
         .exclude(booking__status=Booking.Status.CONFIRMED)
         .order_by("start")
     )
+    open_by_start = {slot.start: slot for slot in open_slots}
     by_date = {}
-    for slot in open_slots:
-        local = timezone.localtime(slot.start)
-        by_date.setdefault(local.date(), []).append(slot)
+    if selected_service:
+        needed_minutes = selected_service.calendar_minutes()
+        for slot in open_slots:
+            if slot_run_covering(slot, needed_minutes, open_by_start=open_by_start):
+                local = timezone.localtime(slot.start)
+                by_date.setdefault(local.date(), []).append(slot)
 
     form = None
     booking_step = 1
@@ -72,20 +88,35 @@ def booking_page(request):
         form = BookingForm(request.POST, service=selected_service)
         if form.is_valid():
             with transaction.atomic():
-                slot = TimeSlot.objects.select_for_update().get(pk=selected_slot.pk)
-                if not slot.is_open:
+                needed = selected_service.calendar_minutes()
+                tentative = slot_run_covering(selected_slot, needed)
+                if not tentative:
+                    messages.error(request, "Den tiden just bokades av någon annan.")
+                    return redirect(f"{request.path}?service={selected_service.slug}")
+                locked = list(
+                    TimeSlot.objects.select_for_update()
+                    .filter(pk__in=[slot.pk for slot in tentative])
+                    .order_by("start")
+                )
+                if not locked or locked[0].pk != selected_slot.pk:
+                    messages.error(request, "Den tiden just bokades av någon annan.")
+                    return redirect(f"{request.path}?service={selected_service.slug}")
+                start_slot = locked[0]
+                run = slot_run_covering(start_slot, needed)
+                if [slot.pk for slot in run] != [slot.pk for slot in locked]:
                     messages.error(request, "Den tiden just bokades av någon annan.")
                     return redirect(f"{request.path}?service={selected_service.slug}")
                 booking = form.save(commit=False)
-                booking.slot = slot
+                booking.slot = start_slot
                 booking.service = selected_service
                 booking.status = Booking.Status.CONFIRMED
                 booking.save()
+                occupy_slot_run(booking, run)
             notify = send_booking_notifications(booking)
             request.session["booking_notify"] = notify
             messages.success(
                 request,
-                f"Tack {booking.customer_name}! Din tid {timezone.localtime(slot.start):%Y-%m-%d %H:%M} är bokad.",
+                f"Tack {booking.customer_name}! Din tid {timezone.localtime(start_slot.start):%Y-%m-%d %H:%M} är bokad.",
             )
             if notify.get("email") is False:
                 messages.warning(
@@ -112,6 +143,12 @@ def booking_page(request):
             "form": form,
             "selected_slot": selected_slot,
             "booking_step": booking_step,
+            "needed_minutes": needed_minutes,
+            "reserved_until": (
+                selected_slot.start + timedelta(minutes=needed_minutes)
+                if selected_slot and needed_minutes
+                else None
+            ),
         },
     )
 
@@ -148,7 +185,11 @@ def dashboard_home(request):
         .select_related("slot", "service")[:10]
     )
     open_count = (
-        TimeSlot.objects.filter(start__gte=timezone.now(), is_blocked=False)
+        TimeSlot.objects.filter(
+            start__gte=timezone.now(),
+            is_blocked=False,
+            held_by__isnull=True,
+        )
         .exclude(booking__status=Booking.Status.CONFIRMED)
         .count()
     )

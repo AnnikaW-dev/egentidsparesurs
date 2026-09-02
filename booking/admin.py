@@ -120,7 +120,7 @@ class ClosedDateAdmin(ScheduleSyncAdminMixin, admin.ModelAdmin):
 
 @admin.register(TimeSlot)
 class TimeSlotAdmin(admin.ModelAdmin):
-    list_display = ("start", "end", "is_blocked", "booked_display")
+    list_display = ("start", "end", "is_blocked", "booked_display", "held_by")
     list_filter = ("is_blocked",)
     date_hierarchy = "start"
     actions = ["block_slots", "unblock_slots"]

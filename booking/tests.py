@@ -195,6 +195,7 @@ class BookingConfirmationNotifyTests(TestCase):
         start = timezone.now() + timedelta(days=2)
         end = start + timedelta(hours=1)
         self.slot = TimeSlot.objects.create(start=start, end=end)
+        TimeSlot.objects.create(start=end, end=end + timedelta(hours=1))
 
     def _post(self, confirm_via=("email", "sms"), extra=None):
         data = {
@@ -275,6 +276,65 @@ class BookingConfirmationNotifyTests(TestCase):
     def test_to_e164_converts_swedish_mobile(self):
         self.assertEqual(to_e164("0701234567"), "+46701234567")
         self.assertEqual(to_e164("46701234567"), "+46701234567")
+
+
+@override_settings(SMS_BACKEND="locmem")
+class BookingDurationBufferTests(TestCase):
+    """A booking reserves treatment length plus 30 minutes of calendar slots."""
+
+    def setUp(self):
+        sms_outbox.clear()
+        self.service = Service.objects.create(
+            name="Spa",
+            slug="spa",
+            duration_minutes=60,
+            is_active=True,
+        )
+        start = timezone.now() + timedelta(days=3)
+        self.slot_a = TimeSlot.objects.create(
+            start=start, end=start + timedelta(hours=1)
+        )
+        self.slot_b = TimeSlot.objects.create(
+            start=start + timedelta(hours=1),
+            end=start + timedelta(hours=2),
+        )
+        self.slot_c = TimeSlot.objects.create(
+            start=start + timedelta(hours=2),
+            end=start + timedelta(hours=3),
+        )
+
+    def test_sixty_minute_treatment_holds_the_next_slot(self):
+        response = self.client.post(
+            reverse("booking"),
+            {
+                "service": self.service.slug,
+                "slot": self.slot_a.pk,
+                "customer_name": "Anna",
+                "customer_email": "anna@example.com",
+                "customer_phone": "0701234567",
+                "confirm_via": ["email"],
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        booking = Booking.objects.get()
+        self.slot_b.refresh_from_db()
+        self.slot_c.refresh_from_db()
+        self.assertEqual(self.slot_b.held_by_id, booking.pk)
+        self.assertIsNone(self.slot_c.held_by_id)
+        self.assertFalse(self.slot_b.is_open)
+
+    def test_hides_start_times_that_cannot_fit_the_buffer(self):
+        self.slot_b.delete()
+        self.slot_c.delete()
+        response = self.client.get(reverse("booking"), {"service": self.service.slug})
+        self.assertNotContains(response, f"slot={self.slot_a.pk}")
+        self.assertContains(response, "Inga lediga tider just nu")
+
+    def test_short_treatment_fits_in_one_slot(self):
+        self.service.duration_minutes = 30
+        self.service.save()
+        response = self.client.get(reverse("booking"), {"service": self.service.slug})
+        self.assertContains(response, f"slot={self.slot_a.pk}")
 
 
 class DashboardHelpTests(TestCase):

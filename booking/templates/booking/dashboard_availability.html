@@ -122,6 +122,7 @@
         {{ slot.start|date:"Y-m-d H:i" }}–{{ slot.end|date:"H:i" }}
         {% if slot.is_blocked %}<span class="badge">blockerad</span>{% endif %}
         {% if slot.is_booked %}<span class="badge badge-booked">bokad</span>{% endif %}
+        {% if slot.held_by %}<span class="badge">upptagen</span>{% endif %}
       </li>
       {% endfor %}
     </ul>

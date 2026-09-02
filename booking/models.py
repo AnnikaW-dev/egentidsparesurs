@@ -5,6 +5,9 @@ from datetime import datetime, timedelta
 from django.db import models
 from django.utils import timezone
 
+# Adjust: extra minutes reserved after each treatment (cleanup / next customer).
+BOOKING_BUFFER_MINUTES = 30
+
 
 class Service(models.Model):
     """Bookable treatment (duration drives slot length)."""
@@ -12,7 +15,11 @@ class Service(models.Model):
     name = models.CharField(max_length=120)
     slug = models.SlugField(unique=True)
     description = models.TextField(blank=True)
-    duration_minutes = models.PositiveIntegerField(default=60)
+    duration_minutes = models.PositiveIntegerField(
+        default=60,
+        verbose_name="Behandlingstid (min)",
+        help_text="Själva behandlingen. På Boka reserveras den tiden plus 30 minuter.",
+    )
     price_sek = models.PositiveIntegerField(null=True, blank=True)
     image = models.ImageField(upload_to="services/", blank=True)
     is_active = models.BooleanField(default=True)
@@ -44,6 +51,10 @@ class Service(models.Model):
         from django.urls import reverse
 
         return f"{reverse('treatments')}#treatment-{block.pk}"
+
+    def calendar_minutes(self):
+        """Minutes reserved on Boka: treatment length plus buffer."""
+        return self.duration_minutes + BOOKING_BUFFER_MINUTES
 
 
 class WeeklyAvailability(models.Model):
@@ -230,6 +241,14 @@ class TimeSlot(models.Model):
         default=False,
         help_text="Manuellt blockerad (syns inte som ledig).",
     )
+    held_by = models.ForeignKey(
+        "Booking",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="held_slots",
+        help_text="Upptagen av en längre bokning som börjar i en tidigare lucka.",
+    )
 
     class Meta:
         ordering = ["start"]
@@ -247,8 +266,10 @@ class TimeSlot(models.Model):
 
     @property
     def is_open(self):
-        """True when customers may book this slot."""
+        """True when customers may start or continue a booking in this slot."""
         if self.is_blocked:
+            return False
+        if self.held_by_id:
             return False
         if self.start <= timezone.now():
             return False
@@ -285,6 +306,40 @@ class Booking(models.Model):
 
     def __str__(self):
         return f"{self.customer_name} – {self.slot}"
+
+    def reserved_until(self):
+        """End of the reserved window (treatment + buffer)."""
+        return self.slot.start + timedelta(minutes=self.service.calendar_minutes())
+
+
+def slot_run_covering(start_slot, needed_minutes, open_by_start=None):
+    """Return contiguous open slots from start_slot that cover needed_minutes.
+
+    Slots must chain (next.start == previous.end). Returns [] if there is a
+    gap, lunch, closing time, or a taken slot before the window is full.
+    """
+    if needed_minutes < 1 or not start_slot.is_open:
+        return []
+    needed_end = start_slot.start + timedelta(minutes=needed_minutes)
+    run = [start_slot]
+    covered_end = start_slot.end
+    while covered_end < needed_end:
+        if open_by_start is not None:
+            nxt = open_by_start.get(covered_end)
+        else:
+            nxt = TimeSlot.objects.filter(start=covered_end).first()
+        if nxt is None or not nxt.is_open:
+            return []
+        run.append(nxt)
+        covered_end = nxt.end
+    return run
+
+
+def occupy_slot_run(booking, run):
+    """Mark extra slots in the run as held by this booking (first slot is booking.slot)."""
+    for extra in run[1:]:
+        extra.held_by = booking
+        extra.save(update_fields=["held_by"])
 
 
 # Adjust: public /boka/ shows this many days; saving Veckoschema syncs the same window.
@@ -359,6 +414,7 @@ def sync_slots_for_range(start_date, end_date):
         start__gte=range_start,
         start__lt=range_end,
         booking__isnull=True,
+        held_by__isnull=True,
     )
     for slot in extras:
         if (slot.start, slot.end) not in desired:
