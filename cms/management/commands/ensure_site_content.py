@@ -7,6 +7,7 @@ from pathlib import Path
 from django.core.management import call_command
 from django.core.management.base import BaseCommand, CommandError
 
+from cms.brand import replace_legacy_brand_in_db
 from cms.models import SitePage, SiteSettings
 
 # Adjust: pages that must exist for nav/URLs to work (no setup_needed screen).
@@ -82,6 +83,9 @@ class Command(BaseCommand):
             raise CommandError(
                 f"After seed, pages still missing: {', '.join(still_missing)}"
             )
+        renamed = replace_legacy_brand_in_db()
+        if renamed:
+            self.stdout.write(f"Updated leftover Spa & Resurs brand text on {renamed} row(s).")
         self.stdout.write(self.style.SUCCESS("Site content ready."))
 
     def _missing_page_keys(self):

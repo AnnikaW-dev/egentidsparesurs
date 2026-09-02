@@ -190,18 +190,29 @@ class SitePage(models.Model):
         return [line.strip() for line in self.body.splitlines() if line.strip()]
 
     def seo_title(self):
-        """Title used in <title> and Open Graph."""
-        return (self.meta_title or self.title).strip()
+        """Title used in <title> and Open Graph (legacy Resurs name rewritten)."""
+        from cms.brand import with_current_brand
+
+        return with_current_brand((self.meta_title or self.title).strip())
+
+    def document_title(self, site_name: str = "") -> str:
+        """Full browser tab title without duplicating the brand name."""
+        from cms.brand import document_title as compose_document_title
+
+        return compose_document_title(self.seo_title(), site_name)
 
     def seo_description(self, fallback=""):
         """Meta description: page override, else first body paragraph, else fallback."""
+        from cms.brand import with_current_brand
+
         if self.meta_description.strip():
-            return self.meta_description.strip()
+            return with_current_brand(self.meta_description.strip())
         paras = self.body_paragraphs()
         if paras:
             text = paras[0].replace("\n", " ")
+            text = with_current_brand(text)
             return text[:157] + ("…" if len(text) > 157 else "")
-        return fallback
+        return with_current_brand(fallback)
 
     @property
     def resolved_hero_image(self):

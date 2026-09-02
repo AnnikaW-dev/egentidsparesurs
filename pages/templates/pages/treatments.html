@@ -2,7 +2,7 @@
 {% load media_extras cms_extras %}
 {# pages/treatments.html — Behandlingar & priser; CMS SitePage key=treatments + ContentBlocks #}
 
-{% block title %}{% if page %}{{ page.seo_title }}{% else %}Behandlingar &amp; priser{% endif %} – {{ site.site_name }}{% endblock %}
+{% block title %}{% if page %}{{ page|document_title:site.site_name }}{% else %}Behandlingar &amp; priser – {{ site.site_name }}{% endif %}{% endblock %}
 {% block meta_description %}{% if page %}{% firstof page.seo_description seo_description %}{% else %}Fotvård, handvård och massage med priser hos {{ site.site_name }}.{% endif %}{% endblock %}
 {% block og_title %}{% if page %}{{ page.seo_title }}{% else %}Behandlingar &amp; priser{% endif %}{% endblock %}
 {% block og_description %}{% if page %}{% firstof page.seo_description seo_description %}{% else %}Fotvård, handvård och massage med priser hos {{ site.site_name }}.{% endif %}{% endblock %}

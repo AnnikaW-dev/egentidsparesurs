@@ -17,6 +17,7 @@ from cms.models import (
     SitePage,
     SiteSettings,
 )
+from cms.brand import BRAND_NAME, BRAND_NAME_LEGACY
 from cms.gallery_defaults import GALLERY_IMAGES
 from cms.month_hook_defaults import MONTH_HOOK_DEFAULTS
 from cms.salon_defaults import (
@@ -45,9 +46,6 @@ from cms.warming_defaults import (
     WARMING_TITLE,
 )
 
-# Adjust: public brand name — seed upgrades legacy "Resurs" once without --force
-BRAND_NAME = "EGentid Spa & Service"
-BRAND_NAME_LEGACY = "EGentid Spa & Resurs"
 CONTACT_EMAIL = "info@egentidspaservice.se"
 CONTACT_EMAIL_LEGACY = "info@egentidsparesurs.se"
 CONTACT_PHONE = "072-3170120"

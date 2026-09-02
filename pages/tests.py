@@ -115,6 +115,29 @@ class FooterContactTests(TestCase):
         self.assertContains(response, "Integritet")
 
 
+class HomeTabTitleTests(TestCase):
+    """Browser tab hover text uses the current brand, not Spa & Resurs."""
+
+    def test_home_title_rewrites_legacy_brand(self):
+        SitePage.objects.filter(key=SitePage.PageKey.HOME).delete()
+        SitePage.objects.create(
+            key=SitePage.PageKey.HOME,
+            title="En stund som bara är din!",
+            meta_title="EGentid Spa & Resurs – fotvård och handvård",
+            is_published=True,
+        )
+        settings = SiteSettings.load()
+        settings.site_name = "EGentid Spa & Service"
+        settings.save(update_fields=["site_name"])
+        response = Client().get(reverse("home"))
+        self.assertContains(
+            response,
+            "<title>EGentid Spa &amp; Service – fotvård och handvård</title>",
+            html=False,
+        )
+        self.assertNotContains(response, "Resurs")
+
+
 class HeroCarouselPageTests(TestCase):
     """Hem and Behandlingar: controls only when admin adds a second hero image."""
 

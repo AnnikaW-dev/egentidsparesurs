@@ -2,7 +2,7 @@
 {% extends "base.html" %}
 {% load cms_extras %}
 
-{% block title %}{% if page %}{{ page.seo_title }}{% else %}Året runt{% endif %} – {{ site.site_name }}{% endblock %}
+{% block title %}{% if page %}{{ page|document_title:site.site_name }}{% else %}Året runt – {{ site.site_name }}{% endif %}{% endblock %}
 {% block meta_description %}{% if page %}{% firstof page.seo_description seo_description %}{% else %}Tips för fotvård och handvård året runt.{% endif %}{% endblock %}
 {% block og_title %}{% if page %}{{ page.seo_title }}{% else %}Året runt{% endif %}{% endblock %}
 {% block og_description %}{% if page %}{% firstof page.seo_description seo_description %}{% else %}Tips för fotvård och handvård året runt.{% endif %}{% endblock %}

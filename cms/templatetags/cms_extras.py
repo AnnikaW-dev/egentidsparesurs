@@ -4,6 +4,7 @@
 
 from django import template
 
+from cms.brand import document_title as compose_document_title
 from cms.text_format import format_inline_markup
 
 register = template.Library()
@@ -22,3 +23,11 @@ def cms_richtext(value):
 def cms_richtext_br(value):
     """Like cms_richtext, but also converts newlines to <br>."""
     return format_inline_markup(value, newlines=True)
+
+
+@register.filter(name="document_title")
+def document_title_filter(page, site_name):
+    """Browser <title> for a CMS page: current brand, no duplicated site name."""
+    if page is None:
+        return compose_document_title("", site_name or "")
+    return page.document_title(site_name or "")

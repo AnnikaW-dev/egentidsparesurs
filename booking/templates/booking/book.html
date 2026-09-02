@@ -2,7 +2,7 @@
 {% extends "base.html" %}
 {% load static cms_extras %}
 
-{% block title %}{% if page %}{{ page.seo_title }}{% else %}Boka tid{% endif %} – {{ site.site_name }}{% endblock %}
+{% block title %}{% if page %}{{ page|document_title:site.site_name }}{% else %}Boka tid – {{ site.site_name }}{% endif %}{% endblock %}
 {% block meta_description %}{% if page %}{% firstof page.seo_description seo_description %}{% else %}Boka spa-pedikyr, värmande manikyr eller paraffin – se lediga tider online.{% endif %}{% endblock %}
 {% block og_title %}{% if page %}{{ page.seo_title }}{% else %}Boka tid{% endif %}{% endblock %}
 {% block og_description %}{% if page %}{% firstof page.seo_description seo_description %}{% else %}Boka spa-pedikyr, värmande manikyr eller paraffin – se lediga tider online.{% endif %}{% endblock %}

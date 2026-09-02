@@ -250,3 +250,32 @@ class EnsureSiteContentTests(TestCase):
             run("ensure_site_content")
         names = [c.args[0] for c in mock_call.call_args_list]
         self.assertEqual(names, ["apply_site_snapshot"])
+
+
+class BrandTitleTests(TestCase):
+    """Tab titles must use Spa & Service, not leftover Spa & Resurs."""
+
+    def test_document_title_rewrites_resurs_and_skips_duplicate_name(self):
+        from cms.brand import document_title
+
+        title = document_title(
+            "EGentid Spa & Resurs – fotvård och handvård",
+            "EGentid Spa & Service",
+        )
+        self.assertEqual(title, "EGentid Spa & Service – fotvård och handvård")
+        self.assertNotIn("Resurs", title)
+
+    def test_replace_legacy_brand_updates_page_meta_title(self):
+        from cms.brand import replace_legacy_brand_in_db
+
+        SitePage.objects.filter(key=SitePage.PageKey.HOME).delete()
+        page = SitePage.objects.create(
+            key=SitePage.PageKey.HOME,
+            title="Hem",
+            meta_title="EGentid Spa & Resurs – fotvård och handvård",
+            is_published=True,
+        )
+        changed = replace_legacy_brand_in_db()
+        page.refresh_from_db()
+        self.assertGreaterEqual(changed, 1)
+        self.assertEqual(page.meta_title, "EGentid Spa & Service – fotvård och handvård")
