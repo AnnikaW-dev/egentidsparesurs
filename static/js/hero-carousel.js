@@ -1,6 +1,6 @@
 /* hero-carousel.js — autoplay heroes; pause control required (WCAG 2.2.2). */
 (function () {
-  var INTERVAL_MS = 7000; /* Adjust: milliseconds between slides on Hem / Behandlingar */
+  var INTERVAL_MS = 5000; /* Adjust: milliseconds between slides on Hem / Behandlingar */
   var reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   function init(root) {
