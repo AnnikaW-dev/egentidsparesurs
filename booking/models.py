@@ -75,6 +75,19 @@ class WeeklyAvailability(models.Model):
         verbose_name="Aktiv",
         help_text="Avmarkera för att dölja dagen i sidfoten och vid luckgenerering.",
     )
+    # Adjust: lunch window per weekday; empty = no lunch break that day.
+    lunch_start = models.TimeField(
+        verbose_name="Lunch från",
+        null=True,
+        blank=True,
+        help_text="Lämna tomt om du inte tar lunch den dagen.",
+    )
+    lunch_end = models.TimeField(
+        verbose_name="Lunch till",
+        null=True,
+        blank=True,
+        help_text="Luckor under lunchen går inte att boka på Boka.",
+    )
 
     class Meta:
         ordering = ["weekday", "start_time"]
@@ -83,7 +96,44 @@ class WeeklyAvailability(models.Model):
         unique_together = [("weekday", "start_time", "end_time")]
 
     def __str__(self):
-        return f"{self.get_weekday_display()} {self.start_time:%H:%M}–{self.end_time:%H:%M}"
+        text = f"{self.get_weekday_display()} {self.start_time:%H:%M}–{self.end_time:%H:%M}"
+        if self.lunch_start and self.lunch_end:
+            text += f" (lunch {self.lunch_start:%H:%M}–{self.lunch_end:%H:%M})"
+        return text
+
+    def clean(self):
+        """Lunch is optional; if used, both ends must sit inside opening hours."""
+        from django.core.exceptions import ValidationError
+
+        super().clean()
+        has_start = self.lunch_start is not None
+        has_end = self.lunch_end is not None
+        if has_start != has_end:
+            raise ValidationError(
+                "Ange både Lunch från och Lunch till, eller lämna båda tomma."
+            )
+        if has_start and has_end:
+            if self.lunch_start >= self.lunch_end:
+                raise ValidationError("Lunch till måste vara efter Lunch från.")
+            if self.lunch_start < self.start_time or self.lunch_end > self.end_time:
+                raise ValidationError("Lunchen måste ligga inom öppettiderna.")
+
+    def hours_display(self):
+        """Open hours for the footer; splits around lunch when set."""
+        if self.lunch_start and self.lunch_end:
+            return (
+                f"{self.start_time:%H:%M}–{self.lunch_start:%H:%M}, "
+                f"{self.lunch_end:%H:%M}–{self.end_time:%H:%M}"
+            )
+        return f"{self.start_time:%H:%M}–{self.end_time:%H:%M}"
+
+    def slot_overlaps_lunch(self, slot_start, slot_end):
+        """True when a naive local slot interval overlaps this day's lunch."""
+        if not self.lunch_start or not self.lunch_end:
+            return False
+        lunch_from = datetime.combine(slot_start.date(), self.lunch_start)
+        lunch_to = datetime.combine(slot_start.date(), self.lunch_end)
+        return slot_start < lunch_to and slot_end > lunch_from
 
     @classmethod
     def footer_week_rows(cls):
@@ -96,9 +146,7 @@ class WeeklyAvailability(models.Model):
         active = cls.objects.filter(is_active=True).order_by("weekday", "start_time")
         ranges_by_day = {weekday: [] for weekday, _ in cls.WEEKDAYS}
         for rule in active:
-            ranges_by_day[rule.weekday].append(
-                f"{rule.start_time:%H:%M}–{rule.end_time:%H:%M}"
-            )
+            ranges_by_day[rule.weekday].append(rule.hours_display())
         rows = []
         for weekday, label in cls.WEEKDAYS:
             ranges = ranges_by_day[weekday]
@@ -126,7 +174,7 @@ def footer_opening_hours():
     for rule in WeeklyAvailability.objects.filter(is_active=True).order_by(
         "weekday", "start_time"
     ):
-        by_day[rule.weekday].append(f"{rule.start_time:%H:%M}–{rule.end_time:%H:%M}")
+        by_day[rule.weekday].append(rule.hours_display())
 
     labels = dict(WeeklyAvailability.WEEKDAYS)
     groups = []
@@ -246,7 +294,8 @@ PUBLIC_SLOT_HORIZON_DAYS = 60
 def iter_schedule_slots(start_date, end_date):
     """Yield (start, end) aware datetimes from active WeeklyAvailability.
 
-    Skips ClosedDate days. Used when creating and when removing leftover luckor.
+    Skips ClosedDate days and lunch windows. Used when creating and when
+    removing leftover luckor.
     """
     if end_date < start_date:
         return
@@ -268,7 +317,8 @@ def iter_schedule_slots(start_date, end_date):
                 step = timedelta(minutes=rule.slot_minutes)
                 while cursor + step <= end_dt:
                     slot_end = cursor + step
-                    yield timezone.make_aware(cursor), timezone.make_aware(slot_end)
+                    if not rule.slot_overlaps_lunch(cursor, slot_end):
+                        yield timezone.make_aware(cursor), timezone.make_aware(slot_end)
                     cursor = slot_end
         day += timedelta(days=1)
 
@@ -295,7 +345,7 @@ def sync_slots_for_range(start_date, end_date):
     """Make TimeSlots match Veckoschema between two dates.
 
     Creates missing luckor. Deletes unbooked luckor that no longer match
-    (hours shortened, day closed, or ClosedDate). Never deletes a slot that
+    (hours shortened, lunch added, day closed, or ClosedDate). Never deletes a slot that
     has a booking row. Returns (created_count, deleted_count).
     """
     created = generate_slots_for_range(start_date, end_date)

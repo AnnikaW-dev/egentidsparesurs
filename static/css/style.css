@@ -1940,6 +1940,7 @@ h1 {
   border: 1px solid var(--line);
 }
 
+/* Staff week table — open hours and lunch per weekday */
 .week-table {
   width: 100%;
   border-collapse: collapse;

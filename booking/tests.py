@@ -136,6 +136,8 @@ class SyncSlotsFromWeeklyTests(TestCase):
                 "end_time": "12:00:00",
                 "slot_minutes": "60",
                 "is_active": "on",
+                "lunch_start": "",
+                "lunch_end": "",
             },
             follow=True,
         )
@@ -147,6 +149,36 @@ class SyncSlotsFromWeeklyTests(TestCase):
             if timezone.localtime(slot.start).date() == self.monday
         ]
         self.assertEqual(starts, [time(10, 0), time(11, 0)])
+
+    def test_lunch_window_is_not_bookable(self):
+        from booking.models import generate_slots_for_range, sync_slots_for_range
+
+        self.rule.end_time = time(16, 0)
+        self.rule.lunch_start = time(12, 0)
+        self.rule.lunch_end = time(13, 0)
+        self.rule.save()
+        created, deleted = sync_slots_for_range(self.monday, self.monday)
+        self.assertEqual(created, 6)
+        starts = [
+            timezone.localtime(slot.start).strftime("%H:%M")
+            for slot in TimeSlot.objects.order_by("start")
+        ]
+        self.assertEqual(starts, ["09:00", "10:00", "11:00", "13:00", "14:00", "15:00"])
+        self.assertNotIn("12:00", starts)
+        self.assertEqual(generate_slots_for_range(self.monday, self.monday), 0)
+
+    def test_footer_shows_lunch_gap(self):
+        from booking.models import footer_opening_hours
+
+        self.rule.end_time = time(16, 0)
+        self.rule.lunch_start = time(12, 0)
+        self.rule.lunch_end = time(13, 0)
+        self.rule.save()
+        rows = footer_opening_hours()
+        self.assertEqual(
+            rows,
+            [{"label": "Måndag", "hours": "09:00–12:00, 13:00–16:00"}],
+        )
 
 
 @override_settings(SMS_BACKEND="locmem")

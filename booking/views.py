@@ -237,4 +237,6 @@ def _save_quick_week(data):
                 end_time=end,
                 slot_minutes=slot_minutes,
                 is_active=True,
+                lunch_start=data.get(f"day_{weekday}_lunch_start") or None,
+                lunch_end=data.get(f"day_{weekday}_lunch_end") or None,
             )

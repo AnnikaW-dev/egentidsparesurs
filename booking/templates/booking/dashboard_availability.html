@@ -1,3 +1,4 @@
+{# booking/dashboard_availability.html — weekly hours + generate slots; lunch columns skip Boka #}
 {% extends "base.html" %}
 
 {% block title %}Bokningsschema – {{ site.site_name }}{% endblock %}
@@ -27,6 +28,8 @@
             <th scope="col">Öppen</th>
             <th scope="col">Från</th>
             <th scope="col">Till</th>
+            <th scope="col">Lunch från</th>
+            <th scope="col">Lunch till</th>
           </tr>
         </thead>
         <tbody>
@@ -35,42 +38,56 @@
             <td>{{ week_form.day_0_enabled }}</td>
             <td>{{ week_form.day_0_start }}</td>
             <td>{{ week_form.day_0_end }}</td>
+            <td>{{ week_form.day_0_lunch_start }}</td>
+            <td>{{ week_form.day_0_lunch_end }}</td>
           </tr>
           <tr>
             <td>Tisdag</td>
             <td>{{ week_form.day_1_enabled }}</td>
             <td>{{ week_form.day_1_start }}</td>
             <td>{{ week_form.day_1_end }}</td>
+            <td>{{ week_form.day_1_lunch_start }}</td>
+            <td>{{ week_form.day_1_lunch_end }}</td>
           </tr>
           <tr>
             <td>Onsdag</td>
             <td>{{ week_form.day_2_enabled }}</td>
             <td>{{ week_form.day_2_start }}</td>
             <td>{{ week_form.day_2_end }}</td>
+            <td>{{ week_form.day_2_lunch_start }}</td>
+            <td>{{ week_form.day_2_lunch_end }}</td>
           </tr>
           <tr>
             <td>Torsdag</td>
             <td>{{ week_form.day_3_enabled }}</td>
             <td>{{ week_form.day_3_start }}</td>
             <td>{{ week_form.day_3_end }}</td>
+            <td>{{ week_form.day_3_lunch_start }}</td>
+            <td>{{ week_form.day_3_lunch_end }}</td>
           </tr>
           <tr>
             <td>Fredag</td>
             <td>{{ week_form.day_4_enabled }}</td>
             <td>{{ week_form.day_4_start }}</td>
             <td>{{ week_form.day_4_end }}</td>
+            <td>{{ week_form.day_4_lunch_start }}</td>
+            <td>{{ week_form.day_4_lunch_end }}</td>
           </tr>
           <tr>
             <td>Lördag</td>
             <td>{{ week_form.day_5_enabled }}</td>
             <td>{{ week_form.day_5_start }}</td>
             <td>{{ week_form.day_5_end }}</td>
+            <td>{{ week_form.day_5_lunch_start }}</td>
+            <td>{{ week_form.day_5_lunch_end }}</td>
           </tr>
           <tr>
             <td>Söndag</td>
             <td>{{ week_form.day_6_enabled }}</td>
             <td>{{ week_form.day_6_start }}</td>
             <td>{{ week_form.day_6_end }}</td>
+            <td>{{ week_form.day_6_lunch_start }}</td>
+            <td>{{ week_form.day_6_lunch_end }}</td>
           </tr>
         </tbody>
       </table>

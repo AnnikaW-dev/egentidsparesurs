@@ -56,8 +56,23 @@ class ServiceAdmin(admin.ModelAdmin):
 class WeeklyAvailabilityAdmin(ScheduleSyncAdminMixin, admin.ModelAdmin):
     """Edit Mon–Sun hours — footer Öppettider and public Boka slots."""
 
-    list_display = ("weekday", "start_time", "end_time", "slot_minutes", "is_active")
-    list_editable = ("start_time", "end_time", "slot_minutes", "is_active")
+    list_display = (
+        "weekday",
+        "start_time",
+        "end_time",
+        "lunch_start",
+        "lunch_end",
+        "slot_minutes",
+        "is_active",
+    )
+    list_editable = (
+        "start_time",
+        "end_time",
+        "lunch_start",
+        "lunch_end",
+        "slot_minutes",
+        "is_active",
+    )
     list_display_links = ("weekday",)
     ordering = ("weekday", "start_time")
     list_filter = ("is_active", "weekday")
@@ -65,11 +80,21 @@ class WeeklyAvailabilityAdmin(ScheduleSyncAdminMixin, admin.ModelAdmin):
         (
             None,
             {
-                "fields": ("weekday", "start_time", "end_time", "is_active", "slot_minutes"),
+                "fields": (
+                    "weekday",
+                    "start_time",
+                    "end_time",
+                    "lunch_start",
+                    "lunch_end",
+                    "is_active",
+                    "slot_minutes",
+                ),
                 "description": (
                     "Dessa tider visas under Öppettider i sidfoten och blir "
                     "bokningsbara under Boka när du sparar. "
                     "Lägg till en rad per öppen dag (t.ex. Måndag 09:00–16:00). "
+                    "Lunch från/till tar bort de luckorna från Boka den dagen "
+                    "(lämna tomt om du inte tar lunch). "
                     "Dagar utan aktiv rad visas som ”Stängt” och går inte att boka. "
                     "Kundbokningar som redan finns tas inte bort."
                 ),

@@ -179,3 +179,50 @@ class QuickWeekForm(forms.Form):
             self.fields[f"day_{weekday}_end"].widget.attrs["aria-label"] = (
                 f"{label} stänger"
             )
+            self.fields[f"day_{weekday}_lunch_start"] = forms.TimeField(
+                label=f"{label} lunch från",
+                required=False,
+                initial=rule.lunch_start if rule else None,
+                widget=forms.TimeInput(attrs={"type": "time", "class": "form-control"}),
+            )
+            self.fields[f"day_{weekday}_lunch_end"] = forms.TimeField(
+                label=f"{label} lunch till",
+                required=False,
+                initial=rule.lunch_end if rule else None,
+                widget=forms.TimeInput(attrs={"type": "time", "class": "form-control"}),
+            )
+            self.fields[f"day_{weekday}_lunch_start"].widget.attrs["aria-label"] = (
+                f"{label} lunch från"
+            )
+            self.fields[f"day_{weekday}_lunch_end"].widget.attrs["aria-label"] = (
+                f"{label} lunch till"
+            )
+
+    def clean(self):
+        """Lunch is optional per day; both ends must be set and sit inside hours."""
+        cleaned = super().clean()
+        for weekday, label in WeeklyAvailability.WEEKDAYS:
+            lunch_start = cleaned.get(f"day_{weekday}_lunch_start")
+            lunch_end = cleaned.get(f"day_{weekday}_lunch_end")
+            open_start = cleaned.get(f"day_{weekday}_start")
+            open_end = cleaned.get(f"day_{weekday}_end")
+            if bool(lunch_start) != bool(lunch_end):
+                self.add_error(
+                    f"day_{weekday}_lunch_start",
+                    f"Ange både lunch från och till för {label.lower()}, eller lämna båda tomma.",
+                )
+                continue
+            if lunch_start and lunch_end:
+                if lunch_start >= lunch_end:
+                    self.add_error(
+                        f"day_{weekday}_lunch_end",
+                        f"Lunch till måste vara efter lunch från på {label.lower()}.",
+                    )
+                elif open_start and open_end and (
+                    lunch_start < open_start or lunch_end > open_end
+                ):
+                    self.add_error(
+                        f"day_{weekday}_lunch_start",
+                        f"Lunchen på {label.lower()} måste ligga inom öppettiderna.",
+                    )
+        return cleaned
