@@ -2220,3 +2220,57 @@ h1 {
     display: none;
   }
 }
+
+/* Staff handbook — large readable type; print hides chrome */
+.staff-guide {
+  max-width: 42rem;
+}
+
+.staff-guide-toc {
+  background: var(--bg-panel);
+  border: 1px solid var(--line);
+  padding: 1rem 1.25rem;
+  margin: 0 0 2rem;
+}
+
+.staff-guide-toc ol {
+  margin: 0.5rem 0 0;
+  padding-left: 1.25rem;
+}
+
+.staff-guide h2 {
+  margin-top: 2rem;
+}
+
+.staff-guide h3 {
+  font-size: 1.05rem;
+  margin-top: 1.25rem;
+}
+
+.staff-guide code {
+  font-size: 0.95em;
+  background: var(--bg-panel);
+  padding: 0.1em 0.35em;
+}
+
+.staff-guide-print {
+  margin-left: 0.25rem;
+}
+
+@media print {
+  .skip-link,
+  .site-header,
+  .site-footer,
+  .staff-guide-print {
+    display: none !important;
+  }
+
+  .staff-guide {
+    max-width: none;
+  }
+
+  .staff-guide a[href^="http"]::after,
+  .staff-guide a[href^="/"]::after {
+    content: none;
+  }
+}

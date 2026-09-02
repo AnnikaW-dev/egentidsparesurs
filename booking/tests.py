@@ -146,3 +146,25 @@ class BookingConfirmationNotifyTests(TestCase):
     def test_to_e164_converts_swedish_mobile(self):
         self.assertEqual(to_e164("0701234567"), "+46701234567")
         self.assertEqual(to_e164("46701234567"), "+46701234567")
+
+
+class DashboardHelpTests(TestCase):
+    """Staff handbook is for logged-in staff only."""
+
+    def test_anonymous_is_sent_to_login(self):
+        response = self.client.get(reverse("dashboard_help"))
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("/admin/login/", response["Location"])
+
+    def test_staff_sees_swedish_handbook(self):
+        from django.contrib.auth import get_user_model
+
+        get_user_model().objects.create_user(
+            "emma", "emma@example.com", "secret", is_staff=True
+        )
+        self.client.login(username="emma", password="secret")
+        response = self.client.get(reverse("dashboard_help"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Så här sköter du hemsidan")
+        self.assertContains(response, "Spara och fortsätt redigera")
+        self.assertContains(response, "Hero-karusell")

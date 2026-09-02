@@ -1,0 +1,285 @@
+{# booking/dashboard_help.html — Swedish staff handbook; print to PDF for the customer #}
+{% extends "base.html" %}
+
+{% block title %}Handbok för hemsidan – {{ site.site_name }}{% endblock %}
+{% block robots %}noindex, nofollow{% endblock %}
+
+{% block content %}
+<article class="page-article staff-guide">
+  <header class="page-header">
+    <h1>Så här sköter du hemsidan</h1>
+    <p class="lead">
+      En enkel guide till EGentid Spa &amp; Service.
+      Du behöver inte kunna något om datorer – följ bara stegen.
+    </p>
+    <p>
+      <a href="{% url 'dashboard' %}">← Tillbaka till översikten</a>
+      ·
+      <button type="button" class="btn staff-guide-print" data-print-guide>Skriv ut eller spara som PDF</button>
+    </p>
+  </header>
+
+  <nav class="staff-guide-toc" aria-label="Innehåll">
+    <h2>Innehåll</h2>
+    <ol>
+      <li><a href="#start">Kom igång</a></li>
+      <li><a href="#spara">Det viktigaste: spara</a></li>
+      <li><a href="#kolla">Kolla att det ser rätt ut</a></li>
+      <li><a href="#texter">Ändra texter på en sida</a></li>
+      <li><a href="#bilder">Lägga in och byta bilder</a></li>
+      <li><a href="#karusell">Bildspel på Hem och Behandlingar</a></li>
+      <li><a href="#behandlingar">Priser och behandlingar</a></li>
+      <li><a href="#boka">Lediga tider att boka</a></li>
+      <li><a href="#bokningar">Se kundernas bokningar</a></li>
+      <li><a href="#kontakt">Meddelanden från kontaktformuläret</a></li>
+      <li><a href="#kontaktuppgifter">Telefon, e-post och sidfot</a></li>
+      <li><a href="#aret-runt">Året runt och ”Känner du igen det här?”</a></li>
+      <li><a href="#gor-inte">Gör inte detta</a></li>
+      <li><a href="#hjalp">Om något går fel</a></li>
+    </ol>
+  </nav>
+
+  <section id="start">
+    <h2>1. Kom igång</h2>
+    <ol>
+      <li>Öppna webbläsaren (Chrome, Edge eller Safari).</li>
+      <li>Skriv adressen till hemsidan, till exempel <strong>egentidspaservice.se</strong>.</li>
+      <li>Lägg till <strong>/dashboard/</strong> efter adressen.
+        Det ska se ut ungefär så här:<br>
+        <code>https://egentidspaservice.se/dashboard/</code>
+      </li>
+      <li>Skriv ditt <strong>användarnamn</strong> och <strong>lösenord</strong>.</li>
+      <li>Klicka på knappen för att logga in.</li>
+    </ol>
+    <p>
+      Du kommer till en översikt med stora rutor:
+      <strong>Innehåll &amp; bilder</strong>,
+      <strong>Bokningsschema</strong>,
+      <strong>Bokningar</strong>
+      och <strong>Handbok</strong>.
+    </p>
+    <p>
+      <strong>Innehåll &amp; bilder</strong> är där du ändrar texter och foton.
+      Där finns en lista till vänster. Klicka på orden i listan, inte på kryssrutorna.
+    </p>
+  </section>
+
+  <section id="spara">
+    <h2>2. Det viktigaste: spara</h2>
+    <p>Ändringar syns <strong>inte</strong> på hemsidan förrän du sparar.</p>
+    <ol>
+      <li>Gör din ändring.</li>
+      <li>Scrolla längst ner på sidan.</li>
+      <li>Klicka på <strong>Spara</strong> (eller <strong>Spara och fortsätt redigera</strong> om du vill stanna kvar och fortsätta).</li>
+    </ol>
+    <p>Om du stänger fliken utan att spara försvinner det du skrev.</p>
+  </section>
+
+  <section id="kolla">
+    <h2>3. Kolla att det ser rätt ut</h2>
+    <ol>
+      <li>Öppna hemsidan i en <strong>ny flik</strong> (så att du har admin kvar i den första).</li>
+      <li>Gå till den sida du ändrade, till exempel Hem eller Behandlingar.</li>
+      <li>Om du inte ser ändringen: högerklicka på sidan och välj <strong>Uppdatera</strong>, eller tryck på F5.</li>
+    </ol>
+  </section>
+
+  <section id="texter">
+    <h2>4. Ändra texter på en sida</h2>
+    <ol>
+      <li>Klicka på <strong>Innehåll &amp; bilder</strong>.</li>
+      <li>Klicka på <strong>Sidor</strong>.</li>
+      <li>Klicka på namnet på sidan, till exempel <strong>Startsida</strong> eller <strong>Om</strong>.</li>
+      <li>
+        <strong>Titel</strong> är den stora rubriken längst upp på sidan.<br>
+        <strong>Underrubrik</strong> är den mindre texten under rubriken.<br>
+        <strong>Brödtext</strong> är den vanliga texten.
+      </li>
+      <li>Skriv din nya text. Du kan använda Enter för ny rad.</li>
+      <li>Vill du ha <strong>fet stil</strong>? Skriv två stjärnor före och efter ordet, till exempel <code>**varmt välkommen**</code>.</li>
+      <li>Vill du ha en <strong>mellanrubrik</strong> i texten? Börja raden med två fyrkanter och ett mellanslag, till exempel <code>## Det här ingår</code>.</li>
+      <li>Vill du ha en <strong>punktlista</strong>? Börja raden med en kula eller bock, till exempel <code>• Fotbad</code> eller <code>✔ Fotbad</code>.</li>
+      <li>Lämna en <strong>tom rad</strong> mellan stycken.</li>
+      <li>Spara längst ner.</li>
+    </ol>
+    <p>
+      Rör inte fältet som heter <strong>Nyckel</strong> (till exempel home eller treatments).
+      Det talar om för hemsidan vilken sida det är.
+    </p>
+    <p>
+      Kryssrutan <strong>Publicerad</strong> ska vara ikryssad. Tar du bort krysset försvinner sidan från menyn för besökare.
+    </p>
+  </section>
+
+  <section id="bilder">
+    <h2>5. Lägga in och byta bilder</h2>
+    <p>Det enklaste är att lägga bilden i <strong>Galleriet</strong> först. Då kan du återanvända den på flera ställen.</p>
+    <h3>Lägg en bild i galleriet</h3>
+    <ol>
+      <li>Klicka på <strong>Innehåll &amp; bilder</strong>.</li>
+      <li>Klicka på <strong>Galleribilder</strong>.</li>
+      <li>Klicka på knappen <strong>Lägg till galleribild</strong> uppe till höger.</li>
+      <li>Skriv en kort <strong>Titel</strong>, till exempel ”Fotmassage”.</li>
+      <li>Klicka på <strong>Välj fil</strong> och välj fotot från din dator. JPG eller PNG går bra.</li>
+      <li>
+        Skriv en kort <strong>Bildtext (alt-text)</strong>.
+        Det är en mening som beskriver vad man ser, till exempel ”Fot som får massage”.
+        Den texten hör personer som använder skärmläsare.
+      </li>
+      <li>Lämna <strong>Synlig</strong> ikryssad om bilden ska synas.</li>
+      <li>Spara.</li>
+    </ol>
+    <h3>Använd bilden på en sida</h3>
+    <ol>
+      <li>Öppna sidan under <strong>Sidor</strong>.</li>
+      <li>Vid <strong>Hero från galleri</strong> (den stora bilden högst upp) väljer du bilden i listan <em>— välj från galleri —</em>.</li>
+      <li>Eller, i ett innehållsblock, välj samma sak vid <strong>Bild från galleri</strong>.</li>
+      <li>Spara.</li>
+    </ol>
+    <p>Du kan också ladda upp en bild direkt på sidan under <strong>Egen hero-bild</strong> eller <strong>Egen bild</strong>. Galleriet är ändå att föredra.</p>
+  </section>
+
+  <section id="karusell">
+    <h2>6. Bildspel på Hem och Behandlingar</h2>
+    <p>Om du bara har <strong>en</strong> stor bild står den stilla. Om du lägger till <strong>fler</strong> bilder blir det ett bildspel som byter bild av sig självt.</p>
+    <ol>
+      <li>Öppna sidan <strong>Startsida</strong> eller <strong>Behandlingar &amp; priser</strong>.</li>
+      <li>Scrolla till avsnittet <strong>Hero-karusell</strong>.</li>
+      <li>På en tom rad: välj en bild i <strong>Bild från galleri</strong>, eller ladda upp under <strong>Egen bild</strong>.</li>
+      <li><strong>Ordning</strong> är en siffra. 0 är först, sedan 1, 2, och så vidare.</li>
+      <li>Spara.</li>
+    </ol>
+    <p>På hemsidan finns knappar för föregående, nästa och paus (två streck) / play (triangel).</p>
+  </section>
+
+  <section id="behandlingar">
+    <h2>7. Priser och behandlingar</h2>
+    <p>Varje behandling är ett <strong>innehållsblock</strong> på sidan Behandlingar &amp; priser. Det finns också en lista under <strong>Behandlingar</strong> som styr vad kunden kan välja när hen bokar (namn, pris och tid).</p>
+    <h3>Ändra text och pris på behandlingskortet</h3>
+    <ol>
+      <li>Öppna <strong>Sidor</strong> → <strong>Behandlingar &amp; priser</strong>.</li>
+      <li>Scrolla till <strong>behandlingar / innehållsblock</strong>.</li>
+      <li>Ändra <strong>Titel</strong> och <strong>Brödtext</strong>.</li>
+      <li>Första raden i brödtexten ska vara priset, till exempel <code>425 kr | ca 60 min</code>.</li>
+      <li>Spara.</li>
+    </ol>
+    <h3>Ändra vad som går att boka</h3>
+    <ol>
+      <li>Klicka på <strong>Behandlingar</strong> i vänstermenyn (inte Sidor).</li>
+      <li>Klicka på behandlingen.</li>
+      <li>Ändra namn, minuter och pris.</li>
+      <li>Tar du bort krysset vid <strong>Aktiv</strong> går den inte att boka, men texten kan fortfarande synas på sidan.</li>
+      <li>Spara.</li>
+    </ol>
+    <p>Ändra både kortet på sidan <strong>och</strong> bokningslistan om priset ska stämma överallt.</p>
+  </section>
+
+  <section id="boka">
+    <h2>8. Lediga tider att boka</h2>
+    <p>Kunder kan bara boka tider som du har skapat. Det gör du i två steg.</p>
+    <ol>
+      <li>Gå till <strong>/dashboard/</strong> och klicka på <strong>Bokningsschema</strong>.</li>
+      <li>
+        Under <strong>1. Veckoschema</strong>:
+        kryssa i de dagar du tar emot kunder.
+        Fyll i från-tid och till-tid (klockslag).
+        Välj hur lång varje tid ska vara (till exempel 60 minuter).
+      </li>
+      <li>Klicka på <strong>Spara veckoschema</strong>.</li>
+      <li>
+        Under <strong>2. Generera tidsluckor</strong>:
+        välj startdatum och om det ska gälla en <strong>vecka</strong> eller en <strong>månad</strong>.
+      </li>
+      <li>Klicka på <strong>Generera</strong>. Då skapas de lediga tiderna. Tider som redan finns dubbleras inte.</li>
+    </ol>
+    <p>
+      Behöver du stänga en enstaka dag (semester, sjukdom)?
+      Gå till <strong>Stängda dagar</strong> i innehållet, lägg till datumet och spara.
+      Generera sedan luckor som vanligt – den dagen hoppas över.
+    </p>
+    <p>
+      Vill du ta bort en enskild lucka utan att stänga hela dagen?
+      Öppna <strong>Tidsluckor</strong>, hitta tiden och markera den som blockerad.
+    </p>
+  </section>
+
+  <section id="bokningar">
+    <h2>9. Se kundernas bokningar</h2>
+    <ol>
+      <li>Från översikten: klicka på <strong>Bokningar</strong>.</li>
+      <li>Där ser du namn, behandling, tid, e-post och telefon.</li>
+      <li>Klicka på en rad för mer information.</li>
+    </ol>
+    <p>Ändra inte en bokning om du är osäker. Det är bättre att kontakta kunden och sedan rätta tillsammans med den som hjälper dig med hemsidan.</p>
+  </section>
+
+  <section id="kontakt">
+    <h2>10. Meddelanden från kontaktformuläret</h2>
+    <ol>
+      <li>Klicka på <strong>Innehåll &amp; bilder</strong>.</li>
+      <li>Klicka på <strong>Kontaktmeddelanden</strong>.</li>
+      <li>Öppna meddelandet. Där står namn, e-post och vad personen skrev.</li>
+    </ol>
+    <p>Samma meddelande kan också komma som e-post, om e-posten är inkopplad.</p>
+  </section>
+
+  <section id="kontaktuppgifter">
+    <h2>11. Telefon, e-post och sidfot</h2>
+    <ol>
+      <li>Klicka på <strong>Webbplatsinställningar</strong>.</li>
+      <li>Det finns bara en rad. Klicka på den.</li>
+      <li>Ändra <strong>Telefonnummer</strong>, <strong>E-post</strong> eller adressen som syns längst ner på sidan.</li>
+      <li>Spara.</li>
+    </ol>
+    <p>Namnet på salongen och sloganen längst upp ändrar du också här (Varumärke).</p>
+  </section>
+
+  <section id="aret-runt">
+    <h2>12. Året runt och ”Känner du igen det här?”</h2>
+    <p>
+      <strong>Säsongstips</strong> är texterna månad för månad på sidan Året runt.
+      Hemsidan visar automatiskt den här månaden och de två nästa.
+    </p>
+    <ol>
+      <li>Klicka på <strong>Säsongstips</strong>.</li>
+      <li>Öppna rätt månad.</li>
+      <li>Ändra titel och brödtext. Spara.</li>
+    </ol>
+    <p>
+      Rutan <strong>Känner du igen det här?</strong> på startsidan redigerar du under
+      <strong>Känner du igen</strong> (en rad per månad).
+    </p>
+  </section>
+
+  <section id="gor-inte">
+    <h2>13. Gör inte detta</h2>
+    <ul>
+      <li>Ta inte bort sidor (Startsida, Behandlingar, och så vidare).</li>
+      <li>Ändra inte fältet <strong>Nyckel</strong> på en sida.</li>
+      <li>Lämna inte bilder utan bildtext.</li>
+      <li>Dela inte ditt lösenord. Logga ut när du är klar, särskilt på en dator som andra använder.</li>
+      <li>Ladda inte upp jättefina originalfoton på många megabyte om det går att undvika – en vanlig JPG från mobilen räcker.</li>
+    </ul>
+  </section>
+
+  <section id="hjalp">
+    <h2>14. Om något går fel</h2>
+    <ul>
+      <li>Kommer du inte in? Kontrollera att du skrev adressen med <strong>/dashboard/</strong> och att Caps Lock inte är på.</li>
+      <li>Syns inte ändringen? Spara igen och uppdatera den vanliga hemsidan (F5).</li>
+      <li>Bilden syns som en trasig ikon? Bilden saknas. Lägg in den igen via Galleribilder.</li>
+      <li>Går det inte att boka? Kolla att veckoschemat är sparat och att du har klickat på <strong>Generera</strong> för kommande veckor.</li>
+    </ul>
+    <p>
+      Den här handboken finns alltid under översikten när du är inloggad:
+      <a href="{% url 'dashboard_help' %}">Handbok för hemsidan</a>.
+    </p>
+  </section>
+</article>
+<script>
+  (function () {
+    var btn = document.querySelector("[data-print-guide]");
+    if (btn) btn.addEventListener("click", function () { window.print(); });
+  })();
+</script>
+{% endblock %}

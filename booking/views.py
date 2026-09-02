@@ -124,6 +124,12 @@ def booking_success(request, pk):
 
 
 @staff_member_required
+def dashboard_help(request):
+    """Swedish staff handbook — printable for the customer."""
+    return render(request, "booking/dashboard_help.html")
+
+
+@staff_member_required
 def dashboard_home(request):
     """Staff landing page linking content admin and availability tools."""
     upcoming = (
