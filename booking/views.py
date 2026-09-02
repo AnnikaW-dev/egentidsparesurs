@@ -5,7 +5,7 @@ from datetime import date, timedelta
 
 from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
-from django.db import transaction
+from django.core.exceptions import ValidationError
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods
@@ -19,7 +19,7 @@ from .models import (
     Service,
     TimeSlot,
     WeeklyAvailability,
-    occupy_slot_run,
+    create_confirmed_booking,
     slot_run_covering,
     sync_future_slots,
     sync_slots_for_range,
@@ -87,31 +87,21 @@ def booking_page(request):
     if request.method == "POST" and selected_service and selected_slot:
         form = BookingForm(request.POST, service=selected_service)
         if form.is_valid():
-            with transaction.atomic():
-                needed = selected_service.calendar_minutes()
-                tentative = slot_run_covering(selected_slot, needed)
-                if not tentative:
-                    messages.error(request, "Den tiden just bokades av någon annan.")
-                    return redirect(f"{request.path}?service={selected_service.slug}")
-                locked = list(
-                    TimeSlot.objects.select_for_update()
-                    .filter(pk__in=[slot.pk for slot in tentative])
-                    .order_by("start")
+            chosen = set(form.cleaned_data.get("confirm_via") or [])
+            try:
+                booking = create_confirmed_booking(
+                    service=selected_service,
+                    start_slot=selected_slot,
+                    customer_name=form.cleaned_data["customer_name"],
+                    customer_email=form.cleaned_data["customer_email"],
+                    customer_phone=form.cleaned_data["customer_phone"],
+                    notify_email="email" in chosen,
+                    notify_sms="sms" in chosen,
                 )
-                if not locked or locked[0].pk != selected_slot.pk:
-                    messages.error(request, "Den tiden just bokades av någon annan.")
-                    return redirect(f"{request.path}?service={selected_service.slug}")
-                start_slot = locked[0]
-                run = slot_run_covering(start_slot, needed)
-                if [slot.pk for slot in run] != [slot.pk for slot in locked]:
-                    messages.error(request, "Den tiden just bokades av någon annan.")
-                    return redirect(f"{request.path}?service={selected_service.slug}")
-                booking = form.save(commit=False)
-                booking.slot = start_slot
-                booking.service = selected_service
-                booking.status = Booking.Status.CONFIRMED
-                booking.save()
-                occupy_slot_run(booking, run)
+            except ValidationError:
+                messages.error(request, "Den tiden just bokades av någon annan.")
+                return redirect(f"{request.path}?service={selected_service.slug}")
+            start_slot = booking.slot
             notify = send_booking_notifications(booking)
             request.session["booking_notify"] = notify
             messages.success(

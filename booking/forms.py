@@ -3,6 +3,8 @@
 from django import forms
 from django.core.exceptions import ValidationError
 from django.core.validators import EmailValidator
+from django.utils import timezone
+from django.utils.formats import date_format
 
 from pages.forms import (
     EMAIL_INVALID_MSG,
@@ -12,7 +14,13 @@ from pages.forms import (
     configure_phone_field,
 )
 
-from .models import Booking, WeeklyAvailability
+from .models import (
+    Booking,
+    Service,
+    WeeklyAvailability,
+    slot_run_covering,
+    upcoming_open_slots,
+)
 
 
 class BookingForm(forms.ModelForm):
@@ -113,6 +121,134 @@ class BookingForm(forms.ModelForm):
         booking.notify_sms = "sms" in chosen
         if commit:
             booking.save()
+        return booking
+
+
+def _slot_choice_groups(queryset):
+    """Build select choices grouped by Swedish date; times are H:i inside each day."""
+    grouped = {}
+    for obj in queryset:
+        local = timezone.localtime(obj.start)
+        grouped.setdefault(date_format(local, "l j F Y"), []).append(
+            (obj.pk, date_format(local, "H:i"))
+        )
+    return list(grouped.items())
+
+
+class StaffBookingForm(forms.ModelForm):
+    """Admin add-form: pick treatment, start time, and customer details.
+
+    Occupies treatment length plus 30 minutes, same as public /boka/.
+    """
+
+    class Meta:
+        model = Booking
+        fields = (
+            "service",
+            "slot",
+            "customer_name",
+            "customer_email",
+            "customer_phone",
+            "notify_email",
+            "notify_sms",
+            "notes",
+        )
+        labels = {
+            "service": "Behandling",
+            "slot": "Starttid",
+            "customer_name": "Kundens namn",
+            "customer_email": "E-post",
+            "customer_phone": "Telefonnummer",
+            "notify_email": "Skicka bekräftelse med e-post",
+            "notify_sms": "Skicka bekräftelse med SMS",
+            "notes": "Intern anteckning",
+        }
+        help_texts = {
+            "slot": (
+                "Lediga starter de närmaste 60 dagarna, grupperade per dag. "
+                "Behandlingstiden plus 30 minuter reserveras från den tid du väljer."
+            ),
+            "notes": "Syns bara här i admin, inte för kunden.",
+        }
+        widgets = {
+            "customer_name": forms.TextInput(attrs={"autocomplete": "name"}),
+            "customer_email": forms.EmailInput(
+                attrs={"autocomplete": "email", "inputmode": "email"}
+            ),
+            "customer_phone": TelInput(
+                attrs={"autocomplete": "tel", "data-phone-digits-only": "true"}
+            ),
+            "notes": forms.Textarea(attrs={"rows": 3}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["service"].queryset = Service.objects.filter(is_active=True)
+        self.fields["service"].empty_label = "Välj behandling"
+        slot_field = self.fields["slot"]
+        slot_qs = upcoming_open_slots()
+        slot_field.queryset = slot_qs
+        slot_field.empty_label = "Välj starttid"
+        # Assign choices on the inner select — admin wraps ForeignKey widgets.
+        choices = [("", "Välj starttid"), *_slot_choice_groups(slot_qs)]
+        slot_field.choices = choices
+        inner = getattr(slot_field.widget, "widget", slot_field.widget)
+        inner.choices = choices
+        self.fields["customer_name"].required = True
+        self.fields["customer_email"].required = True
+        self.fields["customer_phone"].required = True
+        configure_email_field(self.fields["customer_email"])
+        configure_phone_field(self.fields["customer_phone"], required=True)
+        self.fields["notify_email"].initial = True
+        self.fields["notify_sms"].initial = True
+        for name in ("customer_name", "customer_email", "customer_phone"):
+            self.fields[name].widget.attrs["aria-required"] = "true"
+
+    def clean_customer_email(self):
+        """Same e-post rules as the public booking form."""
+        email = (self.cleaned_data.get("customer_email") or "").strip()
+        EmailValidator(message=EMAIL_INVALID_MSG)(email)
+        return email
+
+    def clean_customer_phone(self):
+        """Digits only, same length checks as the public form."""
+        digits = clean_digits_only(self.cleaned_data.get("customer_phone"), required=True)
+        if len(digits) < 7:
+            raise ValidationError("Telefonnumret måste vara minst 7 siffror.")
+        if len(digits) > 15:
+            raise ValidationError("Telefonnumret får vara högst 15 siffror.")
+        return digits
+
+    def clean(self):
+        """The chosen start must fit treatment length plus the 30-minute buffer."""
+        cleaned = super().clean()
+        service = cleaned.get("service")
+        slot = cleaned.get("slot")
+        if service and slot and not slot_run_covering(slot, service.calendar_minutes()):
+            self.add_error(
+                "slot",
+                "Den tiden räcker inte för behandlingen, eller är inte ledig. "
+                "Välj en tidigare start, eller en kortare behandling.",
+            )
+        return cleaned
+
+    def save(self, commit=True):
+        """Create the booking and occupy consecutive slots (ignores commit=False)."""
+        from .models import create_confirmed_booking
+
+        data = self.cleaned_data
+        booking = create_confirmed_booking(
+            service=data["service"],
+            start_slot=data["slot"],
+            customer_name=data["customer_name"],
+            customer_email=data["customer_email"],
+            customer_phone=data["customer_phone"],
+            notify_email=data.get("notify_email", False),
+            notify_sms=data.get("notify_sms", False),
+            notes=data.get("notes") or "",
+        )
+        self.instance = booking
+        self.save_m2m = lambda: None
         return booking
 
 

@@ -2,7 +2,8 @@
 
 from datetime import datetime, timedelta
 
-from django.db import models
+from django.core.exceptions import ValidationError
+from django.db import models, transaction
 from django.utils import timezone
 
 # Adjust: extra minutes reserved after each treatment (cleanup / next customer).
@@ -342,8 +343,87 @@ def occupy_slot_run(booking, run):
         extra.save(update_fields=["held_by"])
 
 
+def create_confirmed_booking(
+    *,
+    service,
+    start_slot,
+    customer_name,
+    customer_email,
+    customer_phone,
+    notify_email=True,
+    notify_sms=True,
+    notes="",
+):
+    """Save a booking and reserve treatment length plus buffer.
+
+    Reuses a cancelled row on the same slot. Raises ValidationError if the
+    start time is taken or too short for the service.
+    """
+    needed = service.calendar_minutes()
+    taken_msg = "Den tiden räcker inte för behandlingen, eller är inte ledig."
+    with transaction.atomic():
+        existing = (
+            Booking.objects.select_for_update().filter(slot_id=start_slot.pk).first()
+        )
+        if existing and existing.status == Booking.Status.CONFIRMED:
+            raise ValidationError(taken_msg)
+        if existing:
+            TimeSlot.objects.filter(held_by=existing).update(held_by=None)
+        tentative = slot_run_covering(
+            TimeSlot.objects.select_for_update().get(pk=start_slot.pk),
+            needed,
+        )
+        if not tentative:
+            raise ValidationError(taken_msg)
+        locked = list(
+            TimeSlot.objects.select_for_update()
+            .filter(pk__in=[slot.pk for slot in tentative])
+            .order_by("start")
+        )
+        if not locked or locked[0].pk != start_slot.pk:
+            raise ValidationError(taken_msg)
+        start = locked[0]
+        run = slot_run_covering(start, needed)
+        if [slot.pk for slot in run] != [slot.pk for slot in locked]:
+            raise ValidationError(taken_msg)
+        values = {
+            "service": service,
+            "customer_name": customer_name,
+            "customer_email": customer_email,
+            "customer_phone": customer_phone,
+            "notify_email": notify_email,
+            "notify_sms": notify_sms,
+            "notes": notes,
+            "status": Booking.Status.CONFIRMED,
+        }
+        if existing:
+            booking = existing
+            for field, value in values.items():
+                setattr(booking, field, value)
+            booking.save()
+        else:
+            booking = Booking.objects.create(slot=start, **values)
+        occupy_slot_run(booking, run)
+        return booking
+
+
 # Adjust: public /boka/ shows this many days; saving Veckoschema syncs the same window.
 PUBLIC_SLOT_HORIZON_DAYS = 60
+
+
+def upcoming_open_slots():
+    """Slots staff or customers may start a booking in (same window as Boka)."""
+    now = timezone.now()
+    return (
+        TimeSlot.objects.filter(
+            start__gte=now,
+            start__lte=now + timedelta(days=PUBLIC_SLOT_HORIZON_DAYS),
+            is_blocked=False,
+            held_by__isnull=True,
+        )
+        .exclude(booking__status=Booking.Status.CONFIRMED)
+        .order_by("start")
+    )
 
 
 def iter_schedule_slots(start_date, end_date):

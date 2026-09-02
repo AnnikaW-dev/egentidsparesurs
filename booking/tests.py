@@ -358,3 +358,143 @@ class DashboardHelpTests(TestCase):
         self.assertContains(response, "Spara och fortsätt redigera")
         self.assertContains(response, "Hero-karusell")
         self.assertContains(response, "egentidspaservice@gmail.com")
+        self.assertContains(response, "Boka in en kund")
+        self.assertContains(response, "Lägg till bokning")
+
+
+@override_settings(SMS_BACKEND="locmem")
+class AdminStaffBookingTests(TestCase):
+    """Staff can book a customer in Django admin with the same duration+buffer rules."""
+
+    def setUp(self):
+        from django.contrib.auth import get_user_model
+
+        sms_outbox.clear()
+        get_user_model().objects.create_superuser("emma", "emma@example.com", "secret")
+        self.client.login(username="emma", password="secret")
+        self.service = Service.objects.create(
+            name="Spa",
+            slug="spa",
+            duration_minutes=60,
+            is_active=True,
+        )
+        start = timezone.now() + timedelta(days=3)
+        self.slot_a = TimeSlot.objects.create(
+            start=start, end=start + timedelta(hours=1)
+        )
+        self.slot_b = TimeSlot.objects.create(
+            start=start + timedelta(hours=1),
+            end=start + timedelta(hours=2),
+        )
+        self.slot_c = TimeSlot.objects.create(
+            start=start + timedelta(hours=2),
+            end=start + timedelta(hours=3),
+        )
+        self.slot_d = TimeSlot.objects.create(
+            start=start + timedelta(hours=3),
+            end=start + timedelta(hours=4),
+        )
+
+    def test_add_form_explains_the_flow(self):
+        response = self.client.get(reverse("admin:booking_booking_add"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Boka in kund")
+        self.assertContains(response, "Behandling")
+        self.assertContains(response, "behandlingstiden plus 30 minuter")
+        self.assertContains(response, "Starttid")
+        self.assertContains(response, "<optgroup")
+
+    def test_preselects_slot_from_query_string(self):
+        response = self.client.get(
+            reverse("admin:booking_booking_add"),
+            {"slot": self.slot_a.pk},
+        )
+        self.assertContains(
+            response,
+            f'<option value="{self.slot_a.pk}" selected>',
+            html=False,
+        )
+
+    def test_timeslot_list_has_book_customer_link(self):
+        response = self.client.get(reverse("admin:booking_timeslot_changelist"))
+        self.assertContains(response, "Boka kund")
+        self.assertContains(
+            response,
+            f"{reverse('admin:booking_booking_add')}?slot={self.slot_a.pk}",
+        )
+
+    def test_admin_add_holds_the_buffer_and_hides_public_starts(self):
+        response = self.client.post(
+            reverse("admin:booking_booking_add"),
+            {
+                "service": self.service.pk,
+                "slot": self.slot_a.pk,
+                "customer_name": "Britt",
+                "customer_email": "britt@example.com",
+                "customer_phone": "0701234567",
+                "notify_email": "on",
+                "notes": "Ringde in",
+                "_save": "Spara",
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        booking = Booking.objects.get()
+        self.assertEqual(booking.customer_name, "Britt")
+        self.assertEqual(booking.notes, "Ringde in")
+        self.assertTrue(booking.notify_email)
+        self.assertFalse(booking.notify_sms)
+        self.slot_b.refresh_from_db()
+        self.slot_c.refresh_from_db()
+        self.assertEqual(self.slot_b.held_by_id, booking.pk)
+        self.assertIsNone(self.slot_c.held_by_id)
+        public = self.client.get(reverse("booking"), {"service": self.service.slug})
+        self.assertNotContains(public, f"slot={self.slot_a.pk}")
+        self.assertNotContains(public, f"slot={self.slot_b.pk}")
+        self.assertContains(public, f"slot={self.slot_c.pk}")
+
+    def test_rejects_start_that_does_not_fit(self):
+        self.slot_b.delete()
+        self.slot_c.delete()
+        self.slot_d.delete()
+        response = self.client.post(
+            reverse("admin:booking_booking_add"),
+            {
+                "service": self.service.pk,
+                "slot": self.slot_a.pk,
+                "customer_name": "Britt",
+                "customer_email": "britt@example.com",
+                "customer_phone": "0701234567",
+                "notify_email": "on",
+                "_save": "Spara",
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Den tiden räcker inte för behandlingen")
+        self.assertFalse(Booking.objects.exists())
+
+    def test_cancel_releases_held_slots(self):
+        from booking.models import create_confirmed_booking
+
+        booking = create_confirmed_booking(
+            service=self.service,
+            start_slot=self.slot_a,
+            customer_name="Britt",
+            customer_email="britt@example.com",
+            customer_phone="0701234567",
+            notify_email=False,
+            notify_sms=False,
+        )
+        response = self.client.post(
+            reverse("admin:booking_booking_changelist"),
+            {
+                "action": "cancel_bookings",
+                "_selected_action": [str(booking.pk)],
+                "index": "0",
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        booking.refresh_from_db()
+        self.slot_b.refresh_from_db()
+        self.assertEqual(booking.status, Booking.Status.CANCELLED)
+        self.assertIsNone(self.slot_b.held_by_id)
+
