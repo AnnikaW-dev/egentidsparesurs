@@ -47,8 +47,8 @@ class Command(BaseCommand):
             "  SENDGRID_API_KEY=<key>  (recommended; also verify DEFAULT_FROM_EMAIL in SendGrid)\n"
             "  — or —\n"
             "  EMAIL_HOST, EMAIL_PORT, EMAIL_HOST_USER, EMAIL_HOST_PASSWORD, EMAIL_USE_TLS\n"
-            "  DEFAULT_FROM_EMAIL=info@egentidspaservice.se\n"
-            "Optional: CONTACT_INBOX=info@egentidspaservice.se (defaults to CMS site email)\n"
+            "  DEFAULT_FROM_EMAIL=egentidspaservice@gmail.com\n"
+            "Optional: CONTACT_INBOX=egentidspaservice@gmail.com (defaults to CMS site email)\n"
             f"Current backend: {backend}"
         )
         if options["strict"] and not settings.DEBUG:

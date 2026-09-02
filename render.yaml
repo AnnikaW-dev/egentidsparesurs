@@ -64,9 +64,9 @@ services:
       # Outgoing mail — set SENDGRID_API_KEY in Render dashboard (sync: false keeps it secret).
       # Verify DEFAULT_FROM_EMAIL as a sender in SendGrid (Single Sender or domain auth).
       - key: DEFAULT_FROM_EMAIL
-        value: info@egentidspaservice.se
+        value: egentidspaservice@gmail.com
       - key: CONTACT_INBOX
-        value: info@egentidspaservice.se
+        value: egentidspaservice@gmail.com
       - key: PUBLIC_SITE_URL
         value: "https://egentidspaservice.se"
       - key: SENDGRID_API_KEY

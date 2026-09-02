@@ -16,7 +16,15 @@ class SiteSettings(models.Model):
         default="Skönhet & avkoppling – med en värmande touch!",
     )
     logo = models.ImageField(upload_to="brand/", blank=True)
-    email = models.EmailField(blank=True, default="info@egentidspaservice.se")
+    email = models.EmailField(
+        blank=True,
+        default="egentidspaservice@gmail.com",
+        verbose_name="E-post",
+        help_text=(
+            "Visas i sidfoten. Kontaktformulär och nya bokningar skickas hit "
+            "om CONTACT_INBOX inte är satt i miljön."
+        ),
+    )
     phone = models.CharField(
         max_length=40,
         blank=True,

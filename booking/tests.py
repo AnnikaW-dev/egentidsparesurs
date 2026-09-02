@@ -98,8 +98,12 @@ class BookingConfirmationNotifyTests(TestCase):
         self.assertTrue(booking.notify_email)
         self.assertTrue(booking.notify_sms)
         self.assertRedirects(response, reverse("booking_success", kwargs={"pk": booking.pk}))
-        self.assertEqual(len(mail.outbox), 1)
-        self.assertEqual(mail.outbox[0].to, ["anna@example.com"])
+        self.assertEqual(len(mail.outbox), 2)
+        recipients = {tuple(m.to) for m in mail.outbox}
+        self.assertEqual(
+            recipients,
+            {("anna@example.com",), ("egentidspaservice@gmail.com",)},
+        )
         self.assertEqual(len(sms_outbox), 1)
         self.assertEqual(sms_outbox[0]["to"], "+46701234567")
         self.assertIn("Testbehandling", sms_outbox[0]["body"])
@@ -109,7 +113,12 @@ class BookingConfirmationNotifyTests(TestCase):
         booking = Booking.objects.get()
         self.assertTrue(booking.notify_email)
         self.assertFalse(booking.notify_sms)
-        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(len(mail.outbox), 2)
+        recipients = {tuple(m.to) for m in mail.outbox}
+        self.assertEqual(
+            recipients,
+            {("anna@example.com",), ("egentidspaservice@gmail.com",)},
+        )
         self.assertEqual(len(sms_outbox), 0)
 
     def test_sms_only_skips_email(self):
@@ -117,7 +126,9 @@ class BookingConfirmationNotifyTests(TestCase):
         booking = Booking.objects.get()
         self.assertFalse(booking.notify_email)
         self.assertTrue(booking.notify_sms)
-        self.assertEqual(len(mail.outbox), 0)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(mail.outbox[0].to, ["egentidspaservice@gmail.com"])
+        self.assertIn("Ny bokning", mail.outbox[0].subject)
         self.assertEqual(len(sms_outbox), 1)
 
     def test_requires_at_least_one_channel(self):
@@ -168,3 +179,4 @@ class DashboardHelpTests(TestCase):
         self.assertContains(response, "Så här sköter du hemsidan")
         self.assertContains(response, "Spara och fortsätt redigera")
         self.assertContains(response, "Hero-karusell")
+        self.assertContains(response, "egentidspaservice@gmail.com")

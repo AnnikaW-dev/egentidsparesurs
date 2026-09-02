@@ -17,7 +17,12 @@ from cms.models import (
     SitePage,
     SiteSettings,
 )
-from cms.brand import BRAND_NAME, BRAND_NAME_LEGACY
+from cms.brand import (
+    BRAND_NAME,
+    BRAND_NAME_LEGACY,
+    CONTACT_EMAIL,
+    is_legacy_contact_email,
+)
 from cms.gallery_defaults import GALLERY_IMAGES
 from cms.month_hook_defaults import MONTH_HOOK_DEFAULTS
 from cms.salon_defaults import (
@@ -46,8 +51,6 @@ from cms.warming_defaults import (
     WARMING_TITLE,
 )
 
-CONTACT_EMAIL = "info@egentidspaservice.se"
-CONTACT_EMAIL_LEGACY = "info@egentidsparesurs.se"
 CONTACT_PHONE = "072-3170120"
 CONTACT_ADDRESS = "Egen ingång en trappa ner"
 CONTACT_ADDRESS_LEGACY = "Egen ingång på nedervåningen"
@@ -178,7 +181,9 @@ class Command(BaseCommand):
                 settings.site_name = BRAND_NAME
             if not (settings.tagline or "").strip():
                 settings.tagline = "Skönhet & avkoppling – med en värmande touch!"
-            if settings.email in ("", CONTACT_EMAIL_LEGACY):
+            if not (settings.email or "").strip() or is_legacy_contact_email(
+                settings.email
+            ):
                 settings.email = CONTACT_EMAIL
             if not (settings.phone or "").strip():
                 settings.phone = CONTACT_PHONE

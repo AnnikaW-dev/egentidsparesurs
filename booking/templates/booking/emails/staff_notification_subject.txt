@@ -1,0 +1,2 @@
+{# booking/emails/staff_notification_subject.txt — staff inbox copy of a new booking #}
+Ny bokning: {{ booking.customer_name }} – {{ site.site_name }}

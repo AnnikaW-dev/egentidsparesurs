@@ -108,7 +108,7 @@ class FooterContactTests(TestCase):
         SiteSettings.load()
         response = Client().get(reverse("home"))
         self.assertContains(response, "Mail:")
-        self.assertContains(response, "info@egentidspaservice.se")
+        self.assertContains(response, "egentidspaservice@gmail.com")
         self.assertContains(response, "Tel:")
         self.assertContains(response, "072-3170120")
         self.assertContains(response, "href=\"tel:0723170120\"")
@@ -173,7 +173,7 @@ class HeroCarouselPageTests(TestCase):
         self.assertContains(response, "Nästa bild")
 
 
-@override_settings(CONTACT_INBOX="info@egentidspaservice.se")
+@override_settings(CONTACT_INBOX="egentidspaservice@gmail.com")
 class ContactNotificationEmailTests(TestCase):
     def setUp(self):
         SiteSettings.load()
@@ -191,6 +191,16 @@ class ContactNotificationEmailTests(TestCase):
         )
         self.assertRedirects(response, reverse("contact"))
         self.assertEqual(len(mail.outbox), 1)
-        self.assertEqual(mail.outbox[0].to, ["info@egentidspaservice.se"])
+        self.assertEqual(mail.outbox[0].to, ["egentidspaservice@gmail.com"])
         self.assertEqual(mail.outbox[0].reply_to, ["anna@example.com"])
         self.assertIn("Anna Test", mail.outbox[0].body)
+
+    def test_legacy_info_inbox_is_rewritten_to_gmail(self):
+        """Old CONTACT_INBOX=info@ still delivers to the Gmail staff inbox."""
+        settings = SiteSettings.load()
+        settings.email = "info@egentidspaservice.se"
+        settings.save(update_fields=["email"])
+        with override_settings(CONTACT_INBOX="info@egentidspaservice.se"):
+            from pages.emails import contact_inbox
+
+            self.assertEqual(contact_inbox(), "egentidspaservice@gmail.com")

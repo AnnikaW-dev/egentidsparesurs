@@ -1,0 +1,12 @@
+{# booking/emails/staff_notification_body.txt — staff inbox copy of a new booking #}
+Ny bokning via Boka på {{ site.site_name }}.
+
+Namn: {{ booking.customer_name }}
+E-post: {{ booking.customer_email }}
+Telefon: {{ booking.customer_phone }}
+Behandling: {{ booking.service.name }}
+Datum och tid: {{ slot_local|date:"l j F Y, H:i" }}
+{% if booking.notes %}Anteckning: {{ booking.notes }}
+{% endif %}
+---
+Svara genom att svara på detta mejl (Reply-to är kundens adress).

@@ -1,14 +1,23 @@
-# cms/brand.py — public brand name; rewrite leftover “Resurs” in CMS/SEO text
+# cms/brand.py — public brand name and staff inbox; rewrite leftover CMS text
 
-"""Canonical brand string used in titles, seed, and snapshot.
+"""Canonical brand string and contact email used in titles, seed, and snapshot.
 
-Adjust: change BRAND_NAME here if the public name changes again.
+Adjust: change BRAND_NAME or CONTACT_EMAIL here if the public name or inbox changes.
 """
 
 from __future__ import annotations
 
 BRAND_NAME = "EGentid Spa & Service"
 BRAND_NAME_LEGACY = "EGentid Spa & Resurs"
+
+# Adjust: staff inbox for footer, contact form, and new-booking notices.
+CONTACT_EMAIL = "egentidspaservice@gmail.com"
+CONTACT_EMAIL_LEGACY = frozenset(
+    {
+        "info@egentidspaservice.se",
+        "info@egentidsparesurs.se",
+    }
+)
 
 # CharField/TextField names that may still contain the old brand.
 _PAGE_TEXT_FIELDS = (
@@ -30,6 +39,11 @@ _SETTINGS_TEXT_FIELDS = (
 )
 
 
+def is_legacy_contact_email(value: str) -> bool:
+    """True for old info@ addresses that should now go to CONTACT_EMAIL."""
+    return (value or "").strip().lower() in CONTACT_EMAIL_LEGACY
+
+
 def with_current_brand(text: str) -> str:
     """Replace leftover Spa & Resurs wording for display (titles, meta)."""
     if not text:
@@ -49,9 +63,9 @@ def document_title(seo_title: str, site_name: str) -> str:
 
 
 def replace_legacy_brand_in_db() -> int:
-    """Rewrite EGentid Spa & Resurs → Service in CMS rows. Returns how many rows changed.
+    """Rewrite leftover brand text and old info@ inbox in CMS. Returns how many rows changed.
 
-    Safe to run on every deploy; skips rows that already use the current name.
+    Safe to run on every deploy; skips rows that already use the current name/email.
     """
     from cms.models import ContentBlock, SitePage, SiteSettings
 
@@ -64,6 +78,9 @@ def replace_legacy_brand_in_db() -> int:
         if updated != raw:
             setattr(settings, field, updated)
             settings_fields.append(field)
+    if is_legacy_contact_email(settings.email or ""):
+        settings.email = CONTACT_EMAIL
+        settings_fields.append("email")
     if settings_fields:
         settings.save(update_fields=settings_fields)
         changed += 1

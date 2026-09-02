@@ -48,7 +48,7 @@ def env_bool(name: str, default: bool = False) -> bool:
 
 def resolve_email_config(*, debug: bool) -> EmailConfig:
     """Build email settings from env. SendGrid shorthand wins when SMTP host is unset."""
-    default_from = os.environ.get("DEFAULT_FROM_EMAIL", "info@egentidspaservice.se").strip()
+    default_from = os.environ.get("DEFAULT_FROM_EMAIL", "egentidspaservice@gmail.com").strip()
     server_email = os.environ.get("SERVER_EMAIL", default_from).strip()
 
     sendgrid_key = os.environ.get("SENDGRID_API_KEY", "").strip()
