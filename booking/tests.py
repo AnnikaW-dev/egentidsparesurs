@@ -63,6 +63,92 @@ class GenerateSlotsTests(TestCase):
         self.assertEqual(rows, [{"label": "Måndag–tisdag", "hours": "09:00–11:00"}])
 
 
+class SyncSlotsFromWeeklyTests(TestCase):
+    """Saving Veckoschema must add/remove public Boka slots, but keep bookings."""
+
+    def setUp(self):
+        self.monday = timezone.localdate()
+        while self.monday.weekday() != 0:
+            self.monday += timedelta(days=1)
+        self.rule = WeeklyAvailability.objects.create(
+            weekday=0,
+            start_time=time(9, 0),
+            end_time=time(12, 0),
+            slot_minutes=60,
+            is_active=True,
+        )
+
+    def test_sync_creates_slots_matching_hours(self):
+        from booking.models import sync_slots_for_range
+
+        created, deleted = sync_slots_for_range(self.monday, self.monday)
+        self.assertEqual(created, 3)
+        self.assertEqual(deleted, 0)
+        self.assertEqual(TimeSlot.objects.count(), 3)
+
+    def test_shorter_hours_remove_unbooked_slots(self):
+        from booking.models import sync_slots_for_range
+
+        sync_slots_for_range(self.monday, self.monday)
+        self.rule.end_time = time(10, 0)
+        self.rule.save()
+        created, deleted = sync_slots_for_range(self.monday, self.monday)
+        self.assertEqual(created, 0)
+        self.assertEqual(deleted, 2)
+        self.assertEqual(TimeSlot.objects.count(), 1)
+
+    def test_booked_slot_is_kept_when_hours_shrink(self):
+        from booking.models import sync_slots_for_range
+
+        sync_slots_for_range(self.monday, self.monday)
+        late = TimeSlot.objects.order_by("-start").first()
+        service = Service.objects.create(
+            name="Test",
+            slug="test",
+            duration_minutes=60,
+            is_active=True,
+        )
+        Booking.objects.create(
+            slot=late,
+            service=service,
+            customer_name="Anna",
+            customer_email="anna@example.com",
+            customer_phone="0701234567",
+        )
+        self.rule.end_time = time(10, 0)
+        self.rule.save()
+        sync_slots_for_range(self.monday, self.monday)
+        late.refresh_from_db()
+        self.assertTrue(Booking.objects.filter(pk=late.booking.pk).exists())
+        self.assertEqual(TimeSlot.objects.count(), 2)
+
+    def test_admin_save_updates_public_boka_slots(self):
+        from django.contrib.auth import get_user_model
+
+        get_user_model().objects.create_superuser("emma", "emma@example.com", "secret")
+        self.client.login(username="emma", password="secret")
+        url = reverse("admin:booking_weeklyavailability_change", args=[self.rule.pk])
+        response = self.client.post(
+            url,
+            {
+                "weekday": "0",
+                "start_time": "10:00:00",
+                "end_time": "12:00:00",
+                "slot_minutes": "60",
+                "is_active": "on",
+            },
+            follow=True,
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Bokningsbara tider på Boka är uppdaterade")
+        starts = [
+            timezone.localtime(slot.start).time()
+            for slot in TimeSlot.objects.order_by("start")
+            if timezone.localtime(slot.start).date() == self.monday
+        ]
+        self.assertEqual(starts, [time(10, 0), time(11, 0)])
+
+
 @override_settings(SMS_BACKEND="locmem")
 class BookingConfirmationNotifyTests(TestCase):
     def setUp(self):

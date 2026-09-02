@@ -89,7 +89,9 @@ class WeeklyAvailability(models.Model):
     def footer_week_rows(cls):
         """Week schedule for the site footer: one row per weekday (open hours or Stängt).
 
-        Adjust hours in admin under Veckoschema or /dashboard/.
+        Adjust hours in admin under Veckoschema / öppettider — saving
+        updates bookable times on Boka.
+
         """
         active = cls.objects.filter(is_active=True).order_by("weekday", "start_time")
         ranges_by_day = {weekday: [] for weekday, _ in cls.WEEKDAYS}
@@ -116,7 +118,7 @@ def footer_opening_hours():
 
     Closed days are skipped. Returns a list of {label, hours} dicts, e.g.
     [{'label': 'Måndag–fredag', 'hours': '09:00–16:00'}].
-    Edit times in admin WeeklyAvailability or /dashboard/.
+    Edit times in admin under Veckoschema / öppettider (syncs Boka).
     """
     from collections import defaultdict
 
@@ -237,22 +239,24 @@ class Booking(models.Model):
         return f"{self.customer_name} – {self.slot}"
 
 
-def generate_slots_for_range(start_date, end_date):
-    """
-    Create TimeSlot rows from active WeeklyAvailability between two dates.
+# Adjust: public /boka/ shows this many days; saving Veckoschema syncs the same window.
+PUBLIC_SLOT_HORIZON_DAYS = 60
 
-    Skips ClosedDate days and does not duplicate existing (start, end) pairs.
-    Returns the number of newly created slots.
+
+def iter_schedule_slots(start_date, end_date):
+    """Yield (start, end) aware datetimes from active WeeklyAvailability.
+
+    Skips ClosedDate days. Used when creating and when removing leftover luckor.
     """
     if end_date < start_date:
-        return 0
+        return
 
-    closed = set(ClosedDate.objects.filter(date__gte=start_date, date__lte=end_date).values_list("date", flat=True))
+    closed = set(
+        ClosedDate.objects.filter(date__gte=start_date, date__lte=end_date).values_list(
+            "date", flat=True
+        )
+    )
     weekly = list(WeeklyAvailability.objects.filter(is_active=True))
-    if not weekly:
-        return 0
-
-    created = 0
     day = start_date
     while day <= end_date:
         if day not in closed:
@@ -264,15 +268,59 @@ def generate_slots_for_range(start_date, end_date):
                 step = timedelta(minutes=rule.slot_minutes)
                 while cursor + step <= end_dt:
                     slot_end = cursor + step
-                    start_aware = timezone.make_aware(cursor)
-                    end_aware = timezone.make_aware(slot_end)
-                    _, was_created = TimeSlot.objects.get_or_create(
-                        start=start_aware,
-                        end=end_aware,
-                        defaults={"is_blocked": False},
-                    )
-                    if was_created:
-                        created += 1
+                    yield timezone.make_aware(cursor), timezone.make_aware(slot_end)
                     cursor = slot_end
         day += timedelta(days=1)
+
+
+def generate_slots_for_range(start_date, end_date):
+    """Create TimeSlot rows from active WeeklyAvailability between two dates.
+
+    Skips ClosedDate days and does not duplicate existing (start, end) pairs.
+    Returns the number of newly created slots.
+    """
+    created = 0
+    for start_aware, end_aware in iter_schedule_slots(start_date, end_date):
+        _, was_created = TimeSlot.objects.get_or_create(
+            start=start_aware,
+            end=end_aware,
+            defaults={"is_blocked": False},
+        )
+        if was_created:
+            created += 1
     return created
+
+
+def sync_slots_for_range(start_date, end_date):
+    """Make TimeSlots match Veckoschema between two dates.
+
+    Creates missing luckor. Deletes unbooked luckor that no longer match
+    (hours shortened, day closed, or ClosedDate). Never deletes a slot that
+    has a booking row. Returns (created_count, deleted_count).
+    """
+    created = generate_slots_for_range(start_date, end_date)
+    desired = set(iter_schedule_slots(start_date, end_date))
+    range_start = timezone.make_aware(datetime.combine(start_date, datetime.min.time()))
+    range_end = timezone.make_aware(
+        datetime.combine(end_date + timedelta(days=1), datetime.min.time())
+    )
+    deleted = 0
+    extras = TimeSlot.objects.filter(
+        start__gte=range_start,
+        start__lt=range_end,
+        booking__isnull=True,
+    )
+    for slot in extras:
+        if (slot.start, slot.end) not in desired:
+            slot.delete()
+            deleted += 1
+    return created, deleted
+
+
+def sync_future_slots(days_ahead=PUBLIC_SLOT_HORIZON_DAYS):
+    """Align the public Boka window with the current Veckoschema.
+
+    Call after admin saves WeeklyAvailability or ClosedDate.
+    """
+    today = timezone.localdate()
+    return sync_slots_for_range(today, today + timedelta(days=days_ahead))

@@ -13,7 +13,15 @@ from django.views.decorators.http import require_http_methods
 from cms.models import SitePage
 
 from .forms import AvailabilityGenerateForm, BookingForm, QuickWeekForm
-from .models import Booking, Service, TimeSlot, WeeklyAvailability, generate_slots_for_range
+from .models import (
+    Booking,
+    PUBLIC_SLOT_HORIZON_DAYS,
+    Service,
+    TimeSlot,
+    WeeklyAvailability,
+    sync_future_slots,
+    sync_slots_for_range,
+)
 from .notifications import send_booking_notifications
 
 
@@ -42,7 +50,7 @@ def booking_page(request):
             return redirect(f"{request.path}?service={selected_service.slug}")
 
     now = timezone.now()
-    horizon = now + timedelta(days=60)
+    horizon = now + timedelta(days=PUBLIC_SLOT_HORIZON_DAYS)
     open_slots = (
         TimeSlot.objects.filter(start__gte=now, start__lte=horizon, is_blocked=False)
         .exclude(booking__status=Booking.Status.CONFIRMED)
@@ -157,12 +165,11 @@ def dashboard_availability(request):
     """
     Staff UI to edit weekly hours and generate slots for a week or month.
 
-    Weekly rules live in WeeklyAvailability; generate_slots_for_range materializes them.
+    Weekly rules live in WeeklyAvailability; saving them syncs public Boka slots.
     """
     weekly = WeeklyAvailability.objects.all().order_by("weekday", "start_time")
     generate_form = AvailabilityGenerateForm(prefix="gen")
     week_form = QuickWeekForm(prefix="week")
-    created = None
 
     if request.method == "POST":
         action = request.POST.get("action")
@@ -170,7 +177,14 @@ def dashboard_availability(request):
             week_form = QuickWeekForm(request.POST, prefix="week")
             if week_form.is_valid():
                 _save_quick_week(week_form.cleaned_data)
-                messages.success(request, "Veckoschemat sparades.")
+                created, deleted = sync_future_slots()
+                messages.success(
+                    request,
+                    (
+                        "Veckoschemat sparades. Boka är uppdaterad: "
+                        f"{created} nya tider, {deleted} borttagna."
+                    ),
+                )
                 return redirect("dashboard_availability")
         elif action == "generate":
             generate_form = AvailabilityGenerateForm(request.POST, prefix="gen")
@@ -182,10 +196,10 @@ def dashboard_availability(request):
                 else:
                     last = monthrange(start.year, start.month)[1]
                     end = date(start.year, start.month, last)
-                created = generate_slots_for_range(start, end)
+                created, deleted = sync_slots_for_range(start, end)
                 messages.success(
                     request,
-                    f"Skapade {created} nya tidsluckor ({start} – {end}).",
+                    f"Uppdaterade tidsluckor ({start} – {end}): {created} nya, {deleted} borttagna.",
                 )
                 return redirect("dashboard_availability")
 

@@ -1,3 +1,4 @@
+{# booking/dashboard_home.html — staff landing; Veckoschema in admin updates Boka #}
 {% extends "base.html" %}
 
 {% block title %}Admin-översikt – {{ site.site_name }}{% endblock %}
@@ -16,7 +17,7 @@
     </a>
     <a class="dash-card" href="{% url 'dashboard_availability' %}">
       <h2>Bokningsschema</h2>
-      <p>Sätt veckoschema och generera luckor per vecka eller månad. {{ open_count }} lediga framöver.</p>
+      <p>Sätt öppettider under Veckoschema / öppettider. Sparandet uppdaterar Boka. {{ open_count }} lediga framöver.</p>
     </a>
     <a class="dash-card" href="{% url 'admin:booking_booking_changelist' %}">
       <h2>Bokningar</h2>

@@ -3,12 +3,46 @@
 from django.contrib import admin
 
 from .models import (
+    PUBLIC_SLOT_HORIZON_DAYS,
     Booking,
     ClosedDate,
     Service,
     TimeSlot,
     WeeklyAvailability,
+    sync_future_slots,
 )
+
+
+def _announce_boka_sync(admin_obj, request, created, deleted):
+    """Tell staff that public /boka/ times were rebuilt from Veckoschema."""
+    admin_obj.message_user(
+        request,
+        (
+            f"Bokningsbara tider på Boka är uppdaterade "
+            f"({PUBLIC_SLOT_HORIZON_DAYS} dagar framåt): "
+            f"{created} nya, {deleted} borttagna. "
+            "Befintliga kundbokningar är kvar."
+        ),
+    )
+
+
+class ScheduleSyncAdminMixin:
+    """After save/delete, rebuild public slots from the weekly schedule."""
+
+    def save_model(self, request, obj, form, change):
+        super().save_model(request, obj, form, change)
+        created, deleted = sync_future_slots()
+        _announce_boka_sync(self, request, created, deleted)
+
+    def delete_model(self, request, obj):
+        super().delete_model(request, obj)
+        created, deleted = sync_future_slots()
+        _announce_boka_sync(self, request, created, deleted)
+
+    def delete_queryset(self, request, queryset):
+        super().delete_queryset(request, queryset)
+        created, deleted = sync_future_slots()
+        _announce_boka_sync(self, request, created, deleted)
 
 
 @admin.register(Service)
@@ -19,8 +53,8 @@ class ServiceAdmin(admin.ModelAdmin):
 
 
 @admin.register(WeeklyAvailability)
-class WeeklyAvailabilityAdmin(admin.ModelAdmin):
-    """Edit Mon–Sun hours — shown under Öppettider in the footer and used for Boka."""
+class WeeklyAvailabilityAdmin(ScheduleSyncAdminMixin, admin.ModelAdmin):
+    """Edit Mon–Sun hours — footer Öppettider and public Boka slots."""
 
     list_display = ("weekday", "start_time", "end_time", "slot_minutes", "is_active")
     list_editable = ("start_time", "end_time", "slot_minutes", "is_active")
@@ -33,18 +67,29 @@ class WeeklyAvailabilityAdmin(admin.ModelAdmin):
             {
                 "fields": ("weekday", "start_time", "end_time", "is_active", "slot_minutes"),
                 "description": (
-                    "Dessa tider visas under Öppettider i sidfoten. "
+                    "Dessa tider visas under Öppettider i sidfoten och blir "
+                    "bokningsbara under Boka när du sparar. "
                     "Lägg till en rad per öppen dag (t.ex. Måndag 09:00–16:00). "
-                    "Dagar utan aktiv rad visas som ”Stängt”. "
-                    "Du kan också ändra schemat under /dashboard/."
+                    "Dagar utan aktiv rad visas som ”Stängt” och går inte att boka. "
+                    "Kundbokningar som redan finns tas inte bort."
                 ),
             },
         ),
     )
 
+    def changelist_view(self, request, extra_context=None):
+        """List-editable save does not call save_model — sync after POST."""
+        response = super().changelist_view(request, extra_context)
+        if request.method == "POST" and "_save" in request.POST:
+            created, deleted = sync_future_slots()
+            _announce_boka_sync(self, request, created, deleted)
+        return response
+
 
 @admin.register(ClosedDate)
-class ClosedDateAdmin(admin.ModelAdmin):
+class ClosedDateAdmin(ScheduleSyncAdminMixin, admin.ModelAdmin):
+    """A closed date removes that day's unbooked slots from Boka."""
+
     list_display = ("date", "reason")
 
 
