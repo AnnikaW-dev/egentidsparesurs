@@ -289,9 +289,9 @@ class Booking(models.Model):
     customer_name = models.CharField(max_length=120)
     customer_email = models.EmailField()
     customer_phone = models.CharField(max_length=40)
-    # Adjust: customer picks email and/or SMS on the booking form.
+    # Adjust: confirmation is e-post only (notify_sms kept on the row, unused).
     notify_email = models.BooleanField(default=True)
-    notify_sms = models.BooleanField(default=True)
+    notify_sms = models.BooleanField(default=False)
     notes = models.TextField(blank=True)
     status = models.CharField(
         max_length=20,
@@ -351,7 +351,7 @@ def create_confirmed_booking(
     customer_email,
     customer_phone,
     notify_email=True,
-    notify_sms=True,
+    notify_sms=False,
     notes="",
 ):
     """Save a booking and reserve treatment length plus buffer.

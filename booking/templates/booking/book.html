@@ -126,7 +126,6 @@
         </div>
       {% endif %}
       {% for field in form %}
-      {% if field.name != "confirm_via" %}
       <div class="aligned-row{% if field.errors %} has-error{% endif %}">
         <label for="{{ field.id_for_label }}">
           {{ field.label }}
@@ -143,22 +142,7 @@
           {% endif %}
         </div>
       </div>
-      {% endif %}
       {% endfor %}
-      <fieldset class="aligned-row confirm-via{% if form.confirm_via.errors %} has-error{% endif %}" aria-required="true" aria-describedby="confirm_via_hint{% if form.confirm_via.errors %} error_confirm_via{% endif %}">
-        <legend>
-          {{ form.confirm_via.label }}
-          <span class="required-marker" aria-hidden="true">*</span>
-          <span class="visually-hidden">(obligatoriskt)</span>
-        </legend>
-        <div class="aligned-field">
-          {{ form.confirm_via }}
-          <p id="confirm_via_hint" class="field-hint muted">{{ form.confirm_via.help_text }}</p>
-          {% if form.confirm_via.errors %}
-            <p class="field-error" id="error_confirm_via" role="alert">{{ form.confirm_via.errors|striptags }}</p>
-          {% endif %}
-        </div>
-      </fieldset>
       <div class="aligned-row aligned-actions">
         <span class="aligned-label-spacer" aria-hidden="true"></span>
         <div class="aligned-field">

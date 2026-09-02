@@ -26,22 +26,7 @@ from .models import (
 
 
 class BookingForm(forms.ModelForm):
-    """Step 3: name, email, phone, and how to send the confirmation."""
-
-    CONFIRM_CHOICES = (
-        ("email", "E-post"),
-        ("sms", "SMS"),
-    )
-
-    confirm_via = forms.MultipleChoiceField(
-        label="Hur vill du få din bekräftelse?",
-        choices=CONFIRM_CHOICES,
-        widget=forms.CheckboxSelectMultiple,
-        initial=["email", "sms"],
-        required=True,
-        error_messages={"required": "Välj e-post, SMS eller båda."},
-        help_text="Välj minst ett alternativ. Du kan få bekräftelsen på e-post, som SMS, eller båda.",
-    )
+    """Step 3: name, email, and phone. Confirmation is always sent by e-post."""
 
     class Meta:
         model = Booking
@@ -75,10 +60,7 @@ class BookingForm(forms.ModelForm):
         self.fields["customer_phone"].required = True
         configure_email_field(self.fields["customer_email"])
         configure_phone_field(self.fields["customer_phone"], required=True)
-        self.fields["confirm_via"].widget.attrs["class"] = "confirm-via-list"
         for name, field in self.fields.items():
-            if name == "confirm_via":
-                continue
             field.widget.attrs["class"] = "form-control"
             field.widget.attrs["aria-required"] = "true"
             field.widget.attrs["required"] = True
@@ -92,13 +74,6 @@ class BookingForm(forms.ModelForm):
             self.fields["customer_phone"].widget.attrs.setdefault(
                 "aria-describedby", "phone_hint"
             )
-        described_by = ["confirm_via_hint"]
-        if self.is_bound and self.errors.get("confirm_via"):
-            described_by.append("error_confirm_via")
-        self.fields["confirm_via"].widget.attrs["aria-describedby"] = " ".join(described_by)
-        self.fields["confirm_via"].widget.attrs["aria-invalid"] = (
-            "true" if self.is_bound and self.errors.get("confirm_via") else "false"
-        )
 
     def clean_customer_email(self):
         """Normalize and re-check e-post format with a clear Swedish error."""
@@ -114,16 +89,6 @@ class BookingForm(forms.ModelForm):
         if len(digits) > 15:
             raise ValidationError("Telefonnumret får vara högst 15 siffror.")
         return digits
-
-    def save(self, commit=True):
-        """Copy confirm_via checkboxes onto notify_email / notify_sms."""
-        booking = super().save(commit=False)
-        chosen = set(self.cleaned_data.get("confirm_via") or [])
-        booking.notify_email = "email" in chosen
-        booking.notify_sms = "sms" in chosen
-        if commit:
-            booking.save()
-        return booking
 
 
 def _open_slots_by_day():
@@ -181,7 +146,6 @@ class StaffBookingForm(forms.ModelForm):
             "customer_email",
             "customer_phone",
             "notify_email",
-            "notify_sms",
             "notes",
         )
         labels = {
@@ -190,7 +154,6 @@ class StaffBookingForm(forms.ModelForm):
             "customer_email": "E-post",
             "customer_phone": "Telefonnummer",
             "notify_email": "Skicka bekräftelse med e-post",
-            "notify_sms": "Skicka bekräftelse med SMS",
             "notes": "Intern anteckning",
         }
         help_texts = {
@@ -250,7 +213,6 @@ class StaffBookingForm(forms.ModelForm):
         configure_email_field(self.fields["customer_email"])
         configure_phone_field(self.fields["customer_phone"], required=True)
         self.fields["notify_email"].initial = True
-        self.fields["notify_sms"].initial = True
         for name in ("customer_name", "customer_email", "customer_phone"):
             self.fields[name].widget.attrs["aria-required"] = "true"
 
@@ -343,7 +305,7 @@ class StaffBookingForm(forms.ModelForm):
             customer_email=data["customer_email"],
             customer_phone=data["customer_phone"],
             notify_email=data.get("notify_email", False),
-            notify_sms=data.get("notify_sms", False),
+            notify_sms=False,
             notes=data.get("notes") or "",
         )
         self.instance = booking

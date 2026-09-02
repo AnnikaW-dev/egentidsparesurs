@@ -87,7 +87,6 @@ def booking_page(request):
     if request.method == "POST" and selected_service and selected_slot:
         form = BookingForm(request.POST, service=selected_service)
         if form.is_valid():
-            chosen = set(form.cleaned_data.get("confirm_via") or [])
             try:
                 booking = create_confirmed_booking(
                     service=selected_service,
@@ -95,8 +94,8 @@ def booking_page(request):
                     customer_name=form.cleaned_data["customer_name"],
                     customer_email=form.cleaned_data["customer_email"],
                     customer_phone=form.cleaned_data["customer_phone"],
-                    notify_email="email" in chosen,
-                    notify_sms="sms" in chosen,
+                    notify_email=True,
+                    notify_sms=False,
                 )
             except ValidationError:
                 messages.error(request, "Den tiden just bokades av någon annan.")
@@ -112,11 +111,6 @@ def booking_page(request):
                 messages.warning(
                     request,
                     "Bokningen sparades men bekräftelsemejlet kunde inte skickas.",
-                )
-            if notify.get("sms") is False:
-                messages.warning(
-                    request,
-                    "Bokningen sparades men bekräftelse-SMS kunde inte skickas.",
                 )
             return redirect("booking_success", pk=booking.pk)
     elif selected_service and selected_slot:
@@ -147,7 +141,6 @@ def booking_success(request, pk):
         {
             "booking": booking,
             "email_sent": notify.get("email"),
-            "sms_sent": notify.get("sms"),
         },
     )
 

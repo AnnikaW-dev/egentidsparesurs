@@ -14,11 +14,6 @@
     {% elif email_sent == False %}
     <p role="status">Vi kunde inte skicka bekräftelsemejlet just nu. Din bokning är sparad.</p>
     {% endif %}
-    {% if sms_sent %}
-    <p role="status">Ett bekräftelse-SMS har skickats till <strong>{{ booking.customer_phone }}</strong>.</p>
-    {% elif sms_sent == False %}
-    <p role="status">Vi kunde inte skicka bekräftelse-SMS just nu. Din bokning är sparad.</p>
-    {% endif %}
   </header>
   <dl class="confirm-list">
     <dt>Behandling</dt>

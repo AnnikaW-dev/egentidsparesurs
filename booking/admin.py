@@ -216,7 +216,6 @@ class BookingAdmin(admin.ModelAdmin):
         "customer_email",
         "customer_phone",
         "notify_email",
-        "notify_sms",
         "status",
         "created_at",
     )
@@ -237,14 +236,13 @@ class BookingAdmin(admin.ModelAdmin):
                     "customer_email",
                     "customer_phone",
                     "notify_email",
-                    "notify_sms",
                     "notes",
                 ),
                 "description": (
                     "Boka in en kund som ringer eller kommer in. "
                     "Välj datum i kalendern och sedan klockslag. "
                     "Samma regler som på Boka: behandlingstiden plus 30 minuter reserveras. "
-                    "Kunden får bekräftelse om e-post och/eller SMS är ikryssat. "
+                    "Kunden får bekräftelse med e-post om krysset är ikryssat. "
                     "Du kan också klicka på Boka kund under Tidsluckor."
                 ),
             },
@@ -260,7 +258,6 @@ class BookingAdmin(admin.ModelAdmin):
                     "customer_email",
                     "customer_phone",
                     "notify_email",
-                    "notify_sms",
                     "notes",
                 ),
             },

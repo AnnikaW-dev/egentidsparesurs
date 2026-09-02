@@ -59,7 +59,7 @@ def send_booking_confirmation(booking) -> bool:
 def send_booking_staff_notification(booking) -> bool:
     """Email staff when a customer books. Returns True when sent.
 
-    Always sent, even if the customer only asked for SMS. Inbox is contact_inbox().
+    Always sent when a booking is saved. Inbox is contact_inbox().
     """
     to_email = contact_inbox()
     if not to_email:

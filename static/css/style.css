@@ -1167,56 +1167,6 @@ h1 {
   color: var(--ink-strong);
 }
 
-/* Booking confirmation channel — email / SMS checkboxes */
-.confirm-via {
-  border: 0;
-  padding: 0;
-  margin: 0 0 0.85rem;
-  min-width: 0;
-}
-
-.confirm-via legend {
-  font-weight: 500;
-  color: var(--ink-strong);
-  text-align: center;
-  width: 100%;
-  padding: 0;
-  margin: 0 0 0.35rem;
-}
-
-.confirm-via-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 0.5rem 1rem;
-}
-
-.confirm-via-list > div {
-  margin: 0;
-}
-
-.confirm-via-list label {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  min-height: 44px;
-  padding: 0 0.4rem;
-  font-weight: 500;
-  cursor: pointer;
-}
-
-.confirm-via-list input[type="checkbox"] {
-  width: 1.15rem;
-  height: 1.15rem;
-  min-width: 1.15rem;
-  margin: 0;
-  accent-color: var(--ink-strong);
-  flex-shrink: 0;
-}
-
 .form-errors {
   margin-bottom: 0.85rem;
   padding: 0.55rem 0.75rem;

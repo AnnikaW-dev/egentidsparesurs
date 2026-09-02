@@ -1,15 +1,13 @@
-"""Unit tests for slot generation, booking confirmation email, and SMS."""
+"""Unit tests for slot generation and booking confirmation email."""
 
 from datetime import date, time, timedelta
 
 from django.core import mail
-from django.test import TestCase, override_settings
+from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
 
 from booking.models import Booking, ClosedDate, Service, TimeSlot, WeeklyAvailability, generate_slots_for_range
-from booking.sms import outbox as sms_outbox
-from booking.sms import to_e164
 
 
 class GenerateSlotsTests(TestCase):
@@ -181,10 +179,10 @@ class SyncSlotsFromWeeklyTests(TestCase):
         )
 
 
-@override_settings(SMS_BACKEND="locmem")
 class BookingConfirmationNotifyTests(TestCase):
+    """Public bookings always confirm by e-post and copy staff. SMS is not sent."""
+
     def setUp(self):
-        sms_outbox.clear()
         self.service = Service.objects.create(
             name="Testbehandling",
             slug="testbehandling",
@@ -197,25 +195,24 @@ class BookingConfirmationNotifyTests(TestCase):
         self.slot = TimeSlot.objects.create(start=start, end=end)
         TimeSlot.objects.create(start=end, end=end + timedelta(hours=1))
 
-    def _post(self, confirm_via=("email", "sms"), extra=None):
+    def _post(self, extra=None):
         data = {
             "service": self.service.slug,
             "slot": self.slot.pk,
             "customer_name": "Anna Test",
             "customer_email": "anna@example.com",
             "customer_phone": "0701234567",
-            "confirm_via": list(confirm_via),
         }
         if extra:
             data.update(extra)
         return self.client.post(reverse("booking"), data)
 
-    def test_booking_sends_email_and_sms_when_both_chosen(self):
-        response = self._post(("email", "sms"))
+    def test_booking_sends_customer_and_staff_email(self):
+        response = self._post()
         self.assertEqual(Booking.objects.count(), 1)
         booking = Booking.objects.get()
         self.assertTrue(booking.notify_email)
-        self.assertTrue(booking.notify_sms)
+        self.assertFalse(booking.notify_sms)
         self.assertRedirects(response, reverse("booking_success", kwargs={"pk": booking.pk}))
         self.assertEqual(len(mail.outbox), 2)
         recipients = {tuple(m.to) for m in mail.outbox}
@@ -223,67 +220,30 @@ class BookingConfirmationNotifyTests(TestCase):
             recipients,
             {("anna@example.com",), ("egentidspaservice@gmail.com",)},
         )
-        self.assertEqual(len(sms_outbox), 1)
-        self.assertEqual(sms_outbox[0]["to"], "+46701234567")
-        self.assertIn("Testbehandling", sms_outbox[0]["body"])
 
-    def test_email_only_skips_sms(self):
-        self._post(("email",))
-        booking = Booking.objects.get()
-        self.assertTrue(booking.notify_email)
-        self.assertFalse(booking.notify_sms)
-        self.assertEqual(len(mail.outbox), 2)
-        recipients = {tuple(m.to) for m in mail.outbox}
-        self.assertEqual(
-            recipients,
-            {("anna@example.com",), ("egentidspaservice@gmail.com",)},
-        )
-        self.assertEqual(len(sms_outbox), 0)
-
-    def test_sms_only_skips_email(self):
-        self._post(("sms",))
-        booking = Booking.objects.get()
-        self.assertFalse(booking.notify_email)
-        self.assertTrue(booking.notify_sms)
-        self.assertEqual(len(mail.outbox), 1)
-        self.assertEqual(mail.outbox[0].to, ["egentidspaservice@gmail.com"])
-        self.assertIn("Ny bokning", mail.outbox[0].subject)
-        self.assertEqual(len(sms_outbox), 1)
-
-    def test_requires_at_least_one_channel(self):
-        response = self.client.post(
+    def test_public_form_has_no_sms_choice(self):
+        response = self.client.get(
             reverse("booking"),
-            {
-                "service": self.service.slug,
-                "slot": self.slot.pk,
-                "customer_name": "Anna Test",
-                "customer_email": "anna@example.com",
-                "customer_phone": "0701234567",
-            },
+            {"service": self.service.slug, "slot": self.slot.pk},
         )
-        self.assertEqual(Booking.objects.count(), 0)
-        self.assertContains(response, "Välj e-post, SMS eller båda.")
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, "SMS")
+        self.assertNotContains(response, "confirm_via")
 
-    def test_success_page_mentions_email_and_sms(self):
-        self._post(("email", "sms"))
+    def test_success_page_mentions_email_not_sms(self):
+        self._post()
         booking = Booking.objects.get()
         response = self.client.get(reverse("booking_success", kwargs={"pk": booking.pk}))
         self.assertContains(response, "En bekräftelse har skickats till")
         self.assertContains(response, "anna@example.com")
-        self.assertContains(response, "Ett bekräftelse-SMS har skickats till")
+        self.assertNotContains(response, "SMS")
         self.assertContains(response, "0701234567")
 
-    def test_to_e164_converts_swedish_mobile(self):
-        self.assertEqual(to_e164("0701234567"), "+46701234567")
-        self.assertEqual(to_e164("46701234567"), "+46701234567")
 
-
-@override_settings(SMS_BACKEND="locmem")
 class BookingDurationBufferTests(TestCase):
     """A booking reserves treatment length plus 30 minutes of calendar slots."""
 
     def setUp(self):
-        sms_outbox.clear()
         self.service = Service.objects.create(
             name="Spa",
             slug="spa",
@@ -312,7 +272,6 @@ class BookingDurationBufferTests(TestCase):
                 "customer_name": "Anna",
                 "customer_email": "anna@example.com",
                 "customer_phone": "0701234567",
-                "confirm_via": ["email"],
             },
         )
         self.assertEqual(response.status_code, 302)
@@ -370,14 +329,12 @@ class DashboardHelpTests(TestCase):
         self.assertContains(response, "klockslag")
 
 
-@override_settings(SMS_BACKEND="locmem")
 class AdminStaffBookingTests(TestCase):
     """Staff can book a customer in Django admin with the same duration+buffer rules."""
 
     def setUp(self):
         from django.contrib.auth import get_user_model
 
-        sms_outbox.clear()
         get_user_model().objects.create_superuser("emma", "emma@example.com", "secret")
         self.client.login(username="emma", password="secret")
         self.service = Service.objects.create(
@@ -414,6 +371,7 @@ class AdminStaffBookingTests(TestCase):
         self.assertContains(response, 'type="date"')
         self.assertContains(response, "admin-staff-booking.js")
         self.assertContains(response, 'id="staff-booking-slots"')
+        self.assertNotContains(response, "SMS")
 
     def test_preselects_slot_from_query_string(self):
         local = timezone.localtime(self.slot_a.start)
