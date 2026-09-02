@@ -16,6 +16,7 @@ from .models import (
     TimeSlot,
     WeeklyAvailability,
     sync_future_slots,
+    upcoming_open_slots,
 )
 from .notifications import send_booking_notifications
 
@@ -312,6 +313,16 @@ class BookingAdmin(admin.ModelAdmin):
         """Use a clearer Swedish title than Django's default Lägg till bokning."""
         extra_context = extra_context or {}
         extra_context["title"] = "Boka in kund"
+        if not upcoming_open_slots().exists():
+            self.message_user(
+                request,
+                (
+                    "Inga lediga tider att välja. Öppna Veckoschema / öppettider, "
+                    "bocka i Aktiv för de dagar ni tar emot kunder, och spara. "
+                    "Då skapas tider både här och på Boka."
+                ),
+                level=messages.WARNING,
+            )
         return super().add_view(request, form_url, extra_context)
 
     def save_form(self, request, form, change):

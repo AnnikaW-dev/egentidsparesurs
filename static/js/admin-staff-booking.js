@@ -3,12 +3,13 @@
   function init() {
     var dateInput = document.getElementById("id_booking_date");
     var timeSelect = document.getElementById("id_booking_time");
-    if (!dateInput || !timeSelect) {
+    var jsonEl = document.getElementById("staff-booking-slots");
+    if (!dateInput || !timeSelect || !jsonEl) {
       return;
     }
     var byDay = {};
     try {
-      byDay = JSON.parse(dateInput.getAttribute("data-slots") || "{}");
+      byDay = JSON.parse(jsonEl.textContent || "{}");
     } catch (err) {
       return;
     }
@@ -39,6 +40,9 @@
       });
     }
 
+    dateInput.addEventListener("input", function () {
+      fillTimes(false);
+    });
     dateInput.addEventListener("change", function () {
       fillTimes(false);
     });

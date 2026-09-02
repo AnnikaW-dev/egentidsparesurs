@@ -413,6 +413,7 @@ class AdminStaffBookingTests(TestCase):
         self.assertContains(response, "Klockslag")
         self.assertContains(response, 'type="date"')
         self.assertContains(response, "admin-staff-booking.js")
+        self.assertContains(response, 'id="staff-booking-slots"')
 
     def test_preselects_slot_from_query_string(self):
         local = timezone.localtime(self.slot_a.start)
@@ -513,4 +514,10 @@ class AdminStaffBookingTests(TestCase):
         self.slot_b.refresh_from_db()
         self.assertEqual(booking.status, Booking.Status.CANCELLED)
         self.assertIsNone(self.slot_b.held_by_id)
+
+    def test_warns_when_there_are_no_open_slots(self):
+        TimeSlot.objects.all().delete()
+        response = self.client.get(reverse("admin:booking_booking_add"))
+        self.assertContains(response, "Inga lediga tider att välja")
+        self.assertContains(response, "Veckoschema")
 

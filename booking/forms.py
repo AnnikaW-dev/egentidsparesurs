@@ -6,6 +6,7 @@ from django import forms
 from django.core.exceptions import ValidationError
 from django.core.validators import EmailValidator
 from django.utils import timezone
+from django.utils.safestring import mark_safe
 
 from pages.forms import (
     EMAIL_INVALID_MSG,
@@ -136,6 +137,24 @@ def _open_slots_by_day():
     return grouped
 
 
+class BookingDateInput(forms.DateInput):
+    """Native date picker plus JSON of open slots for the klockslag script."""
+
+    input_type = "date"
+
+    def __init__(self, attrs=None, slots_by_day=None):
+        super().__init__(attrs)
+        self.slots_by_day = slots_by_day or {}
+
+    def render(self, name, value, attrs=None, renderer=None):
+        html = super().render(name, value, attrs, renderer)
+        payload = json.dumps(self.slots_by_day, separators=(",", ":"))
+        return mark_safe(
+            f"{html}"
+            f'<script type="application/json" id="staff-booking-slots">{payload}</script>'
+        )
+
+
 class StaffBookingForm(forms.ModelForm):
     """Admin add-form: pick treatment, date, time, and customer details.
 
@@ -144,7 +163,6 @@ class StaffBookingForm(forms.ModelForm):
 
     booking_date = forms.DateField(
         label="Datum",
-        widget=forms.DateInput(attrs={"type": "date", "autocomplete": "off"}),
         help_text="Välj dag i kalendern. Lediga klockslag för den dagen visas under Klockslag.",
     )
     booking_time = forms.ChoiceField(
@@ -200,6 +218,21 @@ class StaffBookingForm(forms.ModelForm):
         self.fields["service"].queryset = Service.objects.filter(is_active=True)
         self.fields["service"].empty_label = "Välj behandling"
 
+        days = sorted(self.slots_by_day)
+        date_attrs = {"autocomplete": "off", "aria-required": "true"}
+        if days:
+            date_attrs["min"] = days[0]
+            date_attrs["max"] = days[-1]
+        else:
+            self.fields["booking_date"].help_text = (
+                "Inga lediga tider finns just nu. Öppna Veckoschema / öppettider, "
+                "bocka i Aktiv för de dagar ni tar emot kunder, och spara."
+            )
+        self.fields["booking_date"].widget = BookingDateInput(
+            attrs=date_attrs,
+            slots_by_day=self.slots_by_day,
+        )
+
         slot_pk = self._posted_or_initial_slot_pk()
         slot = TimeSlot.objects.filter(pk=slot_pk).first() if slot_pk else None
         chosen_day = self._chosen_day_iso(slot)
@@ -209,13 +242,6 @@ class StaffBookingForm(forms.ModelForm):
             self.fields["booking_date"].initial = local.date()
             self.fields["booking_time"].initial = str(slot.pk)
 
-        days = sorted(self.slots_by_day)
-        date_attrs = self.fields["booking_date"].widget.attrs
-        date_attrs["data-slots"] = json.dumps(self.slots_by_day, separators=(",", ":"))
-        if days:
-            date_attrs["min"] = days[0]
-            date_attrs["max"] = days[-1]
-        self.fields["booking_date"].widget.attrs["aria-required"] = "true"
         self.fields["booking_time"].widget.attrs["aria-required"] = "true"
 
         self.fields["customer_name"].required = True
