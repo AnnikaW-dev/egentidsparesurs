@@ -427,7 +427,37 @@ h1 {
   flex-wrap: wrap;
   gap: 0.35rem;
   justify-content: center;
+}
+
+/* Pause sits with the dots — WCAG 2.2.2 for autoplay */
+.hero-carousel-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem 0.75rem;
   margin-top: 0.65rem;
+}
+
+.hero-carousel-pause {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 0.85rem;
+  border: 1px solid var(--ink-strong);
+  background: var(--bg-panel);
+  color: var(--ink-strong);
+  font: inherit;
+  cursor: pointer;
+}
+
+.hero-carousel-pause:hover,
+.hero-carousel-pause:focus-visible {
+  background: var(--ink-strong);
+  color: #fff;
+}
+
+.hero-carousel-pause[aria-pressed="true"] {
+  font-weight: 700;
 }
 
 .hero-carousel-dot {
@@ -462,6 +492,10 @@ h1 {
 @media (prefers-reduced-motion: reduce) {
   .hero-carousel-slide {
     transition: none;
+  }
+
+  .hero-carousel-pause {
+    display: none;
   }
 }
 
