@@ -50,7 +50,6 @@
       if (pauseBtn) {
         pauseBtn.setAttribute("aria-pressed", paused ? "true" : "false");
         pauseBtn.setAttribute("aria-label", paused ? "Spela bildspel" : "Pausa bildspel");
-        pauseBtn.textContent = paused ? "Spela" : "Pausa";
       }
       if (paused) stopTimer();
       else startTimer();
