@@ -224,12 +224,13 @@ class EnsureSiteContentTests(TestCase):
         for key in REQUIRED_PAGE_KEYS:
             SitePage.objects.create(key=key, title=key, is_published=True)
 
+    @patch("cms.management.commands.ensure_site_content.ensure_snapshot_media", return_value=0)
     @patch("cms.management.commands.ensure_site_content.call_command")
     @patch(
         "cms.management.commands.ensure_site_content.Command._media_missing",
         return_value=False,
     )
-    def test_restart_does_not_reapply_snapshot(self, _media, mock_call):
+    def test_restart_does_not_reapply_snapshot(self, _media, mock_call, _copy_media):
         with patch.dict(
             os.environ, {"SEED_ON_DEPLOY": "", "APPLY_CONTENT_SNAPSHOT": ""}, clear=False
         ):
@@ -238,12 +239,13 @@ class EnsureSiteContentTests(TestCase):
             run("ensure_site_content")
         self.assertEqual(mock_call.call_args_list, [])
 
+    @patch("cms.management.commands.ensure_site_content.ensure_snapshot_media", return_value=0)
     @patch("cms.management.commands.ensure_site_content.call_command")
     @patch(
         "cms.management.commands.ensure_site_content.Command._media_missing",
         return_value=False,
     )
-    def test_env_flag_reapplies_snapshot(self, _media, mock_call):
+    def test_env_flag_reapplies_snapshot(self, _media, mock_call, _copy_media):
         with patch.dict(os.environ, {"APPLY_CONTENT_SNAPSHOT": "true"}, clear=False):
             from django.core.management import call_command as run
 
@@ -279,3 +281,29 @@ class BrandTitleTests(TestCase):
         page.refresh_from_db()
         self.assertGreaterEqual(changed, 1)
         self.assertEqual(page.meta_title, "EGentid Spa & Service – fotvård och handvård")
+
+
+class SnapshotMediaRestoreTests(TestCase):
+    """Postgres can keep image paths after the Render disk is empty — recopy files only."""
+
+    def test_ensure_snapshot_media_copies_missing_file(self):
+        import tempfile
+        from pathlib import Path
+
+        from django.test import override_settings
+
+        from cms.snapshot import MIN_MEDIA_BYTES, ensure_snapshot_media
+
+        tmp = Path(tempfile.mkdtemp())
+        files = tmp / "files" / "gallery"
+        files.mkdir(parents=True)
+        (files / "fotmassage.jpg").write_bytes(b"x" * (MIN_MEDIA_BYTES + 50))
+        media = tmp / "media"
+        media.mkdir()
+        with override_settings(MEDIA_ROOT=str(media)):
+            copied = ensure_snapshot_media(src=tmp)
+            copied_again = ensure_snapshot_media(src=tmp)
+        dest = media / "gallery" / "fotmassage.jpg"
+        self.assertGreaterEqual(copied, 1)
+        self.assertEqual(copied_again, 0)
+        self.assertTrue(dest.is_file())

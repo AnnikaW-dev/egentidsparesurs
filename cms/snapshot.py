@@ -4,6 +4,7 @@
 
 Use export_site_snapshot locally, then apply_site_snapshot on a fresh Render database
 or when APPLY_CONTENT_SNAPSHOT=true. Everyday admin edits on Render stay in Postgres.
+Missing media files are recopied from the snapshot on each boot (ensure_snapshot_media).
 
 Skip: bookings, users, contact messages, and tiny test uploads.
 Never copy local public_site_url onto production.
@@ -357,6 +358,37 @@ def apply_snapshot(src: Path | None = None, stdout=None) -> bool:
     if stdout:
         stdout.write(f"Applied content snapshot ({len(keep_keys)} pages).")
     return True
+
+
+def ensure_snapshot_media(src: Path | None = None, stdout=None) -> int:
+    """Copy snapshot image files that are missing from MEDIA_ROOT.
+
+    Safe on every Render boot: does not change CMS text. Fixes 404s when Postgres
+    still has gallery/page paths but the disk was empty or a later snapshot added files.
+    Returns how many files were newly copied.
+    """
+    root = src or SNAPSHOT_DIR
+    files_dir = snapshot_files_dir(root)
+    if not files_dir.is_dir():
+        return 0
+
+    copied = 0
+    for src_file in files_dir.rglob("*"):
+        if not src_file.is_file():
+            continue
+        rel = src_file.relative_to(files_dir).as_posix()
+        if ".." in rel:
+            continue
+        dest = Path(settings.MEDIA_ROOT) / rel
+        if dest.is_file() and dest.stat().st_size >= MIN_MEDIA_BYTES:
+            continue
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(src_file, dest)
+        copied += 1
+
+    if copied and stdout:
+        stdout.write(f"Restored {copied} missing media file(s) from content snapshot.")
+    return copied
 
 
 def _gallery_ref(rel: str, by_file: dict) -> GalleryImage | None:

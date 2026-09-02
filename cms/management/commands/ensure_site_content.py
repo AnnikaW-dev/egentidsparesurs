@@ -9,6 +9,7 @@ from django.core.management.base import BaseCommand, CommandError
 
 from cms.brand import replace_legacy_brand_in_db
 from cms.models import SitePage, SiteSettings
+from cms.snapshot import ensure_snapshot_media
 
 # Adjust: pages that must exist for nav/URLs to work (no setup_needed screen).
 REQUIRED_PAGE_KEYS = (
@@ -86,6 +87,9 @@ class Command(BaseCommand):
         renamed = replace_legacy_brand_in_db()
         if renamed:
             self.stdout.write(f"Updated leftover Spa & Resurs brand text on {renamed} row(s).")
+        media_copied = ensure_snapshot_media(stdout=self.stdout)
+        if not media_copied:
+            self.stdout.write("Snapshot media already present on disk.")
         self.stdout.write(self.style.SUCCESS("Site content ready."))
 
     def _missing_page_keys(self):
