@@ -133,12 +133,6 @@ def booking_page(request):
             "form": form,
             "selected_slot": selected_slot,
             "booking_step": booking_step,
-            "needed_minutes": needed_minutes,
-            "reserved_until": (
-                selected_slot.start + timedelta(minutes=needed_minutes)
-                if selected_slot and needed_minutes
-                else None
-            ),
         },
     )
 

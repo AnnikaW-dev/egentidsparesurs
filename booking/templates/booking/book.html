@@ -48,7 +48,7 @@
           <a class="service-pick-main" href="?service={{ service.slug }}" aria-label="Välj {{ service.name }}">
             <span class="service-pick-name">{{ service.name }}</span>
             <span class="service-pick-meta">
-              {{ service.duration_minutes }} min + 30 min
+              {{ service.duration_minutes }} min
               {% if service.price_sek %} · {{ service.price_sek }} kr{% endif %}
             </span>
             {% if service.description %}
@@ -76,14 +76,11 @@
     <h2 id="step-slot-heading">Välj tid</h2>
     <p class="booking-summary">
       Behandling: <strong>{{ selected_service.name }}</strong>
-      ({{ selected_service.duration_minutes }} min + 30 min)
+      ({{ selected_service.duration_minutes }} min)
       {% if selected_service.treatment_info_url %}
       <a href="{{ selected_service.treatment_info_url }}" aria-label="Mer info om {{ selected_service.name }}">Mer info</a>
       {% endif %}
       <a href="{% url 'booking' %}">Byt behandling</a>
-    </p>
-    <p class="muted">
-      Vi reserverar {{ needed_minutes }} minuter från den tid du väljer, så salongen hinner klart och förbereda nästa kund.
     </p>
     {% if slots_by_date %}
       {% for day, slots in slots_by_date %}
@@ -95,7 +92,7 @@
               class="slot-chip"
               role="listitem"
               href="?service={{ selected_service.slug }}&amp;slot={{ slot.pk }}"
-              aria-label="Välj {{ day|date:'j F Y' }} kl {{ slot.start|date:'H:i' }}, {{ needed_minutes }} minuter"
+              aria-label="Välj {{ day|date:'j F Y' }} kl {{ slot.start|date:'H:i' }}"
             >{{ slot.start|date:"H:i" }}</a>
           {% endfor %}
         </div>
@@ -114,7 +111,7 @@
       {% if selected_service.treatment_info_url %}
       <a href="{{ selected_service.treatment_info_url }}" aria-label="Mer info om {{ selected_service.name }}">Mer info</a>
       {% endif %}
-      · Tid: <strong>{{ selected_slot.start|date:"l j F Y, H:i" }}–{{ reserved_until|date:"H:i" }}</strong>
+      · Tid: <strong>{{ selected_slot.start|date:"l j F Y, H:i" }}</strong>
       <a href="?service={{ selected_service.slug }}">Byt tid</a>
     </p>
     <form method="post" class="stack-form aligned-form booking-confirm-form" novalidate{% if form.errors %} aria-describedby="booking-form-errors"{% endif %}>

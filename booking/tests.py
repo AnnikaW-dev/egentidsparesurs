@@ -336,6 +336,12 @@ class BookingDurationBufferTests(TestCase):
         response = self.client.get(reverse("booking"), {"service": self.service.slug})
         self.assertContains(response, f"slot={self.slot_a.pk}")
 
+    def test_public_page_does_not_mention_the_buffer(self):
+        response = self.client.get(reverse("booking"))
+        self.assertNotContains(response, "+ 30 min")
+        self.assertNotContains(response, "Vi reserverar")
+        self.assertContains(response, "60 min")
+
 
 class DashboardHelpTests(TestCase):
     """Staff handbook is for logged-in staff only."""
