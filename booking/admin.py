@@ -230,7 +230,8 @@ class BookingAdmin(admin.ModelAdmin):
             {
                 "fields": (
                     "service",
-                    "slot",
+                    "booking_date",
+                    "booking_time",
                     "customer_name",
                     "customer_email",
                     "customer_phone",
@@ -240,6 +241,7 @@ class BookingAdmin(admin.ModelAdmin):
                 ),
                 "description": (
                     "Boka in en kund som ringer eller kommer in. "
+                    "Välj datum i kalendern och sedan klockslag. "
                     "Samma regler som på Boka: behandlingstiden plus 30 minuter reserveras. "
                     "Kunden får bekräftelse om e-post och/eller SMS är ikryssat. "
                     "Du kan också klicka på Boka kund under Tidsluckor."

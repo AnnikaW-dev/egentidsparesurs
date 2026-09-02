@@ -1,10 +1,11 @@
 """Forms for public booking and staff availability tools."""
 
+import json
+
 from django import forms
 from django.core.exceptions import ValidationError
 from django.core.validators import EmailValidator
 from django.utils import timezone
-from django.utils.formats import date_format
 
 from pages.forms import (
     EMAIL_INVALID_MSG,
@@ -124,28 +125,40 @@ class BookingForm(forms.ModelForm):
         return booking
 
 
-def _slot_choice_groups(queryset):
-    """Build select choices grouped by Swedish date; times are H:i inside each day."""
+def _open_slots_by_day():
+    """Map YYYY-MM-DD → [{id, time}] for upcoming open start slots."""
     grouped = {}
-    for obj in queryset:
-        local = timezone.localtime(obj.start)
-        grouped.setdefault(date_format(local, "l j F Y"), []).append(
-            (obj.pk, date_format(local, "H:i"))
+    for slot in upcoming_open_slots():
+        local = timezone.localtime(slot.start)
+        grouped.setdefault(local.date().isoformat(), []).append(
+            {"id": slot.pk, "time": local.strftime("%H:%M")}
         )
-    return list(grouped.items())
+    return grouped
 
 
 class StaffBookingForm(forms.ModelForm):
-    """Admin add-form: pick treatment, start time, and customer details.
+    """Admin add-form: pick treatment, date, time, and customer details.
 
     Occupies treatment length plus 30 minutes, same as public /boka/.
     """
+
+    booking_date = forms.DateField(
+        label="Datum",
+        widget=forms.DateInput(attrs={"type": "date", "autocomplete": "off"}),
+        help_text="Välj dag i kalendern. Lediga klockslag för den dagen visas under Klockslag.",
+    )
+    booking_time = forms.ChoiceField(
+        label="Klockslag",
+        choices=(("", "Välj tid"),),
+        help_text="Lediga starter den valda dagen. Behandlingstiden plus 30 minuter reserveras.",
+    )
 
     class Meta:
         model = Booking
         fields = (
             "service",
-            "slot",
+            "booking_date",
+            "booking_time",
             "customer_name",
             "customer_email",
             "customer_phone",
@@ -155,7 +168,6 @@ class StaffBookingForm(forms.ModelForm):
         )
         labels = {
             "service": "Behandling",
-            "slot": "Starttid",
             "customer_name": "Kundens namn",
             "customer_email": "E-post",
             "customer_phone": "Telefonnummer",
@@ -164,10 +176,6 @@ class StaffBookingForm(forms.ModelForm):
             "notes": "Intern anteckning",
         }
         help_texts = {
-            "slot": (
-                "Lediga starter de närmaste 60 dagarna, grupperade per dag. "
-                "Behandlingstiden plus 30 minuter reserveras från den tid du väljer."
-            ),
             "notes": "Syns bara här i admin, inte för kunden.",
         }
         widgets = {
@@ -181,19 +189,35 @@ class StaffBookingForm(forms.ModelForm):
             "notes": forms.Textarea(attrs={"rows": 3}),
         }
 
+    class Media:
+        js = ["js/admin-staff-booking.js"]
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        from .models import TimeSlot
+
+        self.slots_by_day = _open_slots_by_day()
         self.fields["service"].queryset = Service.objects.filter(is_active=True)
         self.fields["service"].empty_label = "Välj behandling"
-        slot_field = self.fields["slot"]
-        slot_qs = upcoming_open_slots()
-        slot_field.queryset = slot_qs
-        slot_field.empty_label = "Välj starttid"
-        # Assign choices on the inner select — admin wraps ForeignKey widgets.
-        choices = [("", "Välj starttid"), *_slot_choice_groups(slot_qs)]
-        slot_field.choices = choices
-        inner = getattr(slot_field.widget, "widget", slot_field.widget)
-        inner.choices = choices
+
+        slot_pk = self._posted_or_initial_slot_pk()
+        slot = TimeSlot.objects.filter(pk=slot_pk).first() if slot_pk else None
+        chosen_day = self._chosen_day_iso(slot)
+        self.fields["booking_time"].choices = self._time_choices(chosen_day)
+        if slot and not self.is_bound:
+            local = timezone.localtime(slot.start)
+            self.fields["booking_date"].initial = local.date()
+            self.fields["booking_time"].initial = str(slot.pk)
+
+        days = sorted(self.slots_by_day)
+        date_attrs = self.fields["booking_date"].widget.attrs
+        date_attrs["data-slots"] = json.dumps(self.slots_by_day, separators=(",", ":"))
+        if days:
+            date_attrs["min"] = days[0]
+            date_attrs["max"] = days[-1]
+        self.fields["booking_date"].widget.attrs["aria-required"] = "true"
+        self.fields["booking_time"].widget.attrs["aria-required"] = "true"
+
         self.fields["customer_name"].required = True
         self.fields["customer_email"].required = True
         self.fields["customer_phone"].required = True
@@ -203,6 +227,37 @@ class StaffBookingForm(forms.ModelForm):
         self.fields["notify_sms"].initial = True
         for name in ("customer_name", "customer_email", "customer_phone"):
             self.fields[name].widget.attrs["aria-required"] = "true"
+
+    def _posted_or_initial_slot_pk(self):
+        """Slot id from posted klockslag or from ?slot= on the add URL."""
+        if self.data.get("booking_time"):
+            return self.data.get("booking_time")
+        slot = self.initial.get("slot")
+        if slot is None:
+            return None
+        return str(getattr(slot, "pk", slot))
+
+    def _chosen_day_iso(self, slot):
+        """ISO date from POST, initial date, or the pre-selected slot."""
+        raw = self.data.get("booking_date") or self.initial.get("booking_date")
+        if raw:
+            return str(raw)
+        if slot:
+            return timezone.localtime(slot.start).date().isoformat()
+        return ""
+
+    def _time_choices(self, day_iso):
+        """Times for one day, or all days labelled with date (no-JS fallback)."""
+        empty = ("", "Välj tid")
+        if day_iso and day_iso in self.slots_by_day:
+            return [empty] + [
+                (str(item["id"]), item["time"]) for item in self.slots_by_day[day_iso]
+            ]
+        choices = [empty]
+        for day, items in self.slots_by_day.items():
+            for item in items:
+                choices.append((str(item["id"]), f"{day} {item['time']}"))
+        return choices
 
     def clean_customer_email(self):
         """Same e-post rules as the public booking form."""
@@ -220,16 +275,34 @@ class StaffBookingForm(forms.ModelForm):
         return digits
 
     def clean(self):
-        """The chosen start must fit treatment length plus the 30-minute buffer."""
+        """Resolve date + klockslag to a slot that fits treatment plus buffer."""
+        from .models import TimeSlot
+
         cleaned = super().clean()
+        booking_date = cleaned.get("booking_date")
+        time_pk = cleaned.get("booking_time")
+        slot = None
+        if time_pk:
+            slot = TimeSlot.objects.filter(pk=time_pk).first()
+            if slot is None:
+                self.add_error("booking_time", "Välj ett ledigt klockslag.")
+            elif booking_date and timezone.localtime(slot.start).date() != booking_date:
+                self.add_error(
+                    "booking_time",
+                    "Klockslaget hör inte till det valda datumet. Välj tiden igen.",
+                )
+                slot = None
+        if booking_date and not time_pk:
+            self.add_error("booking_time", "Välj ett klockslag för det datumet.")
         service = cleaned.get("service")
-        slot = cleaned.get("slot")
         if service and slot and not slot_run_covering(slot, service.calendar_minutes()):
             self.add_error(
-                "slot",
+                "booking_time",
                 "Den tiden räcker inte för behandlingen, eller är inte ledig. "
                 "Välj en tidigare start, eller en kortare behandling.",
             )
+            slot = None
+        cleaned["slot"] = slot
         return cleaned
 
     def save(self, commit=True):

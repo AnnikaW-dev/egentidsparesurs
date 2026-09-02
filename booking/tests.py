@@ -366,6 +366,8 @@ class DashboardHelpTests(TestCase):
         self.assertContains(response, "egentidspaservice@gmail.com")
         self.assertContains(response, "Boka in en kund")
         self.assertContains(response, "Lägg till bokning")
+        self.assertContains(response, "datum")
+        self.assertContains(response, "klockslag")
 
 
 @override_settings(SMS_BACKEND="locmem")
@@ -407,14 +409,18 @@ class AdminStaffBookingTests(TestCase):
         self.assertContains(response, "Boka in kund")
         self.assertContains(response, "Behandling")
         self.assertContains(response, "behandlingstiden plus 30 minuter")
-        self.assertContains(response, "Starttid")
-        self.assertContains(response, "<optgroup")
+        self.assertContains(response, "Datum")
+        self.assertContains(response, "Klockslag")
+        self.assertContains(response, 'type="date"')
+        self.assertContains(response, "admin-staff-booking.js")
 
     def test_preselects_slot_from_query_string(self):
+        local = timezone.localtime(self.slot_a.start)
         response = self.client.get(
             reverse("admin:booking_booking_add"),
             {"slot": self.slot_a.pk},
         )
+        self.assertContains(response, f'value="{local.date().isoformat()}"')
         self.assertContains(
             response,
             f'<option value="{self.slot_a.pk}" selected>',
@@ -430,11 +436,13 @@ class AdminStaffBookingTests(TestCase):
         )
 
     def test_admin_add_holds_the_buffer_and_hides_public_starts(self):
+        local = timezone.localtime(self.slot_a.start)
         response = self.client.post(
             reverse("admin:booking_booking_add"),
             {
                 "service": self.service.pk,
-                "slot": self.slot_a.pk,
+                "booking_date": local.date().isoformat(),
+                "booking_time": str(self.slot_a.pk),
                 "customer_name": "Britt",
                 "customer_email": "britt@example.com",
                 "customer_phone": "0701234567",
@@ -462,11 +470,13 @@ class AdminStaffBookingTests(TestCase):
         self.slot_b.delete()
         self.slot_c.delete()
         self.slot_d.delete()
+        local = timezone.localtime(self.slot_a.start)
         response = self.client.post(
             reverse("admin:booking_booking_add"),
             {
                 "service": self.service.pk,
-                "slot": self.slot_a.pk,
+                "booking_date": local.date().isoformat(),
+                "booking_time": str(self.slot_a.pk),
                 "customer_name": "Britt",
                 "customer_email": "britt@example.com",
                 "customer_phone": "0701234567",
