@@ -45,9 +45,10 @@ This repo includes `render.yaml`, `build.sh`, and `start.sh`.
    `APPLY_CONTENT_SNAPSHOT=true` for one deploy (or run `python manage.py apply_site_snapshot`).
    `python manage.py seed_site --force` still resets to hardcoded defaults only.
 6. Set **SENDGRID_API_KEY** (or SMTP vars) on the web service so booking and contact mail actually send.
-7. Optional custom domain: add it in Render, set `PUBLIC_SITE_URL=https://din-domän.se`,
-   and add the domain to `ALLOWED_HOSTS` / `CSRF_TRUSTED_ORIGINS` if it is not already picked up.
-   Admin → Webbplatsinställningar → SEO **public_site_url** can also be set by hand.
+7. Custom domain: add it in Render Custom Domains, point DNS at Render, and set
+   `PUBLIC_SITE_URL=https://egentidspaservice.se`. Hostnames are already allowed in
+   `ALLOWED_HOSTS` / `CSRF_TRUSTED_ORIGINS` (`config/hosts.py`). Admin →
+   Webbplatsinställningar → SEO **public_site_url** can also be set by hand.
 
 **No Shell on free Render?** That is fine. Superuser and optional `seed_site` run from `start.sh` using env vars.
 **Notes**

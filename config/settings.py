@@ -3,12 +3,12 @@
 import os
 import sys
 from pathlib import Path
-from urllib.parse import urlparse
 
 import dj_database_url
 from django.core.exceptions import ImproperlyConfigured
 from dotenv import load_dotenv
 
+from config.hosts import PRODUCTION_HOSTS, trust_host, trust_url
 from config.mail import apply_email_config
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -57,26 +57,11 @@ if render_host:
 # Custom domain / canonical URL — also used by seed for SiteSettings.public_site_url.
 PUBLIC_SITE_URL = os.environ.get("PUBLIC_SITE_URL", "").strip().rstrip("/")
 
-
-def _trust_public_origin(url: str) -> None:
-    """Add host + https origin from a full URL (PUBLIC_SITE_URL or Render)."""
-    raw = (url or "").strip()
-    if not raw:
-        return
-    if "://" not in raw:
-        raw = "https://" + raw
-    parsed = urlparse(raw)
-    host = parsed.hostname
-    if host and host not in ALLOWED_HOSTS:
-        ALLOWED_HOSTS.append(host)
-    if parsed.scheme and parsed.netloc:
-        origin = f"{parsed.scheme}://{parsed.netloc}"
-        if origin not in CSRF_TRUSTED_ORIGINS:
-            CSRF_TRUSTED_ORIGINS.append(origin)
-
-
-_trust_public_origin(PUBLIC_SITE_URL)
-_trust_public_origin(os.environ.get("RENDER_EXTERNAL_URL", ""))
+trust_url(PUBLIC_SITE_URL, ALLOWED_HOSTS, CSRF_TRUSTED_ORIGINS)
+trust_url(os.environ.get("RENDER_EXTERNAL_URL", ""), ALLOWED_HOSTS, CSRF_TRUSTED_ORIGINS)
+# Always allow the live domain so www and apex do not 400 if PUBLIC_SITE_URL is unset.
+for _live_host in PRODUCTION_HOSTS:
+    trust_host(_live_host, ALLOWED_HOSTS, CSRF_TRUSTED_ORIGINS)
 
 INSTALLED_APPS = [
     "django.contrib.admin",

@@ -8,7 +8,8 @@
 #    (set APPLY_CONTENT_SNAPSHOT=true only to replace the live site from git)
 # 4. Admin → Webbplatsinställningar → set public_site_url if you use a custom domain
 #    (otherwise seed fills it from PUBLIC_SITE_URL / RENDER_EXTERNAL_URL)
-# 5. Render → Environment → set SENDGRID_API_KEY (or EMAIL_* SMTP vars) for booking/contact mail
+# 5. Custom domains egentidspaservice.se + www are allowed in ALLOWED_HOSTS (see config/hosts.py)
+# 6. Render → Environment → set SENDGRID_API_KEY (or EMAIL_* SMTP vars) for booking/contact mail
 # Reset content intentionally: python manage.py seed_site --force
 
 databases:
@@ -38,11 +39,10 @@ services:
       - key: DEBUG
         value: "false"
       - key: ALLOWED_HOSTS
-        # Add your custom domain later, e.g. egentidsparesurs.se,.onrender.com
-        value: ".onrender.com"
+        # Leading-dot form allows apex + www. Django 400s if the Host header is missing here.
+        value: ".onrender.com,.egentidspaservice.se"
       - key: CSRF_TRUSTED_ORIGINS
-        # Set after first deploy to https://YOUR-SERVICE.onrender.com
-        sync: false
+        value: "https://egentidspaservice.se,https://www.egentidspaservice.se,https://egentidsparesurs.onrender.com"
       - key: MEDIA_ROOT
         value: /var/data/media
       - key: SERVE_MEDIA
@@ -68,8 +68,7 @@ services:
       - key: CONTACT_INBOX
         value: info@egentidspaservice.se
       - key: PUBLIC_SITE_URL
-        # Set to your live https URL (custom domain when you have one). Empty = Render URL.
-        sync: false
+        value: "https://egentidspaservice.se"
       - key: SENDGRID_API_KEY
         sync: false
       # Alternative: generic SMTP (uncomment and set in dashboard instead of SendGrid)
