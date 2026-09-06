@@ -302,6 +302,83 @@ class BookingDurationBufferTests(TestCase):
         self.assertContains(response, "60 min")
 
 
+class BookingHidesShortWindowsTests(TestCase):
+    """Do not offer starts that cannot fit treatment length plus 30 minutes."""
+
+    def setUp(self):
+        self.monday = timezone.localdate() + timedelta(days=7)
+        while self.monday.weekday() != 0:
+            self.monday += timedelta(days=1)
+        WeeklyAvailability.objects.create(
+            weekday=0,
+            start_time=time(9, 0),
+            end_time=time(16, 0),
+            slot_minutes=30,
+            is_active=True,
+            lunch_start=time(12, 0),
+            lunch_end=time(13, 0),
+        )
+        from booking.models import sync_slots_for_range
+
+        sync_slots_for_range(self.monday, self.monday)
+        self.service = Service.objects.create(
+            name="Spa",
+            slug="spa",
+            duration_minutes=60,
+            is_active=True,
+        )
+
+    def _slot_at(self, hour, minute):
+        for slot in TimeSlot.objects.order_by("start"):
+            local = timezone.localtime(slot.start)
+            if local.date() == self.monday and local.hour == hour and local.minute == minute:
+                return slot
+        self.fail(f"No slot at {hour:02d}:{minute:02d}")
+
+    def test_public_hides_starts_before_lunch_and_closing(self):
+        response = self.client.get(reverse("booking"), {"service": self.service.slug})
+        self.assertContains(response, f"slot={self._slot_at(10, 30).pk}")
+        self.assertContains(response, f"slot={self._slot_at(14, 30).pk}")
+        self.assertNotContains(response, f"slot={self._slot_at(11, 0).pk}")
+        self.assertNotContains(response, f"slot={self._slot_at(11, 30).pk}")
+        self.assertNotContains(response, f"slot={self._slot_at(15, 0).pk}")
+        self.assertNotContains(response, f"slot={self._slot_at(15, 30).pk}")
+
+    def test_leftover_lunch_slot_does_not_show_a_late_morning_start(self):
+        from datetime import datetime
+
+        noon = timezone.make_aware(datetime.combine(self.monday, time(12, 0)))
+        TimeSlot.objects.get_or_create(
+            start=noon,
+            end=noon + timedelta(minutes=30),
+            defaults={"is_blocked": False},
+        )
+        response = self.client.get(reverse("booking"), {"service": self.service.slug})
+        self.assertNotContains(response, f"slot={self._slot_at(11, 0).pk}")
+
+    def test_staff_klockslag_omits_starts_that_do_not_fit(self):
+        import json
+        import re
+
+        from django.contrib.auth import get_user_model
+
+        get_user_model().objects.create_superuser("emma", "emma@example.com", "secret")
+        self.client.login(username="emma", password="secret")
+        response = self.client.get(reverse("admin:booking_booking_add"))
+        match = re.search(
+            r'id="staff-booking-slots">(?P<json>.*?)</script>',
+            response.content.decode(),
+            re.S,
+        )
+        self.assertIsNotNone(match)
+        payload = json.loads(match.group("json"))
+        times = [item["time"] for item in payload[str(self.service.pk)].get(self.monday.isoformat(), [])]
+        self.assertIn("10:30", times)
+        self.assertIn("14:30", times)
+        self.assertNotIn("11:00", times)
+        self.assertNotIn("15:30", times)
+
+
 class DashboardHelpTests(TestCase):
     """Staff handbook is for logged-in staff only."""
 

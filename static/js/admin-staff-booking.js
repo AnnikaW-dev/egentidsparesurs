@@ -1,17 +1,40 @@
-/* admin-staff-booking.js — show klockslag for the date chosen on Boka in kund. */
+/* admin-staff-booking.js — klockslag for the chosen treatment and date. */
 (function () {
   function init() {
     var dateInput = document.getElementById("id_booking_date");
     var timeSelect = document.getElementById("id_booking_time");
+    var serviceSelect = document.getElementById("id_service");
     var jsonEl = document.getElementById("staff-booking-slots");
     if (!dateInput || !timeSelect || !jsonEl) {
       return;
     }
-    var byDay = {};
+    var byService = {};
     try {
-      byDay = JSON.parse(jsonEl.textContent || "{}");
+      byService = JSON.parse(jsonEl.textContent || "{}");
     } catch (err) {
       return;
+    }
+
+    function slotsForSelection() {
+      var sid = serviceSelect ? String(serviceSelect.value || "") : "";
+      var day = dateInput.value;
+      if (sid && byService[sid]) {
+        return byService[sid][day] || [];
+      }
+      var seen = {};
+      var merged = [];
+      Object.keys(byService).forEach(function (key) {
+        (byService[key][day] || []).forEach(function (slot) {
+          if (!seen[slot.id]) {
+            seen[slot.id] = true;
+            merged.push(slot);
+          }
+        });
+      });
+      merged.sort(function (a, b) {
+        return a.time < b.time ? -1 : a.time > b.time ? 1 : 0;
+      });
+      return merged;
     }
 
     function fillTimes(keepValue) {
@@ -20,7 +43,7 @@
       timeSelect.innerHTML = "";
       var empty = document.createElement("option");
       empty.value = "";
-      var slots = byDay[day] || [];
+      var slots = slotsForSelection();
       if (!day) {
         empty.textContent = "Välj datum först";
       } else if (!slots.length) {
@@ -46,6 +69,11 @@
     dateInput.addEventListener("change", function () {
       fillTimes(false);
     });
+    if (serviceSelect) {
+      serviceSelect.addEventListener("change", function () {
+        fillTimes(false);
+      });
+    }
     fillTimes(true);
   }
 

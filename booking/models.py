@@ -313,6 +313,101 @@ class Booking(models.Model):
         return self.slot.start + timedelta(minutes=self.service.calendar_minutes())
 
 
+def reserved_window_fits_hours(
+    start,
+    needed_minutes,
+    *,
+    closed_dates=None,
+    rules_by_weekday=None,
+):
+    """True when [start, start+needed) stays inside Veckoschema hours.
+
+    Ignores leftover TimeSlot rows, so an old 12:00 lucka cannot make 11:00
+    bookable for a 90-minute reservation. Edit hours under Veckoschema.
+    """
+    if needed_minutes < 1:
+        return False
+    local_start = timezone.localtime(start)
+    local_end = local_start + timedelta(minutes=needed_minutes)
+    if local_end.date() != local_start.date():
+        return False
+    day = local_start.date()
+    if closed_dates is None:
+        closed = ClosedDate.objects.filter(date=day).exists()
+    else:
+        closed = day in closed_dates
+    if closed:
+        return False
+    if rules_by_weekday is None:
+        rules = list(
+            WeeklyAvailability.objects.filter(weekday=day.weekday(), is_active=True)
+        )
+    else:
+        rules = rules_by_weekday.get(day.weekday(), [])
+    if not rules:
+        # No Veckoschema for this weekday — fall back to slot chaining only.
+        return True
+    start_t = local_start.time()
+    end_t = local_end.time()
+    win_from = datetime.combine(day, start_t)
+    win_to = datetime.combine(day, end_t)
+    for rule in rules:
+        if start_t < rule.start_time or end_t > rule.end_time:
+            continue
+        if rule.slot_overlaps_lunch(win_from, win_to):
+            continue
+        return True
+    return False
+
+
+def can_start_service(
+    start_slot,
+    service,
+    open_by_start=None,
+    *,
+    closed_dates=None,
+    rules_by_weekday=None,
+):
+    """True when this start has treatment length plus buffer still free."""
+    needed = service.calendar_minutes()
+    if not slot_run_covering(start_slot, needed, open_by_start=open_by_start):
+        return False
+    return reserved_window_fits_hours(
+        start_slot.start,
+        needed,
+        closed_dates=closed_dates,
+        rules_by_weekday=rules_by_weekday,
+    )
+
+
+def bookable_start_slots(service, slots=None):
+    """Start times to show for this treatment on Boka and in admin klockslag."""
+    slots = list(slots if slots is not None else upcoming_open_slots())
+    needed = service.calendar_minutes()
+    open_by_start = {slot.start: slot for slot in slots}
+    today = timezone.localdate()
+    closed_dates = set(
+        ClosedDate.objects.filter(
+            date__gte=today,
+            date__lte=today + timedelta(days=PUBLIC_SLOT_HORIZON_DAYS),
+        ).values_list("date", flat=True)
+    )
+    rules_by_weekday = {}
+    for rule in WeeklyAvailability.objects.filter(is_active=True):
+        rules_by_weekday.setdefault(rule.weekday, []).append(rule)
+    return [
+        slot
+        for slot in slots
+        if slot_run_covering(slot, needed, open_by_start=open_by_start)
+        and reserved_window_fits_hours(
+            slot.start,
+            needed,
+            closed_dates=closed_dates,
+            rules_by_weekday=rules_by_weekday,
+        )
+    ]
+
+
 def slot_run_covering(start_slot, needed_minutes, open_by_start=None):
     """Return contiguous open slots from start_slot that cover needed_minutes.
 
@@ -373,7 +468,7 @@ def create_confirmed_booking(
             TimeSlot.objects.select_for_update().get(pk=start_slot.pk),
             needed,
         )
-        if not tentative:
+        if not tentative or not reserved_window_fits_hours(start_slot.start, needed):
             raise ValidationError(taken_msg)
         locked = list(
             TimeSlot.objects.select_for_update()

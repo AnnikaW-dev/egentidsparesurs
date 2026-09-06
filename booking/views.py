@@ -19,8 +19,9 @@ from .models import (
     Service,
     TimeSlot,
     WeeklyAvailability,
+    bookable_start_slots,
+    can_start_service,
     create_confirmed_booking,
-    slot_run_covering,
     sync_future_slots,
     sync_slots_for_range,
 )
@@ -45,11 +46,9 @@ def booking_page(request):
         selected_service = get_object_or_404(Service, slug=service_slug, is_active=True)
 
     selected_slot = None
-    needed_minutes = None
     if slot_id and selected_service:
         selected_slot = get_object_or_404(TimeSlot, pk=slot_id)
-        needed_minutes = selected_service.calendar_minutes()
-        if not slot_run_covering(selected_slot, needed_minutes):
+        if not can_start_service(selected_slot, selected_service):
             messages.error(
                 request,
                 "Den tiden räcker inte för behandlingen, eller är inte längre ledig. Välj en annan lucka.",
@@ -68,14 +67,11 @@ def booking_page(request):
         .exclude(booking__status=Booking.Status.CONFIRMED)
         .order_by("start")
     )
-    open_by_start = {slot.start: slot for slot in open_slots}
     by_date = {}
     if selected_service:
-        needed_minutes = selected_service.calendar_minutes()
-        for slot in open_slots:
-            if slot_run_covering(slot, needed_minutes, open_by_start=open_by_start):
-                local = timezone.localtime(slot.start)
-                by_date.setdefault(local.date(), []).append(slot)
+        for slot in bookable_start_slots(selected_service, open_slots):
+            local = timezone.localtime(slot.start)
+            by_date.setdefault(local.date(), []).append(slot)
 
     form = None
     booking_step = 1

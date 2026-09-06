@@ -20,7 +20,8 @@ from .models import (
     Booking,
     Service,
     WeeklyAvailability,
-    slot_run_covering,
+    bookable_start_slots,
+    can_start_service,
     upcoming_open_slots,
 )
 
@@ -91,24 +92,29 @@ class BookingForm(forms.ModelForm):
         return digits
 
 
-def _open_slots_by_day():
-    """Map YYYY-MM-DD → [{id, time}] for upcoming open start slots."""
-    grouped = {}
-    for slot in upcoming_open_slots():
-        local = timezone.localtime(slot.start)
-        grouped.setdefault(local.date().isoformat(), []).append(
-            {"id": slot.pk, "time": local.strftime("%H:%M")}
-        )
-    return grouped
+def _bookable_slots_by_service():
+    """Map service pk → YYYY-MM-DD → [{id, time}] for starts that fit duration+buffer."""
+    slots = list(upcoming_open_slots())
+    payload = {}
+    for service in Service.objects.filter(is_active=True):
+        grouped = {}
+        for slot in bookable_start_slots(service, slots):
+            local = timezone.localtime(slot.start)
+            grouped.setdefault(local.date().isoformat(), []).append(
+                {"id": slot.pk, "time": local.strftime("%H:%M")}
+            )
+        payload[str(service.pk)] = grouped
+    return payload
 
 
 class BookingDateInput(forms.DateInput):
-    """Native date picker plus JSON of open slots for the klockslag script."""
+    """Native date picker plus JSON of bookable starts per treatment."""
 
     input_type = "date"
 
     def __init__(self, attrs=None, slots_by_day=None):
         super().__init__(attrs)
+        # Adjust: JSON is {service_pk: {YYYY-MM-DD: [{id, time}, ...]}}.
         self.slots_by_day = slots_by_day or {}
 
     def render(self, name, value, attrs=None, renderer=None):
@@ -177,11 +183,13 @@ class StaffBookingForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         from .models import TimeSlot
 
-        self.slots_by_day = _open_slots_by_day()
+        self.slots_by_service = _bookable_slots_by_service()
         self.fields["service"].queryset = Service.objects.filter(is_active=True)
         self.fields["service"].empty_label = "Välj behandling"
 
-        days = sorted(self.slots_by_day)
+        days = sorted(
+            {day for grouped in self.slots_by_service.values() for day in grouped}
+        )
         date_attrs = {"autocomplete": "off", "aria-required": "true"}
         if days:
             date_attrs["min"] = days[0]
@@ -193,13 +201,14 @@ class StaffBookingForm(forms.ModelForm):
             )
         self.fields["booking_date"].widget = BookingDateInput(
             attrs=date_attrs,
-            slots_by_day=self.slots_by_day,
+            slots_by_day=self.slots_by_service,
         )
 
         slot_pk = self._posted_or_initial_slot_pk()
         slot = TimeSlot.objects.filter(pk=slot_pk).first() if slot_pk else None
         chosen_day = self._chosen_day_iso(slot)
-        self.fields["booking_time"].choices = self._time_choices(chosen_day)
+        service_pk = self._selected_service_pk()
+        self.fields["booking_time"].choices = self._time_choices(chosen_day, service_pk)
         if slot and not self.is_bound:
             local = timezone.localtime(slot.start)
             self.fields["booking_date"].initial = local.date()
@@ -234,17 +243,43 @@ class StaffBookingForm(forms.ModelForm):
             return timezone.localtime(slot.start).date().isoformat()
         return ""
 
-    def _time_choices(self, day_iso):
-        """Times for one day, or all days labelled with date (no-JS fallback)."""
+    def _selected_service_pk(self):
+        """Service id from POST or initial, used to list klockslag that fit."""
+        if self.data.get("service"):
+            return str(self.data.get("service"))
+        svc = self.initial.get("service")
+        if svc is None:
+            return ""
+        return str(getattr(svc, "pk", svc))
+
+    def _time_choices(self, day_iso, service_pk):
+        """Times that fit the chosen treatment, for one day or all days (no-JS)."""
         empty = ("", "Välj tid")
-        if day_iso and day_iso in self.slots_by_day:
-            return [empty] + [
-                (str(item["id"]), item["time"]) for item in self.slots_by_day[day_iso]
+        if service_pk:
+            by_day = self.slots_by_service.get(str(service_pk), {})
+        else:
+            by_day = {}
+            for grouped in self.slots_by_service.values():
+                for day, items in grouped.items():
+                    by_day.setdefault(day, [])
+                    seen = {item["id"] for item in by_day[day]}
+                    for item in items:
+                        if item["id"] not in seen:
+                            by_day[day].append(item)
+                            seen.add(item["id"])
+        if day_iso and day_iso in by_day:
+            choices = [empty] + [
+                (str(item["id"]), item["time"]) for item in by_day[day_iso]
             ]
-        choices = [empty]
-        for day, items in self.slots_by_day.items():
-            for item in items:
-                choices.append((str(item["id"]), f"{day} {item['time']}"))
+        else:
+            choices = [empty]
+            for day, items in by_day.items():
+                for item in items:
+                    choices.append((str(item["id"]), f"{day} {item['time']}"))
+        posted = self.data.get("booking_time") if self.is_bound else None
+        if posted and not any(str(choice[0]) == str(posted) for choice in choices):
+            # Keep a posted id so clean() can explain why it does not fit.
+            choices.append((str(posted), "Tiden räcker inte"))
         return choices
 
     def clean_customer_email(self):
@@ -283,7 +318,7 @@ class StaffBookingForm(forms.ModelForm):
         if booking_date and not time_pk:
             self.add_error("booking_time", "Välj ett klockslag för det datumet.")
         service = cleaned.get("service")
-        if service and slot and not slot_run_covering(slot, service.calendar_minutes()):
+        if service and slot and not can_start_service(slot, service):
             self.add_error(
                 "booking_time",
                 "Den tiden räcker inte för behandlingen, eller är inte ledig. "
