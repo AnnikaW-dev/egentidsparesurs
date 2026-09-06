@@ -375,11 +375,18 @@ class QuickWeekForm(forms.Form):
         min_value=15,
         max_value=240,
         initial=60,
+        help_text=(
+            "Hur lång varje tom lucka är. Ändring byter ut tomma luckor; "
+            "samma klockslag skapas aldrig två gånger. Bokade tider lämnas orörda."
+        ),
         widget=forms.NumberInput(attrs={"class": "form-control"}),
     )
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.fields["slot_minutes"].widget.attrs["aria-describedby"] = (
+            f"{self['slot_minutes'].id_for_label}_help"
+        )
         existing = {
             w.weekday: w for w in WeeklyAvailability.objects.filter(is_active=True)
         }

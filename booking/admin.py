@@ -102,6 +102,8 @@ class WeeklyAvailabilityAdmin(ScheduleSyncAdminMixin, admin.ModelAdmin):
                     "Lägg till en rad per öppen dag (t.ex. Måndag 09:00–16:00). "
                     "Lunch från/till tar bort de luckorna från Boka den dagen "
                     "(lämna tomt om du inte tar lunch). "
+                    "Passlängd är hur lång varje tom lucka är. Ändrar du den "
+                    "byts tomma luckor ut — samma klockslag blir aldrig dubbelt. "
                     "Dagar utan aktiv rad visas som ”Stängt” och går inte att boka. "
                     "Kundbokningar som redan finns tas inte bort."
                 ),
@@ -173,6 +175,26 @@ class TimeSlotAdmin(admin.ModelAdmin):
     list_filter = (UpcomingSlotFilter, "is_blocked")
     date_hierarchy = "start"
     actions = ["block_slots", "unblock_slots"]
+    fieldsets = (
+        (
+            None,
+            {
+                "fields": ("start", "end", "is_blocked", "held_by"),
+                "description": (
+                    "Samma klockslag får bara finnas en gång. "
+                    "Start och slut på en bokad lucka kan inte ändras här."
+                ),
+            },
+        ),
+    )
+
+    def get_readonly_fields(self, request, obj=None):
+        """Keep booked/held luckor at the time the customer already has."""
+        if obj is None:
+            return ()
+        if obj.held_by_id or Booking.objects.filter(slot=obj).exists():
+            return ("start", "end")
+        return ()
 
     @admin.display(boolean=True, description="Bokad")
     def booked_display(self, obj):

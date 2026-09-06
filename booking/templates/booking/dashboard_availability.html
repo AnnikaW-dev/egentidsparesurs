@@ -19,6 +19,9 @@
       <p class="form-row">
         <label for="{{ week_form.slot_minutes.id_for_label }}">{{ week_form.slot_minutes.label }}</label>
         {{ week_form.slot_minutes }}
+        {% if week_form.slot_minutes.help_text %}
+        <span id="{{ week_form.slot_minutes.id_for_label }}_help" class="field-hint">{{ week_form.slot_minutes.help_text }}</span>
+        {% endif %}
       </p>
       <table class="week-table">
         <caption class="visually-hidden">Veckoschema — öppettider per veckodag</caption>

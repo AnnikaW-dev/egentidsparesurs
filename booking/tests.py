@@ -3,6 +3,7 @@
 from datetime import date, time, timedelta
 
 from django.core import mail
+from django.db import IntegrityError
 from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
@@ -59,6 +60,186 @@ class GenerateSlotsTests(TestCase):
         )
         rows = footer_opening_hours()
         self.assertEqual(rows, [{"label": "Måndag–tisdag", "hours": "09:00–11:00"}])
+
+
+class TimeSlotUniqueStartTests(TestCase):
+    """Admin Tidsluckor must never list two luckor that start at the same clock."""
+
+    def test_database_rejects_a_second_slot_at_the_same_start(self):
+        start = timezone.now() + timedelta(days=5)
+        TimeSlot.objects.create(start=start, end=start + timedelta(minutes=30))
+        with self.assertRaises(IntegrityError):
+            TimeSlot.objects.create(start=start, end=start + timedelta(hours=1))
+
+    def test_sync_does_not_add_another_row_when_a_booked_start_has_the_old_length(self):
+        from booking.models import generate_slots_for_range, sync_slots_for_range
+
+        monday = timezone.localdate() + timedelta(days=14)
+        while monday.weekday() != 0:
+            monday += timedelta(days=1)
+        rule = WeeklyAvailability.objects.create(
+            weekday=0,
+            start_time=time(9, 0),
+            end_time=time(12, 0),
+            slot_minutes=60,
+            is_active=True,
+        )
+        generate_slots_for_range(monday, monday)
+        first = TimeSlot.objects.order_by("start").first()
+        service = Service.objects.create(
+            name="Spa",
+            slug="spa-unique-start",
+            duration_minutes=60,
+            is_active=True,
+        )
+        Booking.objects.create(
+            slot=first,
+            service=service,
+            customer_name="Anna",
+            customer_email="anna@example.com",
+            customer_phone="0701234567",
+        )
+        rule.slot_minutes = 30
+        rule.save()
+        sync_slots_for_range(monday, monday)
+        self.assertEqual(TimeSlot.objects.filter(start=first.start).count(), 1)
+
+    def test_sync_does_not_change_an_existing_booking_time(self):
+        from booking.models import create_confirmed_booking, sync_slots_for_range
+
+        monday = timezone.localdate() + timedelta(days=14)
+        while monday.weekday() != 0:
+            monday += timedelta(days=1)
+        WeeklyAvailability.objects.create(
+            weekday=0,
+            start_time=time(9, 0),
+            end_time=time(16, 0),
+            slot_minutes=30,
+            is_active=True,
+            lunch_start=time(12, 0),
+            lunch_end=time(13, 0),
+        )
+        from booking.models import generate_slots_for_range
+
+        generate_slots_for_range(monday, monday)
+        start_slot = TimeSlot.objects.order_by("start").first()
+        service = Service.objects.create(
+            name="Spa",
+            slug="spa-keep-booking",
+            duration_minutes=60,
+            is_active=True,
+        )
+        booking = create_confirmed_booking(
+            service=service,
+            start_slot=start_slot,
+            customer_name="Kalle",
+            customer_email="kalle@example.com",
+            customer_phone="0701234567",
+            notify_email=False,
+        )
+        slot_id = booking.slot_id
+        start = booking.slot.start
+        end = booking.slot.end
+        held_ids = list(
+            TimeSlot.objects.filter(held_by=booking).values_list("pk", "start", "end")
+        )
+        sync_slots_for_range(monday, monday)
+        booking.refresh_from_db()
+        booking.slot.refresh_from_db()
+        self.assertEqual(booking.slot_id, slot_id)
+        self.assertEqual(booking.slot.start, start)
+        self.assertEqual(booking.slot.end, end)
+        self.assertEqual(booking.customer_name, "Kalle")
+        self.assertEqual(booking.status, Booking.Status.CONFIRMED)
+        after_held = list(
+            TimeSlot.objects.filter(held_by=booking).values_list("pk", "start", "end")
+        )
+        self.assertEqual(after_held, held_ids)
+
+    def test_changing_passlangd_replaces_empty_slots_without_duplicate_starts(self):
+        from booking.models import generate_slots_for_range, sync_slots_for_range
+
+        monday = timezone.localdate() + timedelta(days=14)
+        while monday.weekday() != 0:
+            monday += timedelta(days=1)
+        rule = WeeklyAvailability.objects.create(
+            weekday=0,
+            start_time=time(9, 0),
+            end_time=time(12, 0),
+            slot_minutes=60,
+            is_active=True,
+        )
+        generate_slots_for_range(monday, monday)
+        self.assertEqual(TimeSlot.objects.count(), 3)
+
+        rule.slot_minutes = 30
+        rule.save()
+        sync_slots_for_range(monday, monday)
+        starts = list(TimeSlot.objects.values_list("start", flat=True))
+        self.assertEqual(len(starts), len(set(starts)))
+        self.assertEqual(len(starts), 6)
+        for slot in TimeSlot.objects.all():
+            self.assertEqual(slot.end - slot.start, timedelta(minutes=30))
+
+        rule.slot_minutes = 60
+        rule.save()
+        sync_slots_for_range(monday, monday)
+        starts = list(TimeSlot.objects.values_list("start", flat=True))
+        self.assertEqual(len(starts), len(set(starts)))
+        self.assertEqual(len(starts), 3)
+        for slot in TimeSlot.objects.all():
+            self.assertEqual(slot.end - slot.start, timedelta(minutes=60))
+
+    def test_changing_passlangd_does_not_overlay_a_booked_lucka(self):
+        from booking.models import generate_slots_for_range, sync_slots_for_range
+
+        monday = timezone.localdate() + timedelta(days=14)
+        while monday.weekday() != 0:
+            monday += timedelta(days=1)
+        rule = WeeklyAvailability.objects.create(
+            weekday=0,
+            start_time=time(9, 0),
+            end_time=time(12, 0),
+            slot_minutes=60,
+            is_active=True,
+        )
+        generate_slots_for_range(monday, monday)
+        booked = TimeSlot.objects.order_by("start").first()
+        service = Service.objects.create(
+            name="Spa",
+            slug="spa-no-overlay",
+            duration_minutes=60,
+            is_active=True,
+        )
+        Booking.objects.create(
+            slot=booked,
+            service=service,
+            customer_name="Anna",
+            customer_email="anna@example.com",
+            customer_phone="0701234567",
+        )
+        rule.slot_minutes = 30
+        rule.save()
+        sync_slots_for_range(monday, monday)
+
+        starts = list(TimeSlot.objects.values_list("start", flat=True))
+        self.assertEqual(len(starts), len(set(starts)))
+        booked.refresh_from_db()
+        self.assertEqual(booked.end - booked.start, timedelta(hours=1))
+        half_hour = booked.start + timedelta(minutes=30)
+        self.assertFalse(TimeSlot.objects.filter(start=half_hour).exists())
+
+    def test_admin_form_rejects_a_second_slot_at_the_same_start(self):
+        from django.core.exceptions import ValidationError
+
+        start = timezone.now() + timedelta(days=5)
+        TimeSlot.objects.create(start=start, end=start + timedelta(minutes=30))
+        duplicate = TimeSlot(
+            start=start,
+            end=start + timedelta(hours=1),
+        )
+        with self.assertRaises(ValidationError):
+            duplicate.full_clean()
 
 
 class SyncSlotsFromWeeklyTests(TestCase):

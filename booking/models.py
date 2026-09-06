@@ -81,7 +81,11 @@ class WeeklyAvailability(models.Model):
     slot_minutes = models.PositiveIntegerField(
         default=60,
         verbose_name="Passlängd (min)",
-        help_text="Längd per bokningsbart pass i minuter (påverkar Boka, inte sidfotens text).",
+        help_text=(
+            "Längd per bokningsbart pass i minuter (påverkar Boka, inte sidfotens text). "
+            "När du ändrar värdet byts tomma luckor ut — samma klockslag skapas aldrig två gånger. "
+            "Bokade tider lämnas orörda."
+        ),
     )
     is_active = models.BooleanField(
         default=True,
@@ -237,7 +241,10 @@ class ClosedDate(models.Model):
 class TimeSlot(models.Model):
     """A concrete bookable window on a calendar day."""
 
-    start = models.DateTimeField()
+    start = models.DateTimeField(
+        unique=True,
+        help_text="En lucka per starttid. Samma klockslag får inte finnas två gånger.",
+    )
     end = models.DateTimeField()
     is_blocked = models.BooleanField(
         default=False,
@@ -256,11 +263,32 @@ class TimeSlot(models.Model):
         ordering = ["start"]
         verbose_name = "tidslucka"
         verbose_name_plural = "tidsluckor"
-        unique_together = [("start", "end")]
 
     def __str__(self):
-        local = timezone.localtime(self.start)
-        return local.strftime("%Y-%m-%d %H:%M")
+        local_start = timezone.localtime(self.start)
+        local_end = timezone.localtime(self.end)
+        return f"{local_start:%Y-%m-%d %H:%M}–{local_end:%H:%M}"
+
+    def clean(self):
+        """Reject a second lucka at the same start, or one that overlaps another."""
+        from django.core.exceptions import ValidationError
+
+        qs = TimeSlot.objects.filter(start=self.start)
+        if self.pk:
+            qs = qs.exclude(pk=self.pk)
+        if qs.exists():
+            raise ValidationError(
+                {"start": "Det finns redan en tidslucka som börjar vid den tiden."}
+            )
+        if self.start and self.end:
+            overlapping = TimeSlot.objects.filter(start__lt=self.end, end__gt=self.start)
+            if self.pk:
+                overlapping = overlapping.exclude(pk=self.pk)
+            if overlapping.exists():
+                raise ValidationError(
+                    "Den här luckan överlappar en annan tidslucka. "
+                    "Samma tid får inte finnas två gånger."
+                )
 
     @property
     def is_booked(self):
@@ -580,21 +608,102 @@ def iter_schedule_slots(start_date, end_date):
         day += timedelta(days=1)
 
 
+def _slot_is_busy(slot):
+    """True when this lucka belongs to a booking — never delete or change start/end."""
+    if slot.held_by_id:
+        return True
+    return Booking.objects.filter(slot_id=slot.pk).exists()
+
+
+def _busy_slot_windows():
+    """(start, end) for luckor with a booking or hold — empty luckor must not overlay these."""
+    return [
+        (slot.start, slot.end)
+        for slot in TimeSlot.objects.filter(
+            Q(held_by__isnull=False) | Q(booking__isnull=False)
+        )
+    ]
+
+
+def _overlaps_any_window(start, end, windows):
+    """True when [start, end) shares time with any (other_start, other_end) pair."""
+    return any(start < other_end and end > other_start for other_start, other_end in windows)
+
+
+def _pick_timeslot_to_keep(rows):
+    """Choose one row when several luckor share a start time."""
+    confirmed = [
+        slot
+        for slot in rows
+        if Booking.objects.filter(slot_id=slot.pk, status=Booking.Status.CONFIRMED).exists()
+    ]
+    if confirmed:
+        return confirmed[0]
+    busy = [slot for slot in rows if _slot_is_busy(slot)]
+    if busy:
+        return busy[0]
+    day = timezone.localtime(rows[0].start).date()
+    desired_ends = {
+        end for start, end in iter_schedule_slots(day, day) if start == rows[0].start
+    }
+    matching = [slot for slot in rows if slot.end in desired_ends]
+    if matching:
+        return matching[0]
+    return min(rows, key=lambda slot: ((slot.end - slot.start), slot.pk))
+
+
+def dedupe_timeslots_with_same_start():
+    """Delete extra luckor that share a start time. Keep booked/held rows.
+
+    Old 60-minute luckor plus new 30-minute luckor at the same clock looked like
+    duplicates in admin. Call before enforcing unique(start).
+    Returns how many rows were deleted.
+    """
+    from collections import defaultdict
+
+    grouped = defaultdict(list)
+    for slot in TimeSlot.objects.order_by("pk"):
+        grouped[slot.start].append(slot)
+    deleted = 0
+    for rows in grouped.values():
+        if len(rows) < 2:
+            continue
+        keep = _pick_timeslot_to_keep(rows)
+        for slot in rows:
+            if slot.pk == keep.pk or _slot_is_busy(slot):
+                continue
+            slot.delete()
+            deleted += 1
+    return deleted
+
+
 def generate_slots_for_range(start_date, end_date):
     """Create TimeSlot rows from active WeeklyAvailability between two dates.
 
-    Skips ClosedDate days and does not duplicate existing (start, end) pairs.
+    One lucka per start time (unique start). Booked or held luckor keep their
+    start and end. New empty luckor are not created on top of a booked window.
     Returns the number of newly created slots.
     """
     created = 0
+    busy_windows = _busy_slot_windows()
     for start_aware, end_aware in iter_schedule_slots(start_date, end_date):
-        _, was_created = TimeSlot.objects.get_or_create(
+        slot = TimeSlot.objects.filter(start=start_aware).first()
+        if slot is not None:
+            if _slot_is_busy(slot):
+                continue
+            if slot.end != end_aware:
+                slot.end = end_aware
+                slot.save(update_fields=["end"])
+            continue
+        # Adjust: passlängd change must not add a second lucka over a booking.
+        if _overlaps_any_window(start_aware, end_aware, busy_windows):
+            continue
+        TimeSlot.objects.create(
             start=start_aware,
             end=end_aware,
-            defaults={"is_blocked": False},
+            is_blocked=False,
         )
-        if was_created:
-            created += 1
+        created += 1
     return created
 
 
@@ -602,16 +711,19 @@ def sync_slots_for_range(start_date, end_date):
     """Make TimeSlots match Veckoschema between two dates.
 
     Creates missing luckor. Deletes unbooked luckor that no longer match
-    (hours shortened, lunch added, day closed, or ClosedDate). Never deletes a slot that
-    has a booking row. Returns (created_count, deleted_count).
+    (hours shortened, lunch added, day closed, ClosedDate, or passlängd
+    changed). Never two luckor at the same start. Never deletes, resizes, or
+    overlays a lucka that has a booking or a hold. Returns (created_count,
+    deleted_count).
     """
+    deleted = dedupe_timeslots_with_same_start()
     created = generate_slots_for_range(start_date, end_date)
     desired = set(iter_schedule_slots(start_date, end_date))
+    busy_windows = _busy_slot_windows()
     range_start = timezone.make_aware(datetime.combine(start_date, datetime.min.time()))
     range_end = timezone.make_aware(
         datetime.combine(end_date + timedelta(days=1), datetime.min.time())
     )
-    deleted = 0
     extras = TimeSlot.objects.filter(
         start__gte=range_start,
         start__lt=range_end,
@@ -619,7 +731,11 @@ def sync_slots_for_range(start_date, end_date):
         held_by__isnull=True,
     )
     for slot in extras:
-        if (slot.start, slot.end) not in desired:
+        if _slot_is_busy(slot):
+            continue
+        stale_length = (slot.start, slot.end) not in desired
+        overlays_booking = _overlaps_any_window(slot.start, slot.end, busy_windows)
+        if stale_length or overlays_booking:
             slot.delete()
             deleted += 1
     return created, deleted
