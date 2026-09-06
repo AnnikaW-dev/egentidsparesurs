@@ -529,8 +529,8 @@ def create_confirmed_booking(
         return booking
 
 
-# Adjust: public /boka/ shows this many days; saving Veckoschema syncs the same window.
-PUBLIC_SLOT_HORIZON_DAYS = 60
+# Adjust: public /boka/ and admin klockslag; ~6 months, kept in sync with Veckoschema.
+PUBLIC_SLOT_HORIZON_DAYS = 183
 
 
 def upcoming_open_slots():

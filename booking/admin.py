@@ -9,7 +9,6 @@ from django.utils.html import format_html
 
 from .forms import StaffBookingForm
 from .models import (
-    PUBLIC_SLOT_HORIZON_DAYS,
     Booking,
     ClosedDate,
     Service,
@@ -27,7 +26,7 @@ def _announce_boka_sync(admin_obj, request, created, deleted):
         request,
         (
             f"Bokningsbara tider på Boka är uppdaterade "
-            f"({PUBLIC_SLOT_HORIZON_DAYS} dagar framåt): "
+            f"(6 månader framåt): "
             f"{created} nya, {deleted} borttagna. "
             "Befintliga kundbokningar är kvar."
         ),
