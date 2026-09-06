@@ -378,6 +378,58 @@ class BookingHidesShortWindowsTests(TestCase):
         self.assertNotIn("11:00", times)
         self.assertNotIn("15:30", times)
 
+    def test_hides_1230_when_the_next_booking_leaves_too_little_room(self):
+        """A 12:30 chip before a 13:00 booking is only 30 minutes — too short."""
+        from datetime import datetime
+
+        from booking.models import create_confirmed_booking
+
+        for hour, minute in ((12, 0), (12, 30), (16, 0), (16, 30)):
+            start = timezone.make_aware(datetime.combine(self.monday, time(hour, minute)))
+            TimeSlot.objects.get_or_create(
+                start=start,
+                end=start + timedelta(minutes=30),
+                defaults={"is_blocked": False},
+            )
+        create_confirmed_booking(
+            service=self.service,
+            start_slot=self._slot_at(13, 0),
+            customer_name="Kalle",
+            customer_email="kalle@example.com",
+            customer_phone="0701234567",
+            notify_email=False,
+        )
+        short = Service.objects.create(
+            name="Massage",
+            slug="massage",
+            duration_minutes=30,
+            is_active=True,
+        )
+        for slug in (self.service.slug, short.slug):
+            response = self.client.get(reverse("booking"), {"service": slug})
+            self.assertNotContains(response, f"slot={self._slot_at(12, 30).pk}")
+            self.assertNotContains(response, f"slot={self._slot_at(12, 0).pk}")
+            self.assertNotContains(response, f"slot={self._slot_at(16, 0).pk}")
+
+    def test_hides_a_long_leftover_slot_that_overlaps_the_next_booking(self):
+        from datetime import datetime
+
+        from booking.models import create_confirmed_booking
+
+        start = timezone.make_aware(datetime.combine(self.monday, time(12, 30)))
+        TimeSlot.objects.filter(start=start).delete()
+        fat = TimeSlot.objects.create(start=start, end=start + timedelta(hours=3, minutes=30))
+        create_confirmed_booking(
+            service=self.service,
+            start_slot=self._slot_at(13, 0),
+            customer_name="Kalle",
+            customer_email="kalle@example.com",
+            customer_phone="0701234567",
+            notify_email=False,
+        )
+        response = self.client.get(reverse("booking"), {"service": self.service.slug})
+        self.assertNotContains(response, f"slot={fat.pk}")
+
 
 class DashboardHelpTests(TestCase):
     """Staff handbook is for logged-in staff only."""

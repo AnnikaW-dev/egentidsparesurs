@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 
 from django.core.exceptions import ValidationError
 from django.db import models, transaction
+from django.db.models import Q
 from django.utils import timezone
 
 # Adjust: extra minutes reserved after each treatment (cleanup / next customer).
@@ -360,6 +361,24 @@ def reserved_window_fits_hours(
     return False
 
 
+def occupied_intervals():
+    """Ranges already taken: confirmed bookings (treatment + buffer), holds, blocks."""
+    intervals = []
+    for booking in Booking.objects.filter(status=Booking.Status.CONFIRMED).select_related(
+        "service", "slot"
+    ):
+        intervals.append((booking.slot.start, booking.reserved_until()))
+    for slot in TimeSlot.objects.filter(Q(is_blocked=True) | Q(held_by__isnull=False)):
+        intervals.append((slot.start, slot.end))
+    return intervals
+
+
+def window_hits_occupied(start, needed_minutes, intervals):
+    """True when [start, start+needed) overlaps an occupied range."""
+    needed_end = start + timedelta(minutes=needed_minutes)
+    return any(occ_start < needed_end and occ_end > start for occ_start, occ_end in intervals)
+
+
 def can_start_service(
     start_slot,
     service,
@@ -371,6 +390,8 @@ def can_start_service(
     """True when this start has treatment length plus buffer still free."""
     needed = service.calendar_minutes()
     if not slot_run_covering(start_slot, needed, open_by_start=open_by_start):
+        return False
+    if window_hits_occupied(start_slot.start, needed, occupied_intervals()):
         return False
     return reserved_window_fits_hours(
         start_slot.start,
@@ -384,7 +405,8 @@ def bookable_start_slots(service, slots=None):
     """Start times to show for this treatment on Boka and in admin klockslag."""
     slots = list(slots if slots is not None else upcoming_open_slots())
     needed = service.calendar_minutes()
-    open_by_start = {slot.start: slot for slot in slots}
+    open_by_start = {int(slot.start.timestamp()): slot for slot in slots}
+    taken = occupied_intervals()
     today = timezone.localdate()
     closed_dates = set(
         ClosedDate.objects.filter(
@@ -399,6 +421,7 @@ def bookable_start_slots(service, slots=None):
         slot
         for slot in slots
         if slot_run_covering(slot, needed, open_by_start=open_by_start)
+        and not window_hits_occupied(slot.start, needed, taken)
         and reserved_window_fits_hours(
             slot.start,
             needed,
@@ -421,7 +444,7 @@ def slot_run_covering(start_slot, needed_minutes, open_by_start=None):
     covered_end = start_slot.end
     while covered_end < needed_end:
         if open_by_start is not None:
-            nxt = open_by_start.get(covered_end)
+            nxt = open_by_start.get(int(covered_end.timestamp()))
         else:
             nxt = TimeSlot.objects.filter(start=covered_end).first()
         if nxt is None or not nxt.is_open:
@@ -468,7 +491,11 @@ def create_confirmed_booking(
             TimeSlot.objects.select_for_update().get(pk=start_slot.pk),
             needed,
         )
-        if not tentative or not reserved_window_fits_hours(start_slot.start, needed):
+        if (
+            not tentative
+            or not reserved_window_fits_hours(start_slot.start, needed)
+            or window_hits_occupied(start_slot.start, needed, occupied_intervals())
+        ):
             raise ValidationError(taken_msg)
         locked = list(
             TimeSlot.objects.select_for_update()
