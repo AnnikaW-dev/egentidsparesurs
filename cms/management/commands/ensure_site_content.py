@@ -31,6 +31,7 @@ def _env_flag(name: str) -> bool:
 class Command(BaseCommand):
     help = (
         "Fill a new database (seed + snapshot). Later restarts keep admin edits. "
+        "Missing image files are restored from the snapshot without changing text. "
         "Set APPLY_CONTENT_SNAPSHOT=true only to overwrite from git."
     )
 
@@ -46,14 +47,18 @@ class Command(BaseCommand):
         want_snapshot = _env_flag("APPLY_CONTENT_SNAPSHOT")
         # First boot: empty site needs the committed snapshot once.
         apply_snapshot = bool(missing_keys or want_snapshot)
-        should_seed = bool(missing_keys or media_missing or want_seed)
+        # Missing photos must not run seed_site — that can rewrite gallery text.
+        should_seed = bool(missing_keys or want_seed)
 
         try:
+            if media_missing and not should_seed and not apply_snapshot:
+                self.stdout.write(
+                    "Some image files are missing on disk — restoring files only. "
+                    "Page text and bookings stay as they are."
+                )
             if should_seed:
                 if missing_keys:
                     reason = f"missing pages: {', '.join(missing_keys)}"
-                elif media_missing:
-                    reason = "missing media"
                 else:
                     reason = "SEED_ON_DEPLOY (safe fill-only seed)"
                 self.stdout.write(f"Seeding site content ({reason})...")

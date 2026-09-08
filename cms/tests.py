@@ -243,6 +243,22 @@ class EnsureSiteContentTests(TestCase):
     @patch("cms.management.commands.ensure_site_content.call_command")
     @patch(
         "cms.management.commands.ensure_site_content.Command._media_missing",
+        return_value=True,
+    )
+    def test_missing_media_does_not_run_seed(self, _media, mock_call, _copy_media):
+        """Broken photos must not rewrite CMS text via seed_site."""
+        with patch.dict(
+            os.environ, {"SEED_ON_DEPLOY": "", "APPLY_CONTENT_SNAPSHOT": ""}, clear=False
+        ):
+            from django.core.management import call_command as run
+
+            run("ensure_site_content")
+        self.assertEqual(mock_call.call_args_list, [])
+
+    @patch("cms.management.commands.ensure_site_content.ensure_snapshot_media", return_value=0)
+    @patch("cms.management.commands.ensure_site_content.call_command")
+    @patch(
+        "cms.management.commands.ensure_site_content.Command._media_missing",
         return_value=False,
     )
     def test_env_flag_reapplies_snapshot(self, _media, mock_call, _copy_media):
@@ -307,3 +323,42 @@ class SnapshotMediaRestoreTests(TestCase):
         self.assertGreaterEqual(copied, 1)
         self.assertEqual(copied_again, 0)
         self.assertTrue(dest.is_file())
+
+    def test_restore_missing_uuid_gallery_file_keeps_caption(self):
+        import tempfile
+        from pathlib import Path
+
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        from django.test import override_settings
+        from PIL import Image
+
+        from cms.snapshot import MIN_MEDIA_BYTES, restore_missing_cms_media
+
+        tmp = Path(tempfile.mkdtemp())
+        files = tmp / "files" / "gallery"
+        files.mkdir(parents=True)
+        (files / "pedicure-foot-file.jpg").write_bytes(b"x" * (MIN_MEDIA_BYTES + 50))
+        media = tmp / "media"
+        media.mkdir()
+        buf = __import__("io").BytesIO()
+        Image.new("RGB", (40, 40), (10, 10, 10)).save(buf, "JPEG")
+        placeholder = SimpleUploadedFile(
+            "placeholder.jpg", buf.getvalue(), content_type="image/jpeg"
+        )
+        gi = GalleryImage.objects.create(
+            title="Fotvård",
+            caption="En fot som får hälarna dilade",
+            image=placeholder,
+            sort_order=0,
+        )
+        uuid_rel = "gallery/e824325a-6250-41e9-84a1-4d113d288b34.jpg"
+        gi.image.name = uuid_rel
+        gi.save(update_fields=["image"])
+        with override_settings(MEDIA_ROOT=str(media)):
+            copied = restore_missing_cms_media(src=tmp)
+            gi.refresh_from_db()
+        dest = media / "gallery" / "e824325a-6250-41e9-84a1-4d113d288b34.jpg"
+        self.assertGreaterEqual(copied, 1)
+        self.assertTrue(dest.is_file())
+        self.assertEqual(gi.image.name, uuid_rel)
+        self.assertEqual(gi.caption, "En fot som får hälarna dilade")

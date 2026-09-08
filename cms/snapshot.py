@@ -8,6 +8,8 @@ Missing media files are recopied from the snapshot on each boot (ensure_snapshot
 
 Skip: bookings, users, contact messages, and tiny test uploads.
 Never copy local public_site_url onto production.
+Missing Render uploads (UUID filenames) are filled from snapshot photos
+without changing CMS text or booking rows.
 """
 
 from __future__ import annotations
@@ -38,6 +40,10 @@ FILES_DIRNAME = "files"
 MIN_MEDIA_BYTES = 1000
 # Django ImageField suffix before the extension, e.g. hand-massage_ZcDjaBu.jpg
 _HASH_SUFFIX = re.compile(r"_[A-Za-z0-9]{7}(?=\.[^.]+$)")
+_UUID_FILENAME = re.compile(
+    r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(jpe?g|png|webp)$",
+    re.I,
+)
 
 
 def snapshot_content_path(root: Path | None = None) -> Path:
@@ -388,7 +394,140 @@ def ensure_snapshot_media(src: Path | None = None, stdout=None) -> int:
 
     if copied and stdout:
         stdout.write(f"Restored {copied} missing media file(s) from content snapshot.")
+    copied += restore_missing_cms_media(src=root, stdout=stdout)
     return copied
+
+
+def restore_missing_cms_media(src: Path | None = None, stdout=None) -> int:
+    """Copy snapshot photos onto CMS ImageField paths that 404 on disk.
+
+    Keeps the database path and caption (admin text stays). Never touches bookings.
+    Returns how many files were newly written.
+    """
+    root = src or SNAPSHOT_DIR
+    files_dir = snapshot_files_dir(root)
+    copied = 0
+    for image_field, hint in _iter_cms_image_fields():
+        if not _image_file_missing(image_field):
+            continue
+        rel = (image_field.name or "").replace("\\", "/").lstrip("/")
+        source = _resolve_source(rel, files_dir)
+        if source is None:
+            stripped = _HASH_SUFFIX.sub("", Path(rel).name)
+            source = _resolve_source(stripped, files_dir) or _resolve_source(
+                f"{Path(rel).parent.as_posix()}/{stripped}", files_dir
+            )
+        if source is None:
+            mapped = _client_upload_slug(Path(rel).name)
+            if mapped:
+                source = _resolve_source(mapped, files_dir)
+        if source is None:
+            guessed = _guess_snapshot_rel(rel, hint)
+            if guessed:
+                source = _resolve_source(guessed, files_dir)
+        if source is None:
+            continue
+        _copy_source_to_rel(source, rel)
+        copied += 1
+    if copied and stdout:
+        stdout.write(
+            f"Filled {copied} missing CMS image path(s) from snapshot photos."
+        )
+    return copied
+
+
+def _iter_cms_image_fields():
+    """Yield (ImageFieldFile, hint text) for every CMS photo. Skip bookings."""
+    site = SiteSettings.load()
+    yield site.logo, "logo"
+    yield site.og_image, "og"
+    for page in SitePage.objects.all():
+        yield page.hero_image, page.title or ""
+        for block in page.blocks.all():
+            yield block.image, f"{block.title} {block.body}"
+        for slide in page.hero_slides.select_related("gallery_image"):
+            hint = page.title or ""
+            if slide.gallery_image_id and slide.gallery_image:
+                hint = (
+                    f"{slide.gallery_image.caption} {slide.gallery_image.title} {hint}"
+                )
+            yield slide.image, hint
+    for gi in GalleryImage.objects.all():
+        yield gi.image, f"{gi.caption} {gi.title}"
+    for tip in SeasonTip.objects.all():
+        yield tip.image, f"{tip.title} {tip.body}"
+
+
+def _image_file_missing(image_field) -> bool:
+    """True when the field points at a file that is absent or tiny on disk."""
+    if not image_field or not image_field.name:
+        return False
+    try:
+        path = Path(image_field.path)
+    except Exception:
+        return True
+    return not path.is_file() or path.stat().st_size < MIN_MEDIA_BYTES
+
+
+def _client_upload_slug(filename: str) -> str:
+    """Map an original client UUID filename to gallery/slug.jpg when known."""
+    from cms.gallery_defaults import CLIENT_IMAGE_MAP
+
+    name = (filename or "").strip()
+    if not name:
+        return ""
+    slug = CLIENT_IMAGE_MAP.get(name) or CLIENT_IMAGE_MAP.get(name.lower())
+    if slug:
+        return f"gallery/{slug}"
+    stem = Path(name).stem.lower()
+    for original, mapped in CLIENT_IMAGE_MAP.items():
+        if Path(original).stem.lower() == stem:
+            return f"gallery/{mapped}"
+    return ""
+
+
+def _guess_snapshot_rel(rel: str, hint: str) -> str:
+    """Pick a snapshot photo when the live file was a UUID upload that is gone.
+
+    Adjust: keyword → snapshot path. Used only when the DB path is missing on disk.
+    """
+    name = Path(rel or "").name.lower()
+    text = f"{name} {hint or ''}".lower()
+    if "hand_massasge" in name or "hand-massasge" in name:
+        return "gallery/hand-massage.jpg"
+    if "fotmassage" in name:
+        return "gallery/fotmassage.jpg"
+    if "nagelband" in text:
+        return "gallery/manicure-drill.jpg"
+    if any(word in text for word in ("häl", "halarna", "dilade", "filade")):
+        return "gallery/pedicure-foot-file.jpg"
+    if "parafin" in text or "paraffin" in text:
+        if "hand" in text:
+            return "gallery/paraffin-hand.jpg"
+        return "gallery/paraffin-foot-dip.jpg"
+    if "massag" in text and "hand" in text:
+        return "gallery/hand-massage.jpg"
+    if "massag" in text and "fot" in text:
+        return "gallery/fotmassage.jpg"
+    if _UUID_FILENAME.match(name):
+        if rel.replace("\\", "/").startswith("heroes/"):
+            return "pages/hero-feet.jpg"
+        return "gallery/salon-lounge.jpg"
+    return ""
+
+
+def _copy_source_to_rel(source: Path, rel: str) -> None:
+    """Write source (and webp) to MEDIA_ROOT/rel without changing the DB path."""
+    rel = (rel or "").replace("\\", "/").lstrip("/")
+    dest = Path(settings.MEDIA_ROOT) / rel
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    if source.resolve() != dest.resolve():
+        shutil.copy2(source, dest)
+    webp_src = source.with_suffix(".webp")
+    if webp_src.is_file():
+        shutil.copy2(webp_src, dest.with_suffix(".webp"))
+    else:
+        _write_webp(dest)
 
 
 def _gallery_ref(rel: str, by_file: dict) -> GalleryImage | None:

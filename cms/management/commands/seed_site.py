@@ -611,18 +611,19 @@ class Command(BaseCommand):
                 _save_image(gi.image, src, filename)
             else:
                 updates = []
-                if force or gi.title != title:
+                # Adjust: never overwrite admin gallery titles unless --force.
+                if force and gi.title != title:
                     gi.title = title
                     updates.append("title")
-                if force or gi.caption != caption:
+                if force and gi.caption != caption:
                     gi.caption = caption
                     updates.append("caption")
-                if gi.sort_order != sort_order:
+                if force and gi.sort_order != sort_order:
                     gi.sort_order = sort_order
                     updates.append("sort_order")
                 if updates:
                     gi.save(update_fields=updates)
-                if force or _file_missing(gi.image):
+                if force:
                     _save_image(gi.image, src, filename)
                 else:
                     _ensure_webp(gi.image)
