@@ -1,0 +1,44 @@
+{# admin Besöksstatistik — summary above the daily list; fed by visits.tracking.traffic_summary #}
+{% extends "admin/change_list.html" %}
+
+{% block result_list %}
+<div class="module" id="traffic-summary">
+  <h2>Översikt</h2>
+  <table>
+    <thead>
+      <tr>
+        <th scope="col">Period</th>
+        <th scope="col">Unika besökare</th>
+        <th scope="col">Sidvisningar</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <th scope="row">Idag</th>
+        <td>{{ traffic_summary.today_unique }}</td>
+        <td>{{ traffic_summary.today_views }}</td>
+      </tr>
+      <tr>
+        <th scope="row">Senaste 7 dagarna</th>
+        <td>{{ traffic_summary.week_unique }}</td>
+        <td>{{ traffic_summary.week_views }}</td>
+      </tr>
+      <tr>
+        <th scope="row">Senaste 30 dagarna</th>
+        <td>{{ traffic_summary.month_unique }}</td>
+        <td>{{ traffic_summary.month_views }}</td>
+      </tr>
+      <tr>
+        <th scope="row">Totalt</th>
+        <td>{{ traffic_summary.total_unique }}</td>
+        <td>{{ traffic_summary.total_views }}</td>
+      </tr>
+    </tbody>
+  </table>
+  <p class="help">
+    Unika besökare räknas anonymt. IP-adresser sparas inte. Siffrorna börjar när den här funktionen är igång.
+    Du själv räknas inte när du är inloggad i admin.
+  </p>
+</div>
+{{ block.super }}
+{% endblock %}
