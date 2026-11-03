@@ -184,6 +184,21 @@ LOGIN_REDIRECT_URL = "/dashboard/"
 apply_email_config(sys.modules[__name__], debug=DEBUG)
 CONTACT_INBOX = os.environ.get("CONTACT_INBOX", "").strip()
 
+# Contact form spam guard — Adjust: FORM_GUARD_MIN_SECONDS is the shortest honest fill time.
+try:
+    FORM_GUARD_MIN_SECONDS = int(os.environ.get("FORM_GUARD_MIN_SECONDS") or "3")
+except ValueError:
+    FORM_GUARD_MIN_SECONDS = 3
+try:
+    FORM_GUARD_MAX_AGE = int(os.environ.get("FORM_GUARD_MAX_AGE") or str(60 * 60 * 12))
+except ValueError:
+    FORM_GUARD_MAX_AGE = 60 * 60 * 12
+
+# Cloudflare Turnstile (https://dash.cloudflare.com → Turnstile). Both keys required.
+# Widget hostnames: egentidspaservice.se and www. Leave empty locally to skip the widget.
+TURNSTILE_SITE_KEY = (os.environ.get("TURNSTILE_SITE_KEY") or "").strip()
+TURNSTILE_SECRET_KEY = (os.environ.get("TURNSTILE_SECRET_KEY") or "").strip()
+
 # SMS — Adjust: set Twilio or 46elks on Render. Local DEBUG defaults to console.
 # SMS_BACKEND: console | locmem | twilio | 46elks | auto
 _default_sms_backend = "console" if DEBUG else "auto"

@@ -7,6 +7,9 @@ from django.views.decorators.http import require_http_methods
 
 from cms.models import GalleryImage, MonthHook, SeasonTip, SitePage
 
+from visits.tracking import client_ip
+
+from .antispam import submission_rate_limited, turnstile_site_key
 from .emails import send_contact_notification
 from .forms import ContactForm
 
@@ -130,21 +133,28 @@ def contact(request):
 
     Intro text: CMS SitePage key=contact (optional).
     Messages: Admin → Kontaktmeddelanden.
+    Spam: pages.antispam (timing, honeypot, Turnstile when keys are set).
     """
     page = SitePage.objects.filter(key=SitePage.PageKey.CONTACT, is_published=True).first()
-    form = ContactForm(request.POST or None)
+    form = ContactForm(request.POST or None, request=request)
 
     if request.method == "POST" and form.is_valid():
-        message = form.save()
-        send_contact_notification(message)
-        messages.success(
-            request,
-            "Tack! Ditt meddelande är skickat. Vi återkommer så snart vi kan.",
-        )
-        return redirect("contact")
+        if submission_rate_limited(client_ip(request), scope="kontakt"):
+            form.add_error(
+                None,
+                "Du har skickat för många meddelanden. Försök igen senare.",
+            )
+        else:
+            message = form.save()
+            send_contact_notification(message)
+            messages.success(
+                request,
+                "Tack! Ditt meddelande är skickat. Vi återkommer så snart vi kan.",
+            )
+            return redirect("contact")
 
     return render(
         request,
         "pages/contact.html",
-        {"page": page, "form": form},
+        {"page": page, "form": form, "turnstile_site_key": turnstile_site_key()},
     )

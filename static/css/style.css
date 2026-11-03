@@ -1102,7 +1102,7 @@ h1 {
 }
 
 .aligned-form .form-control,
-.aligned-form input:not([type="checkbox"]):not([type="radio"]),
+.aligned-form input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]),
 .aligned-form select,
 .aligned-form textarea {
   width: 100%;
@@ -1130,6 +1130,22 @@ h1 {
 .aligned-actions .aligned-field {
   display: flex;
   justify-content: center;
+}
+
+/* Honeypot: kept in the DOM for bots, off-screen for people and screen readers. */
+.hp-field {
+  position: absolute;
+  left: -10000px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
+/* Cloudflare Turnstile — centered under the contact fields */
+.turnstile-row {
+  display: flex;
+  justify-content: center;
+  margin: 0.35rem 0 0.85rem;
 }
 
 .field-error,

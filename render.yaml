@@ -71,6 +71,11 @@ services:
         value: "https://egentidspaservice.se"
       - key: SENDGRID_API_KEY
         sync: false
+      # Cloudflare Turnstile — set both in the Render dashboard (contact form spam check).
+      - key: TURNSTILE_SITE_KEY
+        sync: false
+      - key: TURNSTILE_SECRET_KEY
+        sync: false
       # Alternative: generic SMTP (uncomment and set in dashboard instead of SendGrid)
       # - key: EMAIL_HOST
       #   sync: false

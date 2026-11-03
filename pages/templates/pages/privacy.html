@@ -31,6 +31,7 @@
       <li><strong>Kontaktformulär:</strong> namn, e-post, eventuellt telefonnummer, ämne och meddelande.</li>
       <li><strong>Bokning:</strong> namn, e-post, telefonnummer, vald behandling och tid.</li>
       <li><strong>Besöksstatistik:</strong> sidvisningar och unika besökare räknas anonymt med en hash som inte kan räknas tillbaka till din IP-adress. Råa IP-adresser sparas inte för detta.</li>
+      <li><strong>Skräppostskydd:</strong> kontaktformuläret kan kontrolleras med Cloudflare Turnstile. Cloudflare kan då behandla tekniska uppgifter, till exempel IP-adress, för att avgöra att en människa skickar formuläret. Vi sparar inte den kontrollen.</li>
     </ul>
 
     <h2>Varför vi behandlar uppgifterna</h2>
@@ -51,16 +52,18 @@
     <h2>Delning</h2>
     <p>
       Vi säljer inte dina uppgifter. Bokningsbekräftelser skickas via e-postleverantör.
-      Webbplatsen hostas hos vår driftleverantör.
+      Webbplatsen hostas hos vår driftleverantör. Skräppostkontrollen på kontaktformuläret
+      görs av Cloudflare (Turnstile) när den är aktiverad.
     </p>
 
     <h2>Cookies</h2>
     <p>
       Webbplatsen använder bara cookies som behövs för att den ska fungera säkert:
       till exempel för att skydda formulär och för att du ska kunna vara inloggad i admin.
-      Vi använder inte cookies för statistik, reklam eller spårning, och vi visar därför
-      ingen cookie-ruta. Om vi senare lägger till sådana tjänster uppdaterar vi den här
-      texten och ber om samtycke först.
+      Kontaktformulärets skräppostskydd (Cloudflare Turnstile) kan sätta en nödvändig
+      cookie för den kontrollen. Vi använder inte cookies för statistik, reklam eller spårning,
+      och vi visar därför ingen cookie-ruta. Om vi senare lägger till sådana
+      tjänster uppdaterar vi den här texten och ber om samtycke först.
     </p>
 
     <h2>Dina rättigheter</h2>

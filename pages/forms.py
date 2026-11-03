@@ -1,9 +1,25 @@
 """Forms for public pages (contact) — labels, autocomplete, a11y attrs."""
 
+import logging
+
 from django import forms
 from django.core.validators import EmailValidator, RegexValidator
 
+from visits.tracking import client_ip
+
+from .antispam import (
+    issue_guard_token,
+    mark_guard_used,
+    message_flood_limited,
+    name_flood_limited,
+    turnstile_enabled,
+    validate_guard_token,
+    validate_js_proof,
+    verify_turnstile,
+)
 from .models import ContactMessage
+
+logger = logging.getLogger(__name__)
 
 # Adjust: shared Swedish copy for invalid e-post (contact + booking)
 EMAIL_INVALID_MSG = "Ange en giltig e-postadress, t.ex. namn@exempel.se."
@@ -71,11 +87,103 @@ def clean_digits_only(value, *, required=False):
     return phone
 
 
-class ContactForm(forms.ModelForm):
-    """Public contact form — fields map 1:1 to ContactMessage.
+class AntiSpamFormMixin:
+    """Timing token, JS proof, content floods, optional Cloudflare Turnstile.
+
+    Pass request= so Turnstile can include the client IP. Hidden fields are
+    form_guard, form_js, and (when keys exist) cf-turnstile-response.
+    """
+
+    antispam_scope = "form"
+    antispam_reject_message = "Meddelandet kunde inte skickas."
+
+    def __init__(self, *args, **kwargs):
+        self.request = kwargs.pop("request", None)
+        super().__init__(*args, **kwargs)
+        self.fields["form_guard"] = forms.CharField(
+            required=False,
+            widget=forms.HiddenInput(attrs={"autocomplete": "off"}),
+        )
+        self.fields["form_js"] = forms.CharField(
+            required=False,
+            widget=forms.HiddenInput(
+                attrs={
+                    "autocomplete": "off",
+                    "tabindex": "-1",
+                    "data-form-js": "1",
+                }
+            ),
+        )
+        if turnstile_enabled():
+            # Widget injects this input; the field only reads the posted token.
+            self.fields["cf-turnstile-response"] = forms.CharField(
+                required=False,
+                widget=forms.HiddenInput(attrs={"autocomplete": "off"}),
+            )
+        if not self.is_bound:
+            self.fields["form_guard"].initial = issue_guard_token()
+
+    def clean_form_guard(self):
+        return (self.cleaned_data.get("form_guard") or "").strip()
+
+    def clean_form_js(self):
+        return (self.cleaned_data.get("form_js") or "").strip()
+
+    def clean(self):
+        cleaned = super().clean()
+        if self.errors:
+            return cleaned
+
+        token = cleaned.get("form_guard") or ""
+        reason = validate_guard_token(token)
+        if reason:
+            logger.info("Form guard rejected (%s) scope=%s", reason, self.antispam_scope)
+            raise forms.ValidationError(self.antispam_reject_message)
+        if not validate_js_proof(token, cleaned.get("form_js") or ""):
+            logger.info("Form JS proof rejected scope=%s", self.antispam_scope)
+            raise forms.ValidationError(self.antispam_reject_message)
+
+        if turnstile_enabled():
+            turnstile_token = cleaned.get("cf-turnstile-response") or ""
+            ip = client_ip(self.request) if self.request is not None else None
+            if not verify_turnstile(turnstile_token, ip):
+                logger.info("Turnstile rejected scope=%s", self.antispam_scope)
+                raise forms.ValidationError(self.antispam_reject_message)
+
+        name = cleaned.get("name") or ""
+        if name_flood_limited(name, scope=self.antispam_scope):
+            logger.info("Name flood rejected scope=%s", self.antispam_scope)
+            raise forms.ValidationError(self.antispam_reject_message)
+
+        message = cleaned.get("message") or ""
+        if message and message_flood_limited(message, scope=self.antispam_scope):
+            logger.info("Message flood rejected scope=%s", self.antispam_scope)
+            raise forms.ValidationError(self.antispam_reject_message)
+
+        mark_guard_used(token)
+        return cleaned
+
+
+class ContactForm(AntiSpamFormMixin, forms.ModelForm):
+    """Public contact form — fields map 1:1 to ContactMessage, plus spam guards.
 
     Adjust: keep label/autocomplete in sync with the contact template.
+    Honeypot "website" must stay off-screen (see .hp-field in style.css).
     """
+
+    antispam_scope = "kontakt"
+
+    website = forms.CharField(
+        required=False,
+        label="Webbplats",
+        widget=forms.TextInput(
+            attrs={
+                "tabindex": "-1",
+                "autocomplete": "off",
+                "aria-hidden": "true",
+            }
+        ),
+    )
 
     class Meta:
         model = ContactMessage
@@ -102,7 +210,10 @@ class ContactForm(forms.ModelForm):
         self.fields["message"].required = True
         configure_email_field(self.fields["email"])
         configure_phone_field(self.fields["phone"], required=False)
+        hidden_names = {"website", "form_guard", "form_js", "cf-turnstile-response"}
         for name, field in self.fields.items():
+            if name in hidden_names:
+                continue
             field.widget.attrs["class"] = "form-control"
             if field.required:
                 field.widget.attrs["aria-required"] = "true"
@@ -121,3 +232,14 @@ class ContactForm(forms.ModelForm):
     def clean_phone(self):
         """Telefon: digits only (optional field)."""
         return clean_digits_only(self.cleaned_data.get("phone"), required=False)
+
+    def clean_website(self):
+        """Honeypot. A filled value is rejected in clean() so the alert stays visible."""
+        return (self.cleaned_data.get("website") or "").strip()
+
+    def clean(self):
+        """Drop submissions that filled the hidden website field."""
+        if (self.data.get("website") or "").strip():
+            logger.info("Honeypot rejected scope=%s", self.antispam_scope)
+            raise forms.ValidationError(self.antispam_reject_message)
+        return super().clean()

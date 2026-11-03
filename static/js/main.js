@@ -239,3 +239,32 @@
     });
   });
 })();
+
+/* Contact spam guard — must stay in sync with pages.antispam.js_proof_for */
+(function () {
+  function jsProofFor(token) {
+    var n = 0;
+    for (var i = 0; i < token.length; i++) {
+      n = (n + token.charCodeAt(i) * (i + 3)) % 1000000007;
+    }
+    var num = String(n);
+    while (num.length < 8) num = "0" + num;
+    var len = String(token.length);
+    while (len.length < 4) len = "0" + len;
+    return "eg1." + num + len;
+  }
+
+  function fillOne(form) {
+    var guard = form.querySelector('[name="form_guard"]');
+    var jsField = form.querySelector('[name="form_js"]');
+    if (!guard || !jsField || !guard.value) return;
+    jsField.value = jsProofFor(guard.value);
+  }
+
+  document.querySelectorAll("form[data-form-guard]").forEach(function (form) {
+    fillOne(form);
+    form.addEventListener("submit", function () {
+      fillOne(form);
+    });
+  });
+})();

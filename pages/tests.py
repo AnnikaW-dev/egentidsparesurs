@@ -1,11 +1,15 @@
 """Tests for the public contact form."""
 
+from unittest.mock import patch
+
 from django.core import mail
+from django.core.cache import cache
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 
 from cms.models import PageHeroSlide, SitePage, SiteSettings
+from pages.antispam import issue_guard_token, js_proof_for
 from pages.models import ContactMessage
 
 _PNG = (
@@ -20,8 +24,16 @@ def _png(name):
     return SimpleUploadedFile(name, _PNG, content_type="image/png")
 
 
+def _antispam_fields():
+    """Fresh timing token and the JS checksum the contact form expects."""
+    token = issue_guard_token()
+    return {"form_guard": token, "form_js": js_proof_for(token)}
+
+
+@override_settings(FORM_GUARD_MIN_SECONDS=0)
 class ContactFormTests(TestCase):
     def setUp(self):
+        cache.clear()
         self.client = Client()
 
     def test_contact_page_renders(self):
@@ -29,6 +41,9 @@ class ContactFormTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Skicka meddelande")
         self.assertContains(response, "integritetspolicyn")
+        self.assertContains(response, "data-form-guard")
+        self.assertContains(response, "hp-field")
+        self.assertNotContains(response, "challenges.cloudflare.com")
 
     def test_contact_form_saves_message(self):
         response = self.client.post(
@@ -39,6 +54,7 @@ class ContactFormTests(TestCase):
                 "phone": "0701234567",
                 "subject": "Fråga",
                 "message": "Hej, jag undrar över fotvård.",
+                **_antispam_fields(),
             },
         )
         self.assertRedirects(response, reverse("contact"))
@@ -74,6 +90,128 @@ class ContactFormTests(TestCase):
         self.assertEqual(ContactMessage.objects.count(), 0)
         self.assertContains(response, "bara innehålla siffror")
 
+    def test_contact_rejects_missing_js_proof(self):
+        response = self.client.post(
+            reverse("contact"),
+            {
+                "name": "Anna Test",
+                "email": "anna@example.com",
+                "message": "Hej, jag undrar över fotvård.",
+                "form_guard": issue_guard_token(),
+                "form_js": "",
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(ContactMessage.objects.count(), 0)
+        self.assertContains(response, "Meddelandet kunde inte skickas.")
+
+    def test_contact_rejects_honeypot(self):
+        response = self.client.post(
+            reverse("contact"),
+            {
+                "name": "Anna Test",
+                "email": "anna@example.com",
+                "message": "Hej, jag undrar över fotvård.",
+                "website": "https://spam.example",
+                **_antispam_fields(),
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(ContactMessage.objects.count(), 0)
+        self.assertContains(response, "Meddelandet kunde inte skickas.")
+
+    def test_contact_token_cannot_be_reused(self):
+        payload = {
+            "name": "Anna Test",
+            "email": "anna@example.com",
+            "message": "Hej, jag undrar över fotvård.",
+            **_antispam_fields(),
+        }
+        first = self.client.post(reverse("contact"), payload)
+        self.assertRedirects(first, reverse("contact"))
+        second = self.client.post(
+            reverse("contact"),
+            {**payload, "email": "annan@example.com"},
+        )
+        self.assertEqual(second.status_code, 200)
+        self.assertEqual(ContactMessage.objects.count(), 1)
+
+    def test_same_name_blocked_across_messages(self):
+        for i in range(4):
+            response = self.client.post(
+                reverse("contact"),
+                {
+                    "name": "RobertGlure",
+                    "email": f"bot{i}@example.com",
+                    "message": f"Kort {i}",
+                    **_antispam_fields(),
+                },
+            )
+            self.assertRedirects(response, reverse("contact"))
+        blocked = self.client.post(
+            reverse("contact"),
+            {
+                "name": "RobertGlure",
+                "email": "bot4@example.com",
+                "message": "Kort 4",
+                **_antispam_fields(),
+            },
+        )
+        self.assertEqual(blocked.status_code, 200)
+        self.assertEqual(ContactMessage.objects.count(), 4)
+        self.assertContains(blocked, "Meddelandet kunde inte skickas.")
+
+    @override_settings(
+        TURNSTILE_SITE_KEY="site-key-test",
+        TURNSTILE_SECRET_KEY="secret-key-test",
+    )
+    def test_turnstile_widget_rendered_when_configured(self):
+        response = self.client.get(reverse("contact"))
+        self.assertContains(response, "challenges.cloudflare.com/turnstile")
+        self.assertContains(response, "site-key-test")
+        self.assertNotContains(response, "secret-key-test")
+
+    @override_settings(
+        TURNSTILE_SITE_KEY="site-key-test",
+        TURNSTILE_SECRET_KEY="secret-key-test",
+    )
+    @patch("pages.forms.verify_turnstile", return_value=False)
+    def test_turnstile_rejects_bad_token(self, _verify):
+        response = self.client.post(
+            reverse("contact"),
+            {
+                "name": "Anna Test",
+                "email": "anna@example.com",
+                "message": "Hej, jag undrar över fotvård.",
+                "cf-turnstile-response": "bad-token",
+                **_antispam_fields(),
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(ContactMessage.objects.count(), 0)
+        self.assertContains(response, "Meddelandet kunde inte skickas.")
+
+    @override_settings(
+        TURNSTILE_SITE_KEY="site-key-test",
+        TURNSTILE_SECRET_KEY="secret-key-test",
+    )
+    @patch("pages.forms.verify_turnstile", return_value=True)
+    def test_turnstile_accepts_valid_token(self, verify):
+        response = self.client.post(
+            reverse("contact"),
+            {
+                "name": "Anna Test",
+                "email": "anna@example.com",
+                "message": "Hej, jag undrar över fotvård.",
+                "cf-turnstile-response": "ok-token",
+                **_antispam_fields(),
+            },
+        )
+        self.assertRedirects(response, reverse("contact"))
+        self.assertEqual(ContactMessage.objects.count(), 1)
+        verify.assert_called_once()
+        self.assertEqual(verify.call_args.args[0], "ok-token")
+
 
 class AccessibilityPageTests(TestCase):
     """Public accessibility statement (EAA / WCAG 2.1 AA)."""
@@ -86,6 +224,7 @@ class AccessibilityPageTests(TestCase):
         self.assertContains(response, "För dig som redigerar innehåll")
         self.assertContains(response, "Galleribilder")
         self.assertContains(response, "bildspel")
+        self.assertContains(response, "Cloudflare Turnstile")
 
 
 class PrivacyPageTests(TestCase):
@@ -99,6 +238,7 @@ class PrivacyPageTests(TestCase):
         self.assertContains(response, "IMY")
         self.assertContains(response, "Cookies")
         self.assertContains(response, "statistik, reklam eller spårning")
+        self.assertContains(response, "Cloudflare Turnstile")
 
 
 class FooterContactTests(TestCase):
@@ -173,9 +313,10 @@ class HeroCarouselPageTests(TestCase):
         self.assertContains(response, "Nästa bild")
 
 
-@override_settings(CONTACT_INBOX="egentidspaservice@gmail.com")
+@override_settings(CONTACT_INBOX="egentidspaservice@gmail.com", FORM_GUARD_MIN_SECONDS=0)
 class ContactNotificationEmailTests(TestCase):
     def setUp(self):
+        cache.clear()
         SiteSettings.load()
 
     def test_contact_form_notifies_inbox(self):
@@ -187,6 +328,7 @@ class ContactNotificationEmailTests(TestCase):
                 "phone": "0701234567",
                 "subject": "Fråga",
                 "message": "Hej!",
+                **_antispam_fields(),
             },
         )
         self.assertRedirects(response, reverse("contact"))
