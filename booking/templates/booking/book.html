@@ -1,4 +1,4 @@
-{# booking/book.html — 3-step booking: treatment → time slot → name + phone #}
+{# booking/book.html — 3-step booking: treatment → one week of times → name + phone #}
 {% extends "base.html" %}
 {% load static cms_extras %}
 
@@ -82,24 +82,43 @@
       {% endif %}
       <a href="{% url 'booking' %}">Byt behandling</a>
     </p>
+    <nav class="booking-week-nav" aria-label="Välj vecka">
+      {% if prev_week %}
+      <a href="?service={{ selected_service.slug }}&amp;week={{ prev_week|date:'Y-m-d' }}">Föregående vecka</a>
+      {% endif %}
+      <p class="booking-week-label" id="booking-week-heading">
+        Vecka {{ week_number }},
+        {% if week_monday.month == week_sunday.month and week_monday.year == week_sunday.year %}
+          {{ week_monday|date:"j" }}–{{ week_sunday|date:"j F Y" }}
+        {% elif week_monday.year == week_sunday.year %}
+          {{ week_monday|date:"j F" }}–{{ week_sunday|date:"j F Y" }}
+        {% else %}
+          {{ week_monday|date:"j F Y" }}–{{ week_sunday|date:"j F Y" }}
+        {% endif %}
+      </p>
+      {% if next_week %}
+      <a href="?service={{ selected_service.slug }}&amp;week={{ next_week|date:'Y-m-d' }}">Nästa vecka</a>
+      {% endif %}
+    </nav>
     {% if slots_by_date %}
       {% for day, slots in slots_by_date %}
       <div class="slot-day">
         <h3 id="day-{{ forloop.counter }}">{{ day|date:"l j F Y" }}</h3>
-        <div class="slot-row" role="list" aria-labelledby="day-{{ forloop.counter }}">
+        <ul class="slot-row" aria-labelledby="day-{{ forloop.counter }}">
           {% for slot in slots %}
+          <li>
             <a
               class="slot-chip"
-              role="listitem"
-              href="?service={{ selected_service.slug }}&amp;slot={{ slot.pk }}"
+              href="?service={{ selected_service.slug }}&amp;week={{ week_monday|date:'Y-m-d' }}&amp;slot={{ slot.pk }}"
               aria-label="Välj {{ day|date:'j F Y' }} kl {{ slot.start|date:'H:i' }}"
             >{{ slot.start|date:"H:i" }}</a>
+          </li>
           {% endfor %}
-        </div>
+        </ul>
       </div>
       {% endfor %}
     {% else %}
-      <p>Inga lediga tider just nu. <a href="{% url 'contact' %}">Kontakta oss</a> så hjälper vi dig.</p>
+      <p>Inga lediga tider den här veckan. <a href="{% url 'contact' %}">Kontakta oss</a> så hjälper vi dig.</p>
     {% endif %}
   </section>
 
@@ -112,7 +131,7 @@
       <a href="{{ selected_service.treatment_info_url }}" aria-label="Mer info om {{ selected_service.name }}">Mer info</a>
       {% endif %}
       · Tid: <strong>{{ selected_slot.start|date:"l j F Y, H:i" }}</strong>
-      <a href="?service={{ selected_service.slug }}">Byt tid</a>
+      <a href="?service={{ selected_service.slug }}&amp;week={{ week_monday|date:'Y-m-d' }}">Byt tid</a>
     </p>
     <form method="post" class="stack-form aligned-form booking-confirm-form" novalidate{% if form.errors %} aria-describedby="booking-form-errors"{% endif %}>
       {% csrf_token %}

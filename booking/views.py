@@ -37,8 +37,61 @@ def _booking_query(request):
     return service_slug, slot_id
 
 
+def _monday_of(day):
+    """Monday of the calendar week that contains this local date."""
+    return day - timedelta(days=day.weekday())
+
+
+def _booking_week(raw):
+    """Monday to show on public Boka, kept inside the bookable horizon.
+
+    Empty or invalid values become this week's Monday. A date later in the
+    week snaps back to that week's Monday.
+    """
+    today = timezone.localdate()
+    horizon_end = today + timedelta(days=PUBLIC_SLOT_HORIZON_DAYS)
+    first = _monday_of(today)
+    last = _monday_of(horizon_end)
+    if not raw:
+        return first
+    try:
+        chosen = date.fromisoformat(str(raw))
+    except ValueError:
+        return first
+    monday = _monday_of(chosen)
+    if monday < first:
+        return first
+    if monday > last:
+        return last
+    return monday
+
+
+def _public_week_url(service, week_monday):
+    """Public Boka URL for one treatment and one week (the Monday)."""
+    return (
+        f"{reverse('booking')}?service={service.slug}&week={week_monday.isoformat()}"
+    )
+
+
+def _bookable_in_week(service, week_monday):
+    """Start times Mon–Sun that fit this treatment.
+
+    Only this week's luckor are loaded. A treatment cannot cross midnight, so
+    Sunday starts do not need Monday's slots.
+    """
+    start = timezone.make_aware(datetime.combine(week_monday, time.min))
+    end = start + timedelta(days=7)
+    window_start = start if start > timezone.now() else timezone.now()
+    candidates = upcoming_open_slots().filter(start__gte=window_start, start__lt=end)
+    return bookable_start_slots(service, candidates)
+
+
 def booking_page(request):
-    """Three-step booking: 1) treatment 2) time slot 3) name + phone."""
+    """Three-step booking: 1) treatment 2) one week of times 3) name + phone.
+
+    Step 2 shows a single Monday–Sunday week. `week` is that Monday (YYYY-MM-DD).
+    Customers move with Föregående vecka / Nästa vecka, up to PUBLIC_SLOT_HORIZON_DAYS.
+    """
     page = SitePage.objects.filter(key=SitePage.PageKey.BOOKING, is_published=True).first()
     services = Service.objects.filter(is_active=True)
     service_slug, slot_id = _booking_query(request)
@@ -55,14 +108,30 @@ def booking_page(request):
                 request,
                 "Den tiden räcker inte för behandlingen, eller är inte längre ledig. Välj en annan lucka.",
             )
-            return redirect(f"{request.path}?service={selected_service.slug}")
+            week = _monday_of(timezone.localtime(selected_slot.start).date())
+            return redirect(_public_week_url(selected_service, week))
 
     by_date = {}
-    if selected_service:
-        # bookable_start_slots loads the horizon once and checks each lucka in memory.
-        for slot in bookable_start_slots(selected_service):
+    week_monday = None
+    prev_week = None
+    next_week = None
+    if selected_service and selected_slot is None:
+        raw_week = request.GET.get("week")
+        week_monday = _booking_week(raw_week)
+        if request.method == "GET" and raw_week and raw_week != week_monday.isoformat():
+            return redirect(_public_week_url(selected_service, week_monday))
+        for slot in _bookable_in_week(selected_service, week_monday):
             local = timezone.localtime(slot.start)
             by_date.setdefault(local.date(), []).append(slot)
+        today = timezone.localdate()
+        first_week = _monday_of(today)
+        last_week = _monday_of(today + timedelta(days=PUBLIC_SLOT_HORIZON_DAYS))
+        if week_monday > first_week:
+            prev_week = week_monday - timedelta(days=7)
+        if week_monday < last_week:
+            next_week = week_monday + timedelta(days=7)
+    elif selected_slot:
+        week_monday = _monday_of(timezone.localtime(selected_slot.start).date())
 
     form = None
     booking_step = 1
@@ -86,7 +155,7 @@ def booking_page(request):
                 )
             except ValidationError:
                 messages.error(request, "Den tiden just bokades av någon annan.")
-                return redirect(f"{request.path}?service={selected_service.slug}")
+                return redirect(_public_week_url(selected_service, week_monday))
             start_slot = booking.slot
             notify = send_booking_notifications(booking)
             request.session["booking_notify"] = notify
@@ -114,6 +183,11 @@ def booking_page(request):
             "form": form,
             "selected_slot": selected_slot,
             "booking_step": booking_step,
+            "week_monday": week_monday,
+            "week_sunday": week_monday + timedelta(days=6) if week_monday else None,
+            "week_number": week_monday.isocalendar()[1] if week_monday else None,
+            "prev_week": prev_week,
+            "next_week": next_week,
         },
     )
 

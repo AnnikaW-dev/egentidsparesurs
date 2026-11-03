@@ -468,7 +468,7 @@ class BookingDurationBufferTests(TestCase):
         self.slot_c.delete()
         response = self.client.get(reverse("booking"), {"service": self.service.slug})
         self.assertNotContains(response, f"slot={self.slot_a.pk}")
-        self.assertContains(response, "Inga lediga tider just nu")
+        self.assertContains(response, "Inga lediga tider den här veckan")
 
     def test_short_treatment_fits_in_one_slot(self):
         self.service.duration_minutes = 30
@@ -516,8 +516,18 @@ class BookingHidesShortWindowsTests(TestCase):
                 return slot
         self.fail(f"No slot at {hour:02d}:{minute:02d}")
 
+    def _page(self, slug=None):
+        """Public Boka for this treatment, on the week that holds the Monday slots."""
+        return self.client.get(
+            reverse("booking"),
+            {
+                "service": slug or self.service.slug,
+                "week": self.monday.isoformat(),
+            },
+        )
+
     def test_public_hides_starts_before_lunch_and_closing(self):
-        response = self.client.get(reverse("booking"), {"service": self.service.slug})
+        response = self._page()
         self.assertContains(response, f"slot={self._slot_at(10, 30).pk}")
         self.assertContains(response, f"slot={self._slot_at(14, 30).pk}")
         self.assertNotContains(response, f"slot={self._slot_at(11, 0).pk}")
@@ -534,7 +544,7 @@ class BookingHidesShortWindowsTests(TestCase):
             end=noon + timedelta(minutes=30),
             defaults={"is_blocked": False},
         )
-        response = self.client.get(reverse("booking"), {"service": self.service.slug})
+        response = self._page()
         self.assertNotContains(response, f"slot={self._slot_at(11, 0).pk}")
 
     def test_staff_klockslag_omits_starts_that_do_not_fit(self):
@@ -587,7 +597,7 @@ class BookingHidesShortWindowsTests(TestCase):
             is_active=True,
         )
         for slug in (self.service.slug, short.slug):
-            response = self.client.get(reverse("booking"), {"service": slug})
+            response = self._page(slug)
             self.assertNotContains(response, f"slot={self._slot_at(12, 30).pk}")
             self.assertNotContains(response, f"slot={self._slot_at(12, 0).pk}")
             self.assertNotContains(response, f"slot={self._slot_at(16, 0).pk}")
@@ -608,7 +618,7 @@ class BookingHidesShortWindowsTests(TestCase):
             customer_phone="0701234567",
             notify_email=False,
         )
-        response = self.client.get(reverse("booking"), {"service": self.service.slug})
+        response = self._page()
         self.assertNotContains(response, f"slot={fat.pk}")
 
 
@@ -890,6 +900,82 @@ class PhoneBookingTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Fyll i e-post")
         self.assertFalse(Booking.objects.exists())
+
+
+class BookingWeekPagerTests(TestCase):
+    """Public Boka shows one week and links to the next and previous week."""
+
+    def setUp(self):
+        self.service = Service.objects.create(
+            name="Spa",
+            slug="spa",
+            duration_minutes=30,
+            is_active=True,
+        )
+        today = timezone.localdate()
+        self.this_monday = today - timedelta(days=today.weekday())
+        self.next_monday = self.this_monday + timedelta(days=7)
+
+    def _slot(self, day, hour=10):
+        """One hour-long lucka. A 30-minute treatment plus buffer fits in it."""
+        from datetime import datetime
+
+        start = timezone.make_aware(datetime.combine(day, time(hour, 0)))
+        return TimeSlot.objects.create(start=start, end=start + timedelta(hours=1))
+
+    def test_pages_one_week_forward_and_back(self):
+        next_slot = self._slot(self.next_monday)
+        following_monday = self.next_monday + timedelta(days=7)
+        following_slot = self._slot(following_monday)
+        this_slot = None
+        if timezone.localdate().weekday() < 6:
+            this_slot = self._slot(timezone.localdate() + timedelta(days=1))
+
+        current = self.client.get(reverse("booking"), {"service": "spa"})
+        self.assertEqual(current.status_code, 200)
+        self.assertContains(current, "Nästa vecka")
+        self.assertNotContains(current, "Föregående vecka")
+        self.assertNotContains(current, f"slot={next_slot.pk}")
+        self.assertNotContains(current, f"slot={following_slot.pk}")
+        self.assertContains(current, f"week={self.next_monday.isoformat()}")
+        if this_slot is not None:
+            self.assertContains(current, f"slot={this_slot.pk}")
+
+        nxt = self.client.get(
+            reverse("booking"),
+            {"service": "spa", "week": self.next_monday.isoformat()},
+        )
+        self.assertContains(nxt, f"slot={next_slot.pk}")
+        self.assertNotContains(nxt, f"slot={following_slot.pk}")
+        self.assertContains(nxt, "Föregående vecka")
+        self.assertContains(nxt, "Nästa vecka")
+        self.assertContains(nxt, f"week={self.this_monday.isoformat()}")
+        self.assertContains(
+            nxt,
+            f"week={self.next_monday.isoformat()}&amp;slot={next_slot.pk}",
+        )
+
+        back = self.client.get(
+            reverse("booking"),
+            {
+                "service": "spa",
+                "week": (self.this_monday - timedelta(days=7)).isoformat(),
+            },
+        )
+        self.assertRedirects(
+            back,
+            f"{reverse('booking')}?service=spa&week={self.this_monday.isoformat()}",
+        )
+
+        wednesday = self.next_monday + timedelta(days=2)
+        snapped = self.client.get(
+            reverse("booking"),
+            {"service": "spa", "week": wednesday.isoformat()},
+        )
+        self.assertRedirects(
+            snapped,
+            f"{reverse('booking')}?service=spa&week={self.next_monday.isoformat()}",
+        )
 
 
 class BookingPageQueryCountTests(TestCase):
