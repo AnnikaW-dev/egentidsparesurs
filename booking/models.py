@@ -389,14 +389,26 @@ def reserved_window_fits_hours(
     return False
 
 
-def occupied_intervals():
-    """Ranges already taken: confirmed bookings (treatment + buffer), holds, blocks."""
-    intervals = []
-    for booking in Booking.objects.filter(status=Booking.Status.CONFIRMED).select_related(
+def occupied_intervals(not_before=None):
+    """Ranges already taken: confirmed bookings (treatment + buffer), holds, blocks.
+
+    Pass not_before (usually the first lucka on the page) so old bookings are
+    not loaded. The cutoff is one day earlier — treatments are shorter than that,
+    so a booking that started yesterday and still overlaps is kept.
+    """
+    booking_qs = Booking.objects.filter(status=Booking.Status.CONFIRMED).select_related(
         "service", "slot"
-    ):
+    )
+    slot_qs = TimeSlot.objects.filter(Q(is_blocked=True) | Q(held_by__isnull=False))
+    if not_before is not None:
+        # Adjust: longest treatment must stay under this lookback.
+        cutoff = not_before - timedelta(days=1)
+        booking_qs = booking_qs.filter(slot__start__gte=cutoff)
+        slot_qs = slot_qs.filter(end__gt=not_before)
+    intervals = []
+    for booking in booking_qs:
         intervals.append((booking.slot.start, booking.reserved_until()))
-    for slot in TimeSlot.objects.filter(Q(is_blocked=True) | Q(held_by__isnull=False)):
+    for slot in slot_qs:
         intervals.append((slot.start, slot.end))
     return intervals
 
@@ -419,7 +431,11 @@ def can_start_service(
     needed = service.calendar_minutes()
     if not slot_run_covering(start_slot, needed, open_by_start=open_by_start):
         return False
-    if window_hits_occupied(start_slot.start, needed, occupied_intervals()):
+    if window_hits_occupied(
+        start_slot.start,
+        needed,
+        occupied_intervals(not_before=start_slot.start),
+    ):
         return False
     return reserved_window_fits_hours(
         start_slot.start,
@@ -429,13 +445,15 @@ def can_start_service(
     )
 
 
-def bookable_start_slots(service, slots=None):
-    """Start times to show for this treatment on Boka and in admin klockslag."""
-    slots = list(slots if slots is not None else upcoming_open_slots())
-    needed = service.calendar_minutes()
-    open_by_start = {int(slot.start.timestamp()): slot for slot in slots}
-    taken = occupied_intervals()
+def bookable_slot_context(slots=None):
+    """Load open luckor, taken ranges, and opening hours once.
+
+    Reuse the result when listing several treatments (admin klockslag).
+    `slots` must already be open candidates — same filters as upcoming_open_slots.
+    """
+    slots = list(upcoming_open_slots() if slots is None else slots)
     today = timezone.localdate()
+    not_before = min((slot.start for slot in slots), default=timezone.now())
     closed_dates = set(
         ClosedDate.objects.filter(
             date__gte=today,
@@ -445,27 +463,70 @@ def bookable_start_slots(service, slots=None):
     rules_by_weekday = {}
     for rule in WeeklyAvailability.objects.filter(is_active=True):
         rules_by_weekday.setdefault(rule.weekday, []).append(rule)
+    return {
+        "slots": slots,
+        "open_by_start": {int(slot.start.timestamp()): slot for slot in slots},
+        "taken": occupied_intervals(not_before=not_before),
+        "closed_dates": closed_dates,
+        "rules_by_weekday": rules_by_weekday,
+    }
+
+
+def bookable_start_slots(service, slots=None, *, context=None):
+    """Start times to show for this treatment on Boka and in admin klockslag.
+
+    Pass context from bookable_slot_context so each extra treatment does not
+    query luckor, bookings, or veckoschema again.
+    """
+    if context is None:
+        context = bookable_slot_context(slots)
+    needed = service.calendar_minutes()
+    open_by_start = context["open_by_start"]
+    taken = context["taken"]
     return [
         slot
-        for slot in slots
-        if slot_run_covering(slot, needed, open_by_start=open_by_start)
+        for slot in context["slots"]
+        if slot_run_covering(
+            slot,
+            needed,
+            open_by_start=open_by_start,
+            listed_open=True,
+        )
         and not window_hits_occupied(slot.start, needed, taken)
         and reserved_window_fits_hours(
             slot.start,
             needed,
-            closed_dates=closed_dates,
-            rules_by_weekday=rules_by_weekday,
+            closed_dates=context["closed_dates"],
+            rules_by_weekday=context["rules_by_weekday"],
         )
     ]
 
 
-def slot_run_covering(start_slot, needed_minutes, open_by_start=None):
+def _listed_slot_still_open(slot):
+    """In-memory open check for luckor already filtered on Boka.
+
+    Skips the per-slot booking query. Confirming a booking still uses is_open,
+    which does hit the database under a lock.
+    """
+    if slot.is_blocked or slot.held_by_id:
+        return False
+    return slot.start > timezone.now()
+
+
+def slot_run_covering(start_slot, needed_minutes, open_by_start=None, *, listed_open=False):
     """Return contiguous open slots from start_slot that cover needed_minutes.
 
     Slots must chain (next.start == previous.end). Returns [] if there is a
     gap, lunch, closing time, or a taken slot before the window is full.
+    listed_open=True means open_by_start came from upcoming open luckor, so
+    each step stays in memory.
     """
-    if needed_minutes < 1 or not start_slot.is_open:
+    if needed_minutes < 1:
+        return []
+    if listed_open:
+        if not _listed_slot_still_open(start_slot):
+            return []
+    elif not start_slot.is_open:
         return []
     needed_end = start_slot.start + timedelta(minutes=needed_minutes)
     run = [start_slot]
@@ -475,7 +536,12 @@ def slot_run_covering(start_slot, needed_minutes, open_by_start=None):
             nxt = open_by_start.get(int(covered_end.timestamp()))
         else:
             nxt = TimeSlot.objects.filter(start=covered_end).first()
-        if nxt is None or not nxt.is_open:
+        if nxt is None:
+            return []
+        if listed_open:
+            if not _listed_slot_still_open(nxt):
+                return []
+        elif not nxt.is_open:
             return []
         run.append(nxt)
         covered_end = nxt.end
@@ -522,7 +588,11 @@ def create_confirmed_booking(
         if (
             not tentative
             or not reserved_window_fits_hours(start_slot.start, needed)
-            or window_hits_occupied(start_slot.start, needed, occupied_intervals())
+            or window_hits_occupied(
+                start_slot.start,
+                needed,
+                occupied_intervals(not_before=start_slot.start),
+            )
         ):
             raise ValidationError(taken_msg)
         locked = list(

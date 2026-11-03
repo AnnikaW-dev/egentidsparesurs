@@ -15,7 +15,6 @@ from cms.models import SitePage
 from .forms import AvailabilityGenerateForm, BookingForm, QuickWeekForm
 from .models import (
     Booking,
-    PUBLIC_SLOT_HORIZON_DAYS,
     Service,
     TimeSlot,
     WeeklyAvailability,
@@ -55,21 +54,10 @@ def booking_page(request):
             )
             return redirect(f"{request.path}?service={selected_service.slug}")
 
-    now = timezone.now()
-    horizon = now + timedelta(days=PUBLIC_SLOT_HORIZON_DAYS)
-    open_slots = list(
-        TimeSlot.objects.filter(
-            start__gte=now,
-            start__lte=horizon,
-            is_blocked=False,
-            held_by__isnull=True,
-        )
-        .exclude(booking__status=Booking.Status.CONFIRMED)
-        .order_by("start")
-    )
     by_date = {}
     if selected_service:
-        for slot in bookable_start_slots(selected_service, open_slots):
+        # bookable_start_slots loads the horizon once and checks each lucka in memory.
+        for slot in bookable_start_slots(selected_service):
             local = timezone.localtime(slot.start)
             by_date.setdefault(local.date(), []).append(slot)
 

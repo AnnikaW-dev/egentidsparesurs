@@ -20,9 +20,9 @@ from .models import (
     Booking,
     Service,
     WeeklyAvailability,
+    bookable_slot_context,
     bookable_start_slots,
     can_start_service,
-    upcoming_open_slots,
 )
 
 
@@ -94,11 +94,12 @@ class BookingForm(forms.ModelForm):
 
 def _bookable_slots_by_service():
     """Map service pk → YYYY-MM-DD → [{id, time}] for starts that fit duration+buffer."""
-    slots = list(upcoming_open_slots())
+    # One load of luckor and taken ranges, shared by every treatment.
+    context = bookable_slot_context()
     payload = {}
     for service in Service.objects.filter(is_active=True):
         grouped = {}
-        for slot in bookable_start_slots(service, slots):
+        for slot in bookable_start_slots(service, context=context):
             local = timezone.localtime(slot.start)
             grouped.setdefault(local.date().isoformat(), []).append(
                 {"id": slot.pk, "time": local.strftime("%H:%M")}

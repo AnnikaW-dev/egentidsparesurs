@@ -789,3 +789,67 @@ class AdminStaffBookingTests(TestCase):
         self.assertContains(response, "Inga lediga tider att välja")
         self.assertContains(response, "Veckoschema")
 
+
+class BookingPageQueryCountTests(TestCase):
+    """Choosing a time must not query the database once per lucka."""
+
+    def test_slot_step_query_count_stays_flat_as_slots_grow(self):
+        from django.db import connection
+        from django.test.utils import CaptureQueriesContext
+
+        from booking.models import sync_slots_for_range
+
+        today = timezone.localdate()
+        for weekday in range(5):
+            WeeklyAvailability.objects.create(
+                weekday=weekday,
+                start_time=time(9, 0),
+                end_time=time(16, 0),
+                slot_minutes=30,
+                is_active=True,
+            )
+        sync_slots_for_range(today, today + timedelta(days=21))
+        self.assertGreater(TimeSlot.objects.count(), 80)
+        Service.objects.create(
+            name="Spa",
+            slug="spa",
+            duration_minutes=60,
+            is_active=True,
+        )
+        Service.objects.create(
+            name="Massage",
+            slug="massage",
+            duration_minutes=30,
+            is_active=True,
+        )
+        with CaptureQueriesContext(connection) as ctx:
+            response = self.client.get(reverse("booking"), {"service": "spa"})
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "slot=")
+        # A per-lucka is_open query would be well above this for 80+ slots.
+        self.assertLess(len(ctx.captured_queries), 30)
+
+    def test_extra_treatments_reuse_the_same_slot_context(self):
+        from django.db import connection
+        from django.test.utils import CaptureQueriesContext
+
+        from booking.models import bookable_slot_context, bookable_start_slots
+
+        start = timezone.now() + timedelta(days=2)
+        TimeSlot.objects.create(start=start, end=start + timedelta(minutes=30))
+        TimeSlot.objects.create(
+            start=start + timedelta(minutes=30),
+            end=start + timedelta(hours=1),
+        )
+        spa = Service.objects.create(
+            name="Spa", slug="spa", duration_minutes=30, is_active=True
+        )
+        massage = Service.objects.create(
+            name="Massage", slug="massage", duration_minutes=30, is_active=True
+        )
+        context = bookable_slot_context()
+        with CaptureQueriesContext(connection) as ctx:
+            bookable_start_slots(spa, context=context)
+            bookable_start_slots(massage, context=context)
+        self.assertEqual(len(ctx.captured_queries), 0)
+
