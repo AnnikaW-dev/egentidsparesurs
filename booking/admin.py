@@ -11,9 +11,12 @@ from .forms import StaffBookingForm
 from .models import (
     Booking,
     ClosedDate,
+    RemovedSlot,
     Service,
     TimeSlot,
     WeeklyAvailability,
+    cancel_booking,
+    remove_open_slot,
     sync_future_slots,
     upcoming_open_slots,
 )
@@ -174,7 +177,7 @@ class TimeSlotAdmin(admin.ModelAdmin):
     )
     list_filter = (UpcomingSlotFilter, "is_blocked")
     date_hierarchy = "start"
-    actions = ["block_slots", "unblock_slots"]
+    actions = ["remove_slots", "block_slots", "unblock_slots"]
     fieldsets = (
         (
             None,
@@ -182,11 +185,52 @@ class TimeSlotAdmin(admin.ModelAdmin):
                 "fields": ("start", "end", "is_blocked", "held_by"),
                 "description": (
                     "Samma klockslag får bara finnas en gång. "
-                    "Start och slut på en bokad lucka kan inte ändras här."
+                    "Start och slut på en bokad lucka kan inte ändras här. "
+                    "En ny lucka behålls när veckoschemat sparas. "
+                    "En borttagen lucka skapas inte igen. "
+                    "Avboka kunden först om luckan är bokad. "
+                    "Samma sak görs enklare under Admin-översikt → Tidsluckor."
                 ),
             },
         ),
     )
+
+    def get_actions(self, request):
+        """Use Ta bort valda luckor so a booked row is skipped with a clear message."""
+        actions = super().get_actions(request)
+        actions.pop("delete_selected", None)
+        return actions
+
+    def save_model(self, request, obj, form, change):
+        """A new lucka is staff-added, so saving Veckoschema does not drop it."""
+        if not change:
+            obj.added_by_staff = True
+        RemovedSlot.objects.filter(start=obj.start).delete()
+        super().save_model(request, obj, form, change)
+
+    def delete_view(self, request, object_id, extra_context=None):
+        """On confirm, drop the lucka and stop weekly sync from creating it again."""
+        if request.method == "POST":
+            obj = self.get_object(request, object_id)
+            if obj is None:
+                return HttpResponseRedirect(reverse("admin:booking_timeslot_changelist"))
+            try:
+                remove_open_slot(obj)
+            except ValidationError as exc:
+                self.message_user(
+                    request,
+                    " ".join(getattr(exc, "messages", None) or [str(exc)]),
+                    level=messages.ERROR,
+                )
+                return HttpResponseRedirect(
+                    reverse("admin:booking_timeslot_change", args=[obj.pk])
+                )
+            self.message_user(
+                request,
+                "Luckan är borttagen och skapas inte igen när veckoschemat sparas.",
+            )
+            return HttpResponseRedirect(reverse("admin:booking_timeslot_changelist"))
+        return super().delete_view(request, object_id, extra_context)
 
     def get_readonly_fields(self, request, obj=None):
         """Keep booked/held luckor at the time the customer already has."""
@@ -211,6 +255,32 @@ class TimeSlotAdmin(admin.ModelAdmin):
             return "—"
         url = reverse("admin:booking_booking_add") + f"?slot={obj.pk}"
         return format_html('<a href="{}">Boka kund</a>', url)
+
+    @admin.action(description="Ta bort valda luckor")
+    def remove_slots(self, request, queryset):
+        """Delete empty luckor. Booked ones stay until the customer is cancelled."""
+        removed = 0
+        blocked = 0
+        for slot in queryset:
+            try:
+                remove_open_slot(slot)
+                removed += 1
+            except ValidationError:
+                blocked += 1
+        if removed:
+            self.message_user(
+                request,
+                (
+                    f"{removed} luckor borttagna. "
+                    "De skapas inte igen när veckoschemat sparas."
+                ),
+            )
+        if blocked:
+            self.message_user(
+                request,
+                f"{blocked} luckor är bokade och finns kvar. Avboka kunden först.",
+                level=messages.ERROR,
+            )
 
     @admin.action(description="Blockera valda luckor")
     def block_slots(self, request, queryset):
@@ -389,10 +459,8 @@ class BookingAdmin(admin.ModelAdmin):
         """Mark confirmed bookings cancelled and free their held extra slots."""
         count = 0
         for booking in queryset.filter(status=Booking.Status.CONFIRMED):
-            booking.status = Booking.Status.CANCELLED
-            booking.save(update_fields=["status"])
-            _release_held_slots(booking)
-            count += 1
+            if cancel_booking(booking):
+                count += 1
         self.message_user(
             request,
             f"{count} bokningar avbokade. Tiderna är lediga igen.",

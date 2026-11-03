@@ -8,7 +8,7 @@
 <article class="page-article dashboard">
   <header class="page-header">
     <h1>Admin-översikt</h1>
-    <p class="lead">Boka in kunder som ringer, eller uppdatera texter och lediga tider.</p>
+    <p class="lead">Boka in kunder som ringer, ändra tidsluckor, eller avboka en tid.</p>
   </header>
 
   <div class="dash-cards">
@@ -19,6 +19,10 @@
     <a class="dash-card" href="{% url 'admin:index' %}">
       <h2>Innehåll &amp; bilder</h2>
       <p>Redigera sidor, galleri, behandlingar och webbplatsinfo i Django-admin.</p>
+    </a>
+    <a class="dash-card" href="{% url 'dashboard_slots' %}">
+      <h2>Tidsluckor</h2>
+      <p>Lägg till eller ta bort en tid. Avboka kunden om luckan redan är bokad.</p>
     </a>
     <a class="dash-card" href="{% url 'dashboard_availability' %}">
       <h2>Bokningsschema</h2>
@@ -39,9 +43,17 @@
     {% if upcoming %}
     <ul class="upcoming-list">
       {% for b in upcoming %}
-      <li>
-        <strong>{{ b.slot.start|date:"Y-m-d H:i" }}</strong>
-        – {{ b.customer_name }} ({{ b.service.name }})
+      <li class="upcoming-row">
+        <span>
+          <strong>{{ b.slot.start|date:"Y-m-d H:i" }}</strong>
+          – {{ b.customer_name }} ({{ b.service.name }})
+        </span>
+        <form method="post">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="cancel">
+          <input type="hidden" name="booking" value="{{ b.pk }}">
+          <button type="submit" class="btn btn-ghost">Avboka {{ b.customer_name }}</button>
+        </form>
       </li>
       {% endfor %}
     </ul>

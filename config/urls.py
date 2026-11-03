@@ -45,6 +45,7 @@ urlpatterns = [
     path("dashboard/boka/", booking_views.dashboard_phone_booking, name="dashboard_phone_booking"),
     path("dashboard/hjalp/", booking_views.dashboard_help, name="dashboard_help"),
     path("dashboard/tillganglighet/", booking_views.dashboard_availability, name="dashboard_availability"),
+    path("dashboard/luckor/", booking_views.dashboard_slots, name="dashboard_slots"),
     path(
         "sitemap.xml",
         sitemap,

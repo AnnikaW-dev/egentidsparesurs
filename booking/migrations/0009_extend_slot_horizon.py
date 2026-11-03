@@ -4,10 +4,13 @@ from django.db import migrations
 
 
 def sync_six_month_horizon(apps, schema_editor):
-    """Create missing luckor out to PUBLIC_SLOT_HORIZON_DAYS after the constant change."""
-    from booking.models import sync_future_slots
+    """Backfill already ran in production.
 
-    sync_future_slots()
+    Do not call the live sync here. Later migrations add columns that the
+    current sync function reads, so a fresh migrate would fail on this step.
+    Saving Veckoschema still rebuilds luckor.
+    """
+    return None
 
 
 def noop(apps, schema_editor):

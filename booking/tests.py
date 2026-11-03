@@ -1041,3 +1041,124 @@ class BookingPageQueryCountTests(TestCase):
             bookable_start_slots(massage, context=context)
         self.assertEqual(len(ctx.captured_queries), 0)
 
+
+class StaffSlotManageTests(TestCase):
+    """Staff can add or remove one lucka, and cancel the customer on it."""
+
+    def setUp(self):
+        from django.contrib.auth import get_user_model
+
+        get_user_model().objects.create_user(
+            "emma", "emma@example.com", "secret", is_staff=True
+        )
+        self.client.login(username="emma", password="secret")
+        self.monday = timezone.localdate() + timedelta(days=7)
+        while self.monday.weekday() != 0:
+            self.monday += timedelta(days=1)
+        WeeklyAvailability.objects.create(
+            weekday=0,
+            start_time=time(9, 0),
+            end_time=time(11, 0),
+            slot_minutes=60,
+            is_active=True,
+        )
+        self.service = Service.objects.create(
+            name="Massage",
+            slug="massage",
+            duration_minutes=30,
+            is_active=True,
+        )
+
+    def _sync(self):
+        from booking.models import sync_slots_for_range
+
+        sync_slots_for_range(self.monday, self.monday)
+
+    def test_anonymous_is_sent_to_login(self):
+        self.client.logout()
+        response = self.client.get(reverse("dashboard_slots"))
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("/admin/login/", response["Location"])
+
+    def test_add_slot_shows_on_the_website_and_survives_sync(self):
+        self._sync()
+        response = self.client.post(
+            reverse("dashboard_slots"),
+            {
+                "action": "add",
+                "day": self.monday.isoformat(),
+                "start_time": "18:00",
+                "end_time": "19:00",
+            },
+            follow=True,
+        )
+        self.assertContains(response, "är tillagd")
+        added = TimeSlot.objects.get(added_by_staff=True)
+        self.assertTrue(added.added_by_staff)
+        public = self.client.get(
+            reverse("booking"),
+            {"service": self.service.slug, "week": self.monday.isoformat()},
+        )
+        self.assertContains(public, f"slot={added.pk}")
+        self._sync()
+        self.assertTrue(TimeSlot.objects.filter(pk=added.pk).exists())
+
+    def test_remove_slot_stays_gone_after_sync(self):
+        self._sync()
+        slot = TimeSlot.objects.order_by("start").first()
+        response = self.client.post(
+            reverse("dashboard_slots"),
+            {
+                "action": "delete",
+                "day": self.monday.isoformat(),
+                "slot": str(slot.pk),
+            },
+            follow=True,
+        )
+        self.assertContains(response, "är borttagen")
+        self.assertFalse(TimeSlot.objects.filter(pk=slot.pk).exists())
+        public = self.client.get(
+            reverse("booking"),
+            {"service": self.service.slug, "week": self.monday.isoformat()},
+        )
+        self.assertNotContains(public, f"slot={slot.pk}")
+        self._sync()
+        self.assertEqual(TimeSlot.objects.count(), 1)
+
+    def test_booked_slot_cannot_be_removed_until_cancelled(self):
+        from booking.models import create_confirmed_booking
+
+        self._sync()
+        slot = TimeSlot.objects.order_by("start").first()
+        booking = create_confirmed_booking(
+            service=self.service,
+            start_slot=slot,
+            customer_name="Anna",
+            customer_email="anna@example.com",
+            customer_phone="0701234567",
+            notify_email=False,
+        )
+        denied = self.client.post(
+            reverse("dashboard_slots"),
+            {
+                "action": "delete",
+                "day": self.monday.isoformat(),
+                "slot": str(slot.pk),
+            },
+            follow=True,
+        )
+        self.assertContains(denied, "Avboka kunden först")
+        self.assertTrue(TimeSlot.objects.filter(pk=slot.pk).exists())
+        cancelled = self.client.post(
+            reverse("dashboard"),
+            {"action": "cancel", "booking": str(booking.pk)},
+            follow=True,
+        )
+        self.assertContains(cancelled, "Avbokad: Anna")
+        self.assertEqual(booking.__class__.objects.get(pk=booking.pk).status, "cancelled")
+        public = self.client.get(
+            reverse("booking"),
+            {"service": self.service.slug, "week": self.monday.isoformat()},
+        )
+        self.assertContains(public, f"slot={slot.pk}")
+

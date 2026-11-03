@@ -223,6 +223,19 @@ def footer_opening_hours():
     return rows
 
 
+class RemovedSlot(models.Model):
+    """A start time staff deleted. Weekly sync must not create that lucka again."""
+
+    start = models.DateTimeField(unique=True)
+
+    class Meta:
+        verbose_name = "borttagen lucka"
+        verbose_name_plural = "borttagna luckor"
+
+    def __str__(self):
+        return timezone.localtime(self.start).strftime("%Y-%m-%d %H:%M")
+
+
 class ClosedDate(models.Model):
     """Dates when no slots should be offered (holiday, vacation)."""
 
@@ -249,6 +262,14 @@ class TimeSlot(models.Model):
     is_blocked = models.BooleanField(
         default=False,
         help_text="Manuellt blockerad (syns inte som ledig).",
+    )
+    # Adjust: staff-added luckor stay when Veckoschema is saved, and show on Boka.
+    added_by_staff = models.BooleanField(
+        default=False,
+        verbose_name="Tillagd av personal",
+        help_text=(
+            "Behålls när veckoschemat sparas. Syns på Boka även utanför öppettiderna."
+        ),
     )
     held_by = models.ForeignKey(
         "Booking",
@@ -441,6 +462,9 @@ def can_start_service(
         occupied_intervals(not_before=start_slot.start),
     ):
         return False
+    # A lucka staff added on purpose is bookable even outside Veckoschema.
+    if start_slot.added_by_staff:
+        return True
     return reserved_window_fits_hours(
         start_slot.start,
         needed,
@@ -497,11 +521,14 @@ def bookable_start_slots(service, slots=None, *, context=None):
             listed_open=True,
         )
         and not window_hits_occupied(slot.start, needed, taken)
-        and reserved_window_fits_hours(
-            slot.start,
-            needed,
-            closed_dates=context["closed_dates"],
-            rules_by_weekday=context["rules_by_weekday"],
+        and (
+            slot.added_by_staff
+            or reserved_window_fits_hours(
+                slot.start,
+                needed,
+                closed_dates=context["closed_dates"],
+                rules_by_weekday=context["rules_by_weekday"],
+            )
         )
     ]
 
@@ -585,13 +612,14 @@ def create_confirmed_booking(
             raise ValidationError(taken_msg)
         if existing:
             TimeSlot.objects.filter(held_by=existing).update(held_by=None)
-        tentative = slot_run_covering(
-            TimeSlot.objects.select_for_update().get(pk=start_slot.pk),
-            needed,
+        locked_start = TimeSlot.objects.select_for_update().get(pk=start_slot.pk)
+        tentative = slot_run_covering(locked_start, needed)
+        fits_hours = locked_start.added_by_staff or reserved_window_fits_hours(
+            locked_start.start, needed
         )
         if (
             not tentative
-            or not reserved_window_fits_hours(start_slot.start, needed)
+            or not fits_hours
             or window_hits_occupied(
                 start_slot.start,
                 needed,
@@ -689,6 +717,65 @@ def _slot_is_busy(slot):
     return Booking.objects.filter(slot_id=slot.pk).exists()
 
 
+def _removed_starts(start_date, end_date):
+    """Start times staff deleted in this date range. Sync must not recreate them."""
+    range_start = timezone.make_aware(datetime.combine(start_date, datetime.min.time()))
+    range_end = timezone.make_aware(
+        datetime.combine(end_date + timedelta(days=1), datetime.min.time())
+    )
+    return set(
+        RemovedSlot.objects.filter(
+            start__gte=range_start, start__lt=range_end
+        ).values_list("start", flat=True)
+    )
+
+
+def cancel_booking(booking):
+    """Cancel a confirmed booking and free the extra luckor it held.
+
+    The start lucka stays, so the time can be booked again on Boka.
+    Returns True when this call changed a confirmed booking to cancelled.
+    """
+    if booking.status != Booking.Status.CONFIRMED:
+        TimeSlot.objects.filter(held_by=booking).update(held_by=None)
+        return False
+    booking.status = Booking.Status.CANCELLED
+    booking.save(update_fields=["status"])
+    TimeSlot.objects.filter(held_by=booking).update(held_by=None)
+    return True
+
+
+def remove_open_slot(slot):
+    """Delete an empty lucka and stop weekly sync from creating that start again.
+
+    Raises ValidationError when a confirmed booking or a hold still uses it.
+    A cancelled booking on the lucka is removed together with the row.
+    """
+    if slot.held_by_id:
+        raise ValidationError(
+            "Luckan ingår i en längre bokning. Avboka kunden först."
+        )
+    if Booking.objects.filter(
+        slot_id=slot.pk, status=Booking.Status.CONFIRMED
+    ).exists():
+        raise ValidationError("Luckan är bokad. Avboka kunden först.")
+    RemovedSlot.objects.get_or_create(start=slot.start)
+    slot.delete()
+
+
+def add_staff_slot(start, end):
+    """Create one lucka that weekly sync will keep, and that Boka can offer.
+
+    Clears a previous removal of the same start. Raises ValidationError when
+    the time overlaps another lucka or the start already exists.
+    """
+    slot = TimeSlot(start=start, end=end, is_blocked=False, added_by_staff=True)
+    slot.full_clean()
+    RemovedSlot.objects.filter(start=start).delete()
+    slot.save()
+    return slot
+
+
 def _busy_slot_windows():
     """(start, end) for luckor with a booking or hold — empty luckor must not overlay these."""
     return [
@@ -760,7 +847,10 @@ def generate_slots_for_range(start_date, end_date):
     """
     created = 0
     busy_windows = _busy_slot_windows()
+    removed = _removed_starts(start_date, end_date)
     for start_aware, end_aware in iter_schedule_slots(start_date, end_date):
+        if start_aware in removed:
+            continue
         slot = TimeSlot.objects.filter(start=start_aware).first()
         if slot is not None:
             if _slot_is_busy(slot):
@@ -786,7 +876,8 @@ def sync_slots_for_range(start_date, end_date):
 
     Creates missing luckor. Deletes unbooked luckor that no longer match
     (hours shortened, lunch added, day closed, ClosedDate, or passlängd
-    changed). Never two luckor at the same start. Never deletes, resizes, or
+    changed). Keeps luckor staff added, and does not recreate luckor staff
+    removed. Never two luckor at the same start. Never deletes, resizes, or
     overlays a lucka that has a booking or a hold. Returns (created_count,
     deleted_count).
     """
@@ -794,6 +885,7 @@ def sync_slots_for_range(start_date, end_date):
     created = generate_slots_for_range(start_date, end_date)
     desired = set(iter_schedule_slots(start_date, end_date))
     busy_windows = _busy_slot_windows()
+    removed = _removed_starts(start_date, end_date)
     range_start = timezone.make_aware(datetime.combine(start_date, datetime.min.time()))
     range_end = timezone.make_aware(
         datetime.combine(end_date + timedelta(days=1), datetime.min.time())
@@ -806,6 +898,13 @@ def sync_slots_for_range(start_date, end_date):
     )
     for slot in extras:
         if _slot_is_busy(slot):
+            continue
+        if slot.start in removed:
+            slot.delete()
+            deleted += 1
+            continue
+        # Staff-added luckor stay when the weekly pattern does not list them.
+        if slot.added_by_staff:
             continue
         stale_length = (slot.start, slot.end) not in desired
         overlays_booking = _overlaps_any_window(slot.start, slot.end, busy_windows)

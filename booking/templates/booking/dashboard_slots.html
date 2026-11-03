@@ -1,0 +1,117 @@
+{# booking/dashboard_slots.html — staff add/remove one lucka and cancel a customer #}
+{% extends "base.html" %}
+
+{% block title %}Tidsluckor – {{ site.site_name }}{% endblock %}
+{% block robots %}noindex, nofollow{% endblock %}
+
+{% block content %}
+<article class="page-article dashboard">
+  <header class="page-header">
+    <h1>Tidsluckor</h1>
+    <p class="lead">Lägg till en tid, ta bort en ledig tid, eller avboka en kund.</p>
+    <p><a href="{% url 'dashboard' %}">← Tillbaka till översikt</a></p>
+  </header>
+
+  <section class="dash-panel" aria-labelledby="slot-day-heading">
+    <h2 id="slot-day-heading">{{ day|date:"l j F Y" }}</h2>
+    <form method="get" class="phone-day-nav" aria-label="Välj datum">
+      <div>
+        <label for="slot-day">Datum</label>
+        <input
+          id="slot-day"
+          type="date"
+          name="day"
+          value="{{ day|date:'Y-m-d' }}"
+          min="{{ today|date:'Y-m-d' }}"
+          max="{{ last_day|date:'Y-m-d' }}"
+          required
+        >
+      </div>
+      <button type="submit" class="btn">Visa dagen</button>
+    </form>
+    <p class="phone-day-links">
+      {% if prev_day %}
+      <a href="?day={{ prev_day|date:'Y-m-d' }}">Föregående dag</a>
+      {% endif %}
+      {% if next_day %}
+      <a href="?day={{ next_day|date:'Y-m-d' }}">Nästa dag</a>
+      {% endif %}
+    </p>
+
+    {% if rows %}
+    <table class="week-table">
+      <caption class="visually-hidden">Tidsluckor {{ day|date:"j F Y" }}</caption>
+      <thead>
+        <tr>
+          <th scope="col">Tid</th>
+          <th scope="col">Status</th>
+          <th scope="col">Åtgärd</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+        <tr>
+          <th scope="row">{{ row.slot.start|date:"H:i" }}–{{ row.slot.end|date:"H:i" }}</th>
+          <td>{{ row.status }}</td>
+          <td>
+            {% if row.cancel_booking %}
+            <form method="post" class="slot-manage-actions">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="cancel">
+              <input type="hidden" name="day" value="{{ day|date:'Y-m-d' }}">
+              <input type="hidden" name="booking" value="{{ row.cancel_booking.pk }}">
+              <button
+                type="submit"
+                class="btn btn-ghost"
+                aria-label="Avboka {{ row.cancel_booking.customer_name }} {{ row.slot.start|date:'H:i' }}"
+              >Avboka</button>
+            </form>
+            {% elif row.can_delete %}
+            <form method="post" class="slot-manage-actions">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="delete">
+              <input type="hidden" name="day" value="{{ day|date:'Y-m-d' }}">
+              <input type="hidden" name="slot" value="{{ row.slot.pk }}">
+              <button
+                type="submit"
+                class="btn btn-ghost"
+                aria-label="Ta bort luckan {{ row.slot.start|date:'H:i' }}"
+              >Ta bort</button>
+            </form>
+            {% else %}
+            <span class="muted">Ingen åtgärd</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p>Inga tidsluckor den här dagen.</p>
+    {% endif %}
+  </section>
+
+  <section class="dash-panel" aria-labelledby="slot-add-heading">
+    <h2 id="slot-add-heading">Lägg till lucka</h2>
+    <p>Tiderna gäller {{ day|date:"l j F" }}. Luckan kan bokas på hemsidan, även utanför det vanliga veckoschemat.</p>
+    <form method="post" class="slot-add-form"{% if form.errors %} aria-describedby="slot-add-errors"{% endif %}>
+      {% csrf_token %}
+      <input type="hidden" name="action" value="add">
+      <input type="hidden" name="day" value="{{ day|date:'Y-m-d' }}">
+      {% if form.non_field_errors %}
+      <div class="form-errors" id="slot-add-errors" role="alert">{{ form.non_field_errors }}</div>
+      {% endif %}
+      {% for field in form %}
+      <div>
+        <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+        {{ field }}
+        {% if field.errors %}
+        <p class="field-error" id="error_{{ field.name }}" role="alert">{{ field.errors|striptags }}</p>
+        {% endif %}
+      </div>
+      {% endfor %}
+      <button type="submit" class="btn">Lägg till lucka</button>
+    </form>
+  </section>
+</article>
+{% endblock %}

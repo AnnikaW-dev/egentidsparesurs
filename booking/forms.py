@@ -583,3 +583,30 @@ class QuickWeekForm(forms.Form):
                         f"Lunchen på {label.lower()} måste ligga inom öppettiderna.",
                     )
         return cleaned
+
+
+class StaffSlotForm(forms.Form):
+    """Start and end clock times for one lucka on a chosen day."""
+
+    start_time = forms.TimeField(
+        label="Från",
+        widget=forms.TimeInput(attrs={"type": "time"}),
+    )
+    end_time = forms.TimeField(
+        label="Till",
+        widget=forms.TimeInput(attrs={"type": "time"}),
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["start_time"].widget.attrs["aria-required"] = "true"
+        self.fields["end_time"].widget.attrs["aria-required"] = "true"
+
+    def clean(self):
+        """Till must be later the same day. The view turns these into a lucka."""
+        cleaned = super().clean()
+        start_time = cleaned.get("start_time")
+        end_time = cleaned.get("end_time")
+        if start_time and end_time and end_time <= start_time:
+            self.add_error("end_time", "Sluttiden måste vara efter starttiden.")
+        return cleaned

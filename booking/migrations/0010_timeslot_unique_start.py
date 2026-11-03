@@ -4,10 +4,31 @@ from django.db import migrations, models
 
 
 def dedupe_same_start(apps, schema_editor):
-    """Remove extra luckor at the same start before unique(start) is applied."""
-    from booking.models import dedupe_timeslots_with_same_start
+    """Remove extra luckor at the same start before unique(start) is applied.
 
-    dedupe_timeslots_with_same_start()
+    Uses the historical models so later columns (added_by_staff) are not required.
+    """
+    from collections import defaultdict
+
+    TimeSlot = apps.get_model("booking", "TimeSlot")
+    Booking = apps.get_model("booking", "Booking")
+    grouped = defaultdict(list)
+    for slot in TimeSlot.objects.all().order_by("pk"):
+        grouped[slot.start].append(slot)
+    for rows in grouped.values():
+        if len(rows) < 2:
+            continue
+        booked_ids = set(
+            Booking.objects.filter(slot__in=rows).values_list("slot_id", flat=True)
+        )
+        keep = next(
+            (slot for slot in rows if slot.pk in booked_ids or slot.held_by_id),
+            rows[0],
+        )
+        for slot in rows:
+            if slot.pk == keep.pk or slot.pk in booked_ids or slot.held_by_id:
+                continue
+            slot.delete()
 
 
 class Migration(migrations.Migration):

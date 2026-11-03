@@ -13,16 +13,25 @@ from django.views.decorators.http import require_http_methods
 
 from cms.models import SitePage
 
-from .forms import AvailabilityGenerateForm, BookingForm, PhoneBookingForm, QuickWeekForm
+from .forms import (
+    AvailabilityGenerateForm,
+    BookingForm,
+    PhoneBookingForm,
+    QuickWeekForm,
+    StaffSlotForm,
+)
 from .models import (
     PUBLIC_SLOT_HORIZON_DAYS,
     Booking,
     Service,
     TimeSlot,
     WeeklyAvailability,
+    add_staff_slot,
     bookable_start_slots,
     can_start_service,
+    cancel_booking,
     create_confirmed_booking,
+    remove_open_slot,
     sync_future_slots,
     sync_slots_for_range,
     upcoming_open_slots,
@@ -344,9 +353,177 @@ def dashboard_help(request):
     return render(request, "booking/dashboard_help.html")
 
 
+def _slots_day_url(day):
+    """Dashboard URL for one day's luckor."""
+    return f"{reverse('dashboard_slots')}?day={day.isoformat()}"
+
+
+def _validation_text(exc):
+    """Swedish text from a ValidationError, including field errors."""
+    if getattr(exc, "message_dict", None):
+        parts = []
+        for messages_for_field in exc.message_dict.values():
+            parts.extend(messages_for_field)
+        return " ".join(parts)
+    return " ".join(getattr(exc, "messages", None) or [str(exc)])
+
+
+def _cancel_posted_booking(request):
+    """Cancel the booking id in POST. Returns the booking, or None when missing."""
+    booking = (
+        Booking.objects.filter(pk=request.POST.get("booking"))
+        .select_related("slot", "service")
+        .first()
+    )
+    if booking is None or booking.status != Booking.Status.CONFIRMED:
+        messages.error(request, "Den bokningen finns inte kvar.")
+        return None
+    cancel_booking(booking)
+    when = timezone.localtime(booking.slot.start)
+    messages.success(
+        request,
+        (
+            f"Avbokad: {booking.customer_name}, {when:%Y-%m-%d %H:%M}. "
+            "Tiden är ledig på hemsidan igen."
+        ),
+    )
+    return booking
+
+
+def _slot_rows(day):
+    """Luckor on this local day, with whether staff may cancel or delete each one."""
+    start = timezone.make_aware(datetime.combine(day, time.min))
+    end = start + timedelta(days=1)
+    slots = list(
+        TimeSlot.objects.filter(start__gte=start, start__lt=end)
+        .select_related("held_by", "held_by__service", "held_by__slot")
+        .order_by("start")
+    )
+    bookings = {
+        booking.slot_id: booking
+        for booking in Booking.objects.filter(slot__in=slots).select_related("service")
+    }
+    rows = []
+    for slot in slots:
+        booking = bookings.get(slot.pk)
+        held = slot.held_by if slot.held_by_id else None
+        confirmed = (
+            booking
+            if booking is not None and booking.status == Booking.Status.CONFIRMED
+            else None
+        )
+        cancel_target = confirmed or (
+            held if held is not None and held.status == Booking.Status.CONFIRMED else None
+        )
+        if confirmed:
+            status = (
+                f"Bokad: {confirmed.customer_name}, {confirmed.service.name}, "
+                f"{confirmed.customer_phone}"
+            )
+        elif held:
+            status = (
+                f"Upptagen av {held.customer_name}, {held.service.name} "
+                f"({timezone.localtime(held.slot.start):%H:%M})"
+            )
+        elif slot.is_blocked:
+            status = "Blockerad"
+        elif booking is not None:
+            status = "Avbokad — luckan är ledig"
+        else:
+            status = "Ledig"
+        rows.append(
+            {
+                "slot": slot,
+                "status": status,
+                "cancel_booking": cancel_target,
+                "can_delete": confirmed is None and slot.held_by_id is None,
+            }
+        )
+    return rows
+
+
 @staff_member_required
+@require_http_methods(["GET", "POST"])
+def dashboard_slots(request):
+    """Add or remove one lucka, and cancel the customer on a booked lucka.
+
+    Removals are remembered so saving Veckoschema does not recreate them.
+    Added luckor stay, and can be booked on Boka even outside opening hours.
+    """
+    today = timezone.localdate()
+    last_day = today + timedelta(days=PUBLIC_SLOT_HORIZON_DAYS)
+    day = _parse_staff_day(request.POST.get("day") or request.GET.get("day"))
+    form = StaffSlotForm()
+
+    if request.method == "POST":
+        action = request.POST.get("action")
+        if action == "cancel":
+            _cancel_posted_booking(request)
+            return redirect(_slots_day_url(day))
+        if action == "delete":
+            slot = TimeSlot.objects.filter(pk=request.POST.get("slot")).first()
+            if slot is None or timezone.localtime(slot.start).date() != day:
+                messages.error(request, "Den luckan finns inte den här dagen.")
+            else:
+                try:
+                    when = timezone.localtime(slot.start)
+                    remove_open_slot(slot)
+                except ValidationError as exc:
+                    messages.error(request, _validation_text(exc))
+                else:
+                    messages.success(
+                        request,
+                        (
+                            f"Luckan {when:%H:%M} är borttagen. "
+                            "Den syns inte på hemsidan och skapas inte igen."
+                        ),
+                    )
+            return redirect(_slots_day_url(day))
+        if action == "add":
+            form = StaffSlotForm(request.POST)
+            if form.is_valid():
+                start = timezone.make_aware(datetime.combine(day, form.cleaned_data["start_time"]))
+                end = timezone.make_aware(datetime.combine(day, form.cleaned_data["end_time"]))
+                try:
+                    add_staff_slot(start, end)
+                except ValidationError as exc:
+                    messages.error(request, _validation_text(exc))
+                else:
+                    messages.success(
+                        request,
+                        (
+                            f"Luckan {start:%H:%M}–{end:%H:%M} är tillagd. "
+                            "Den kan bokas på hemsidan."
+                        ),
+                    )
+                    return redirect(_slots_day_url(day))
+            for name in form.errors:
+                if name in form.fields:
+                    form.fields[name].widget.attrs["aria-invalid"] = "true"
+                    form.fields[name].widget.attrs["aria-describedby"] = f"error_{name}"
+
+    return render(
+        request,
+        "booking/dashboard_slots.html",
+        {
+            "day": day,
+            "today": today,
+            "last_day": last_day,
+            "prev_day": day - timedelta(days=1) if day > today else None,
+            "next_day": day + timedelta(days=1) if day < last_day else None,
+            "rows": _slot_rows(day),
+            "form": form,
+        },
+    )
+
+
+@staff_member_required
+@require_http_methods(["GET", "POST"])
 def dashboard_home(request):
     """Staff landing page linking content admin and availability tools."""
+    if request.method == "POST" and request.POST.get("action") == "cancel":
+        _cancel_posted_booking(request)
+        return redirect("dashboard")
     upcoming = (
         Booking.objects.filter(
             status=Booking.Status.CONFIRMED,
