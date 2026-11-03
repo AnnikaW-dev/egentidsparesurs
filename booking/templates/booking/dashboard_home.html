@@ -8,10 +8,14 @@
 <article class="page-article dashboard">
   <header class="page-header">
     <h1>Admin-översikt</h1>
-    <p class="lead">Uppdatera texter och bilder, eller hantera lediga tider.</p>
+    <p class="lead">Boka in kunder som ringer, eller uppdatera texter och lediga tider.</p>
   </header>
 
   <div class="dash-cards">
+    <a class="dash-card" href="{% url 'dashboard_phone_booking' %}">
+      <h2>Boka samtal</h2>
+      <p>När en kund ringer: välj behandling och tid. Den tiden kan inte bokas på hemsidan.</p>
+    </a>
     <a class="dash-card" href="{% url 'admin:index' %}">
       <h2>Innehåll &amp; bilder</h2>
       <p>Redigera sidor, galleri, behandlingar och webbplatsinfo i Django-admin.</p>

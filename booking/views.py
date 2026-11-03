@@ -1,19 +1,21 @@
 """Public booking views and staff availability dashboard."""
 
 from calendar import monthrange
-from datetime import date, timedelta
+from datetime import date, datetime, time, timedelta
 
 from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
 from django.core.exceptions import ValidationError
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 
 from cms.models import SitePage
 
-from .forms import AvailabilityGenerateForm, BookingForm, QuickWeekForm
+from .forms import AvailabilityGenerateForm, BookingForm, PhoneBookingForm, QuickWeekForm
 from .models import (
+    PUBLIC_SLOT_HORIZON_DAYS,
     Booking,
     Service,
     TimeSlot,
@@ -23,6 +25,7 @@ from .models import (
     create_confirmed_booking,
     sync_future_slots,
     sync_slots_for_range,
+    upcoming_open_slots,
 )
 from .notifications import send_booking_notifications
 
@@ -125,6 +128,138 @@ def booking_success(request, pk):
         {
             "booking": booking,
             "email_sent": notify.get("email"),
+        },
+    )
+
+
+def _parse_staff_day(raw):
+    """A date inside the public Boka window. Invalid or past values become today."""
+    today = timezone.localdate()
+    last = today + timedelta(days=PUBLIC_SLOT_HORIZON_DAYS)
+    if not raw:
+        return today
+    try:
+        chosen = date.fromisoformat(str(raw))
+    except ValueError:
+        return today
+    if chosen < today:
+        return today
+    if chosen > last:
+        return last
+    return chosen
+
+
+def _phone_day_url(service, day):
+    """Dashboard phone-booking URL for one treatment and one local day."""
+    return (
+        f"{reverse('dashboard_phone_booking')}"
+        f"?service={service.slug}&day={day.isoformat()}"
+    )
+
+
+def _bookable_on_day(service, day):
+    """Start times on this local day that still fit the treatment plus buffer."""
+    start = timezone.make_aware(datetime.combine(day, time.min))
+    end = start + timedelta(days=1)
+    window_start = start if start > timezone.now() else timezone.now()
+    candidates = upcoming_open_slots().filter(start__gte=window_start, start__lt=end)
+    return bookable_start_slots(service, candidates)
+
+
+@staff_member_required
+@require_http_methods(["GET", "POST"])
+def dashboard_phone_booking(request):
+    """Book a customer who calls. The reserved time disappears from public /boka/.
+
+    Step 1 treatment, step 2 one day's start times, step 3 name and phone.
+    E-post is optional. Same treatment-plus-buffer rules as the public page.
+    """
+    services = Service.objects.filter(is_active=True)
+    service_slug = request.POST.get("service") or request.GET.get("service")
+    selected_service = None
+    if service_slug:
+        selected_service = get_object_or_404(Service, slug=service_slug, is_active=True)
+
+    today = timezone.localdate()
+    last_day = today + timedelta(days=PUBLIC_SLOT_HORIZON_DAYS)
+    day = _parse_staff_day(request.POST.get("day") or request.GET.get("day"))
+    day_slots = _bookable_on_day(selected_service, day) if selected_service else []
+
+    slot_id = request.POST.get("slot") or request.GET.get("slot")
+    selected_slot = None
+    if slot_id and selected_service:
+        selected_slot = TimeSlot.objects.filter(pk=slot_id).first()
+        slot_day = (
+            timezone.localtime(selected_slot.start).date() if selected_slot else None
+        )
+        if (
+            selected_slot is None
+            or slot_day != day
+            or not can_start_service(selected_slot, selected_service)
+        ):
+            messages.error(
+                request,
+                "Den tiden räcker inte för behandlingen, eller är inte längre ledig.",
+            )
+            return redirect(_phone_day_url(selected_service, day))
+
+    form = None
+    booking_step = 1
+    if selected_service and selected_slot:
+        booking_step = 3
+    elif selected_service:
+        booking_step = 2
+
+    if request.method == "POST" and selected_service and selected_slot:
+        form = PhoneBookingForm(request.POST)
+        if form.is_valid():
+            try:
+                booking = create_confirmed_booking(
+                    service=selected_service,
+                    start_slot=selected_slot,
+                    customer_name=form.cleaned_data["customer_name"],
+                    customer_email=form.cleaned_data["customer_email"],
+                    customer_phone=form.cleaned_data["customer_phone"],
+                    notify_email=form.cleaned_data["notify_email"],
+                    notify_sms=False,
+                    notes=form.cleaned_data.get("notes") or "",
+                )
+            except ValidationError:
+                messages.error(request, "Den tiden just bokades av någon annan.")
+                return redirect(_phone_day_url(selected_service, day))
+            notify = send_booking_notifications(booking)
+            when = timezone.localtime(booking.slot.start)
+            messages.success(
+                request,
+                (
+                    f"Bokat: {booking.customer_name}, {booking.service.name}, "
+                    f"{when:%Y-%m-%d %H:%M}. Tiden syns inte längre på hemsidan."
+                ),
+            )
+            if form.cleaned_data["notify_email"] and notify.get("email") is False:
+                messages.warning(
+                    request,
+                    "Bokningen sparades men bekräftelsemejlet kunde inte skickas.",
+                )
+            return redirect(_phone_day_url(selected_service, day))
+    elif selected_service and selected_slot:
+        form = PhoneBookingForm()
+
+    return render(
+        request,
+        "booking/dashboard_phone.html",
+        {
+            "services": services,
+            "selected_service": selected_service,
+            "selected_slot": selected_slot,
+            "day": day,
+            "today": today,
+            "last_day": last_day,
+            "prev_day": day - timedelta(days=1) if day > today else None,
+            "next_day": day + timedelta(days=1) if day < last_day else None,
+            "day_slots": day_slots,
+            "form": form,
+            "booking_step": booking_step,
         },
     )
 

@@ -1849,6 +1849,9 @@ h1 {
   display: flex;
   flex-wrap: wrap;
   gap: 0.45rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
 }
 
 .slot-chip {
@@ -1938,6 +1941,41 @@ h1 {
   padding: 1rem;
   background: var(--bg-panel);
   border: 1px solid var(--line);
+}
+
+/* Staff phone booking — pick a day while the customer is on the line */
+.phone-day-nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.75rem 1rem;
+  margin: 0.5rem 0 1.25rem;
+}
+
+.phone-day-nav label {
+  font-weight: 500;
+}
+
+.phone-day-nav input[type="date"] {
+  min-height: 44px;
+  padding: 0.4rem 0.55rem;
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--ink-strong);
+  font: inherit;
+}
+
+.phone-day-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.25rem;
+  margin: 0 0 1rem;
+}
+
+.phone-day-links a {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
 }
 
 /* Staff week table — open hours and lunch per weekday */

@@ -92,6 +92,23 @@ class BookingForm(forms.ModelForm):
         return digits
 
 
+def apply_optional_customer_email(form, cleaned):
+    """Allow a phone booking without e-post. A confirmation mail needs an address.
+
+    Clears notify_email when the address is empty and the box was not ticked.
+    """
+    email = (cleaned.get("customer_email") or "").strip()
+    cleaned["customer_email"] = email
+    if cleaned.get("notify_email") and not email:
+        form.add_error(
+            "customer_email",
+            "Fyll i e-post om kunden ska få en bekräftelse.",
+        )
+    elif not email:
+        cleaned["notify_email"] = False
+    return cleaned
+
+
 def _bookable_slots_by_service():
     """Map service pk → YYYY-MM-DD → [{id, time}] for starts that fit duration+buffer."""
     # One load of luckor and taken ranges, shared by every treatment.
@@ -218,12 +235,21 @@ class StaffBookingForm(forms.ModelForm):
         self.fields["booking_time"].widget.attrs["aria-required"] = "true"
 
         self.fields["customer_name"].required = True
-        self.fields["customer_email"].required = True
         self.fields["customer_phone"].required = True
         configure_email_field(self.fields["customer_email"])
+        # Phone bookings often have no e-post. Public /boka/ still requires it.
+        email_field = self.fields["customer_email"]
+        email_field.required = False
+        email_field.widget.attrs.pop("required", None)
+        email_field.widget.attrs.pop("aria-required", None)
+        email_field.widget.is_required = False
+        email_field.help_text = "Lämna tomt om kunden inte vill ha mejl."
         configure_phone_field(self.fields["customer_phone"], required=True)
-        self.fields["notify_email"].initial = True
-        for name in ("customer_name", "customer_email", "customer_phone"):
+        self.fields["notify_email"].initial = False
+        self.fields["notify_email"].help_text = (
+            "Kryssa i bara när e-post är ifyllt."
+        )
+        for name in ("customer_name", "customer_phone"):
             self.fields[name].widget.attrs["aria-required"] = "true"
 
     def _posted_or_initial_slot_pk(self):
@@ -284,8 +310,10 @@ class StaffBookingForm(forms.ModelForm):
         return choices
 
     def clean_customer_email(self):
-        """Same e-post rules as the public booking form."""
+        """Optional e-post. Blank is allowed; a filled-in address must be valid."""
         email = (self.cleaned_data.get("customer_email") or "").strip()
+        if not email:
+            return ""
         EmailValidator(message=EMAIL_INVALID_MSG)(email)
         return email
 
@@ -303,6 +331,7 @@ class StaffBookingForm(forms.ModelForm):
         from .models import TimeSlot
 
         cleaned = super().clean()
+        apply_optional_customer_email(self, cleaned)
         booking_date = cleaned.get("booking_date")
         time_pk = cleaned.get("booking_time")
         slot = None
@@ -347,6 +376,94 @@ class StaffBookingForm(forms.ModelForm):
         self.instance = booking
         self.save_m2m = lambda: None
         return booking
+
+
+class PhoneBookingForm(forms.ModelForm):
+    """Name and phone for a call. E-post is optional and does not show on Boka."""
+
+    class Meta:
+        model = Booking
+        fields = (
+            "customer_name",
+            "customer_phone",
+            "customer_email",
+            "notify_email",
+            "notes",
+        )
+        labels = {
+            "customer_name": "Kundens namn",
+            "customer_phone": "Telefonnummer",
+            "customer_email": "E-post",
+            "notify_email": "Skicka bekräftelse med e-post",
+            "notes": "Anteckning",
+        }
+        help_texts = {
+            "customer_email": "Valfritt. Lämna tomt om kunden inte vill ha mejl.",
+            "notify_email": "Kryssa i bara när e-post är ifyllt.",
+            "notes": "Syns bara för er, inte på hemsidan.",
+        }
+        widgets = {
+            "customer_name": forms.TextInput(attrs={"autocomplete": "name"}),
+            "customer_email": forms.EmailInput(
+                attrs={"autocomplete": "email", "inputmode": "email"}
+            ),
+            "customer_phone": TelInput(
+                attrs={
+                    "autocomplete": "tel",
+                    "data-phone-digits-only": "true",
+                }
+            ),
+            "notes": forms.Textarea(attrs={"rows": 2}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["customer_name"].required = True
+        self.fields["customer_phone"].required = True
+        self.fields["customer_email"].required = False
+        self.fields["notes"].required = False
+        self.fields["notify_email"].initial = False
+        self.fields["customer_email"].error_messages["invalid"] = EMAIL_INVALID_MSG
+        self.fields["customer_email"].validators = [
+            EmailValidator(message=EMAIL_INVALID_MSG),
+        ]
+        configure_phone_field(self.fields["customer_phone"], required=True)
+        for name, field in self.fields.items():
+            if name == "notify_email":
+                continue
+            field.widget.attrs["class"] = "form-control"
+            if name in ("customer_name", "customer_phone"):
+                field.widget.attrs["aria-required"] = "true"
+                field.widget.attrs["required"] = True
+            if self.is_bound and self.errors.get(name):
+                field.widget.attrs["aria-invalid"] = "true"
+                described = [f"hint_{name}"]
+                described.append(f"error_{name}")
+                field.widget.attrs["aria-describedby"] = " ".join(described)
+            else:
+                field.widget.attrs["aria-describedby"] = f"hint_{name}"
+
+    def clean_customer_email(self):
+        """Blank is fine. A typed address must be a real e-post."""
+        email = (self.cleaned_data.get("customer_email") or "").strip()
+        if not email:
+            return ""
+        EmailValidator(message=EMAIL_INVALID_MSG)(email)
+        return email
+
+    def clean_customer_phone(self):
+        """Digits only, same length checks as the public form."""
+        digits = clean_digits_only(self.cleaned_data.get("customer_phone"), required=True)
+        if len(digits) < 7:
+            raise ValidationError("Telefonnumret måste vara minst 7 siffror.")
+        if len(digits) > 15:
+            raise ValidationError("Telefonnumret får vara högst 15 siffror.")
+        return digits
+
+    def clean(self):
+        """A ticked confirmation box needs an e-post address."""
+        cleaned = super().clean()
+        return apply_optional_customer_email(self, cleaned)
 
 
 class AvailabilityGenerateForm(forms.Form):

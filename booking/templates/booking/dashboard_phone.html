@@ -1,0 +1,158 @@
+{# booking/dashboard_phone.html — staff books a phone call; slots then leave public /boka/ #}
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Boka samtal – {{ site.site_name }}{% endblock %}
+{% block robots %}noindex, nofollow{% endblock %}
+
+{% block content %}
+<article class="page-article dashboard booking-page">
+  <header class="page-header">
+    <h1>Boka samtal</h1>
+    <p class="lead">När en kund ringer: välj behandling och tid. Den tiden kan inte bokas på hemsidan.</p>
+    <p><a href="{% url 'dashboard' %}">← Tillbaka till översikt</a></p>
+  </header>
+
+  <nav class="booking-steps" aria-label="Bokningssteg">
+    <ol>
+      <li {% if booking_step == 1 %}aria-current="step"{% endif %}>
+        <span class="booking-step-num" aria-hidden="true">1</span> Behandling
+      </li>
+      <li {% if booking_step == 2 %}aria-current="step"{% endif %}>
+        <span class="booking-step-num" aria-hidden="true">2</span> Tid
+      </li>
+      <li {% if booking_step == 3 %}aria-current="step"{% endif %}>
+        <span class="booking-step-num" aria-hidden="true">3</span> Uppgifter
+      </li>
+    </ol>
+  </nav>
+
+  {% if booking_step == 1 %}
+  <section class="booking-step" aria-labelledby="phone-service-heading">
+    <h2 id="phone-service-heading">Välj behandling</h2>
+    {% if services %}
+    <ul class="service-pick-list">
+      {% for service in services %}
+      <li class="service-pick-item">
+        <div class="service-pick-card">
+          <a class="service-pick-main" href="?service={{ service.slug }}&amp;day={{ today|date:'Y-m-d' }}" aria-label="Välj {{ service.name }}">
+            <span class="service-pick-name">{{ service.name }}</span>
+            <span class="service-pick-meta">{{ service.duration_minutes }} min</span>
+          </a>
+        </div>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p>Inga behandlingar är aktiva just nu.</p>
+    {% endif %}
+  </section>
+
+  {% elif booking_step == 2 %}
+  <section class="booking-step" aria-labelledby="phone-slot-heading">
+    <h2 id="phone-slot-heading">Välj tid</h2>
+    <p class="booking-summary">
+      Behandling: <strong>{{ selected_service.name }}</strong>
+      ({{ selected_service.duration_minutes }} min)
+      <a href="{% url 'dashboard_phone_booking' %}">Byt behandling</a>
+    </p>
+    <form method="get" class="phone-day-nav" aria-label="Välj datum">
+      <input type="hidden" name="service" value="{{ selected_service.slug }}">
+      <div>
+        <label for="phone-day">Datum</label>
+        <input
+          id="phone-day"
+          type="date"
+          name="day"
+          value="{{ day|date:'Y-m-d' }}"
+          min="{{ today|date:'Y-m-d' }}"
+          max="{{ last_day|date:'Y-m-d' }}"
+          required
+        >
+      </div>
+      <button type="submit" class="btn">Visa dagen</button>
+    </form>
+    <p class="phone-day-links">
+      {% if prev_day %}
+      <a href="?service={{ selected_service.slug }}&amp;day={{ prev_day|date:'Y-m-d' }}">Föregående dag</a>
+      {% endif %}
+      {% if next_day %}
+      <a href="?service={{ selected_service.slug }}&amp;day={{ next_day|date:'Y-m-d' }}">Nästa dag</a>
+      {% endif %}
+    </p>
+    <h3 id="phone-day-heading">{{ day|date:"l j F Y" }}</h3>
+    {% if day_slots %}
+    <ul class="slot-row" aria-labelledby="phone-day-heading">
+      {% for slot in day_slots %}
+      <li>
+        <a
+          class="slot-chip"
+          href="?service={{ selected_service.slug }}&amp;day={{ day|date:'Y-m-d' }}&amp;slot={{ slot.pk }}"
+          aria-label="Boka {{ day|date:'j F Y' }} kl {{ slot.start|date:'H:i' }}"
+        >{{ slot.start|date:"H:i" }}</a>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p>Inga lediga tider den här dagen. Välj ett annat datum.</p>
+    {% endif %}
+  </section>
+
+  {% else %}
+  <section class="booking-step booking-form-wrap" aria-labelledby="phone-details-heading">
+    <h2 id="phone-details-heading">Kundens uppgifter</h2>
+    <p class="booking-summary">
+      Behandling: <strong>{{ selected_service.name }}</strong>
+      · Tid: <strong>{{ selected_slot.start|date:"l j F Y, H:i" }}</strong>
+      <a href="?service={{ selected_service.slug }}&amp;day={{ day|date:'Y-m-d' }}">Byt tid</a>
+    </p>
+    <form method="post" class="stack-form aligned-form" novalidate{% if form.errors %} aria-describedby="phone-form-errors"{% endif %}>
+      {% csrf_token %}
+      <input type="hidden" name="service" value="{{ selected_service.slug }}">
+      <input type="hidden" name="day" value="{{ day|date:'Y-m-d' }}">
+      <input type="hidden" name="slot" value="{{ selected_slot.pk }}">
+      {% if form.non_field_errors %}
+        <div class="form-errors" id="phone-form-errors" role="alert">{{ form.non_field_errors }}</div>
+      {% elif form.errors %}
+        <div class="form-errors" id="phone-form-errors" role="alert">
+          Kontrollera fälten markerade nedan och försök igen.
+        </div>
+      {% endif %}
+      {% for field in form %}
+      <div class="aligned-row{% if field.errors %} has-error{% endif %}">
+        {% if field.name == "notify_email" %}
+          <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+        {% else %}
+          <label for="{{ field.id_for_label }}">
+            {{ field.label }}
+            {% if field.field.required %}
+              <span class="required-marker" aria-hidden="true">*</span>
+              <span class="visually-hidden">(obligatoriskt)</span>
+            {% endif %}
+          </label>
+        {% endif %}
+        <div class="aligned-field">
+          {{ field }}
+          {% if field.help_text %}
+            <p id="hint_{{ field.name }}" class="field-hint muted">{{ field.help_text }}</p>
+          {% endif %}
+          {% if field.errors %}
+            <p class="field-error" id="error_{{ field.name }}" role="alert">{{ field.errors|striptags }}</p>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+      <div class="aligned-row aligned-actions">
+        <button type="submit" class="btn">Boka tiden</button>
+      </div>
+    </form>
+  </section>
+  {% endif %}
+</article>
+{% endblock %}
+
+{% block extra_js %}
+  {% if booking_step == 3 %}
+    <script src="{% static 'js/booking-phone.js' %}" defer></script>
+  {% endif %}
+{% endblock %}

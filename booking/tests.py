@@ -790,6 +790,108 @@ class AdminStaffBookingTests(TestCase):
         self.assertContains(response, "Veckoschema")
 
 
+class PhoneBookingTests(TestCase):
+    """Staff book a caller from the dashboard, and the public page hides that time."""
+
+    def setUp(self):
+        from django.contrib.auth import get_user_model
+
+        get_user_model().objects.create_user(
+            "emma", "emma@example.com", "secret", is_staff=True
+        )
+        self.client.login(username="emma", password="secret")
+        self.service = Service.objects.create(
+            name="Spa",
+            slug="spa",
+            duration_minutes=60,
+            is_active=True,
+        )
+        start = timezone.now() + timedelta(days=3)
+        self.day = timezone.localtime(start).date()
+        self.slot_a = TimeSlot.objects.create(
+            start=start, end=start + timedelta(hours=1)
+        )
+        self.slot_b = TimeSlot.objects.create(
+            start=start + timedelta(hours=1),
+            end=start + timedelta(hours=2),
+        )
+        self.slot_c = TimeSlot.objects.create(
+            start=start + timedelta(hours=2),
+            end=start + timedelta(hours=3),
+        )
+        # slot_d lets a 90-minute window still start at slot_c after a and b are taken.
+        self.slot_d = TimeSlot.objects.create(
+            start=start + timedelta(hours=3),
+            end=start + timedelta(hours=4),
+        )
+
+    def test_anonymous_is_sent_to_login(self):
+        self.client.logout()
+        response = self.client.get(reverse("dashboard_phone_booking"))
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("/admin/login/", response["Location"])
+
+    def test_day_lists_open_start_times(self):
+        response = self.client.get(
+            reverse("dashboard_phone_booking"),
+            {"service": self.service.slug, "day": self.day.isoformat()},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Boka samtal")
+        self.assertContains(response, f"slot={self.slot_a.pk}")
+        self.assertContains(response, "Visa dagen")
+
+    def test_phone_booking_without_email_hides_the_time_on_the_website(self):
+        response = self.client.post(
+            reverse("dashboard_phone_booking"),
+            {
+                "service": self.service.slug,
+                "day": self.day.isoformat(),
+                "slot": str(self.slot_a.pk),
+                "customer_name": "Anna",
+                "customer_phone": "0701234567",
+                "customer_email": "",
+                "notes": "Ringde",
+            },
+            follow=True,
+        )
+        self.assertEqual(response.redirect_chain[0][1], 302)
+        self.assertIn(
+            f"day={self.day.isoformat()}",
+            response.redirect_chain[0][0],
+        )
+        booking = Booking.objects.get()
+        self.assertEqual(booking.customer_name, "Anna")
+        self.assertEqual(booking.customer_email, "")
+        self.assertFalse(booking.notify_email)
+        self.assertEqual(booking.notes, "Ringde")
+        self.slot_b.refresh_from_db()
+        self.assertEqual(self.slot_b.held_by_id, booking.pk)
+        self.assertContains(response, "syns inte längre på hemsidan")
+        self.assertNotContains(response, f"slot={self.slot_a.pk}")
+        public = self.client.get(reverse("booking"), {"service": self.service.slug})
+        self.assertNotContains(public, f"slot={self.slot_a.pk}")
+        self.assertNotContains(public, f"slot={self.slot_b.pk}")
+        self.assertContains(public, f"slot={self.slot_c.pk}")
+
+    def test_confirmation_without_email_is_rejected(self):
+        response = self.client.post(
+            reverse("dashboard_phone_booking"),
+            {
+                "service": self.service.slug,
+                "day": self.day.isoformat(),
+                "slot": str(self.slot_a.pk),
+                "customer_name": "Anna",
+                "customer_phone": "0701234567",
+                "customer_email": "",
+                "notify_email": "on",
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Fyll i e-post")
+        self.assertFalse(Booking.objects.exists())
+
+
 class BookingPageQueryCountTests(TestCase):
     """Choosing a time must not query the database once per lucka."""
 

@@ -316,7 +316,11 @@ class Booking(models.Model):
     slot = models.OneToOneField(TimeSlot, on_delete=models.CASCADE, related_name="booking")
     service = models.ForeignKey(Service, on_delete=models.PROTECT, related_name="bookings")
     customer_name = models.CharField(max_length=120)
-    customer_email = models.EmailField()
+    # Blank when staff book a phone call and the customer gives no e-post.
+    customer_email = models.EmailField(
+        blank=True,
+        help_text="Kan lämnas tom när kunden bokas via telefon.",
+    )
     customer_phone = models.CharField(max_length=40)
     # Adjust: confirmation is e-post only (notify_sms kept on the row, unused).
     notify_email = models.BooleanField(default=True)

@@ -260,11 +260,11 @@ class BookingAdmin(admin.ModelAdmin):
                     "notes",
                 ),
                 "description": (
-                    "Boka in en kund som ringer eller kommer in. "
-                    "Välj datum i kalendern och sedan klockslag. "
-                    "Samma regler som på Boka: behandlingstiden plus 30 minuter reserveras. "
-                    "Kunden får bekräftelse med e-post om krysset är ikryssat. "
-                    "Du kan också klicka på Boka kund under Tidsluckor."
+                    "Enklare: öppna Admin-översikt och klicka på Boka samtal. "
+                    "Här kan du också boka in en kund som ringer. "
+                    "Välj datum och klockslag. Samma regler som på Boka: behandlingstiden plus 30 minuter reserveras, "
+                    "och tiden försvinner från hemsidan. "
+                    "E-post kan lämnas tom. Kryssa i bekräftelse bara om kunden ska ha mejl."
                 ),
             },
         ),
