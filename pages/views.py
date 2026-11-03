@@ -1,6 +1,7 @@
 """Public marketing pages driven by CMS SitePage content."""
 
 from django.contrib import messages
+from django.http import Http404
 from django.shortcuts import redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods
@@ -111,8 +112,10 @@ def seasons(request):
 
 
 def gallery(request):
-    """Image gallery."""
+    """Image gallery. Hidden when Admin → Sidor → Galleri is not published."""
     page = SitePage.objects.filter(key=SitePage.PageKey.GALLERY, is_published=True).first()
+    if page is None:
+        raise Http404("Galleri är inte publicerat.")
     images = GalleryImage.objects.filter(is_visible=True)
     return render(request, "pages/gallery.html", {"page": page, "images": images})
 

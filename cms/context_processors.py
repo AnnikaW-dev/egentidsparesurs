@@ -2,7 +2,7 @@
 
 from django.urls import reverse
 
-from .models import SiteSettings
+from .models import SitePage, SiteSettings
 from .seo import (
     canonical_url,
     local_business_json_ld,
@@ -32,4 +32,9 @@ def site_settings(request):
         "json_ld_page": json_ld_page,
         "breadcrumbs": breadcrumbs,
         "home_url": canonical_url(request, site, reverse("home")),
+        # Galleri is not in the main menu. Links exist only while the CMS page is published.
+        "gallery_is_published": SitePage.objects.filter(
+            key=SitePage.PageKey.GALLERY,
+            is_published=True,
+        ).exists(),
     }

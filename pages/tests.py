@@ -366,7 +366,6 @@ class PublicSeoTests(TestCase):
         self.assertContains(response, "BeautySalon")
         self.assertContains(response, "Linköping")
         self.assertContains(response, 'aria-label="Brödsmulor"')
-        self.assertContains(response, 'href="/galleri/"')
         self.assertContains(response, "max-image-preview:large")
 
     def test_www_sitemap_and_robots_use_apex(self):
@@ -409,6 +408,32 @@ class PublicSeoTests(TestCase):
         self.assertContains(response, "Fotbad i salongen")
         stamp = timezone.localtime(page.updated_at).date().isoformat()
         self.assertContains(response, f"<lastmod>{stamp}</lastmod>")
+
+    def test_unpublished_gallery_is_hidden_from_menu_page_and_sitemap(self):
+        SitePage.objects.create(
+            key=SitePage.PageKey.GALLERY,
+            title="Galleri",
+            is_published=False,
+        )
+        home = self.client.get("/")
+        nav = home.content.decode().split('id="site-nav"', 1)[1].split("</nav>", 1)[0]
+        self.assertNotIn("Galleri", nav)
+        self.assertNotContains(home, 'href="/galleri/"')
+        self.assertEqual(self.client.get("/galleri/").status_code, 404)
+        sitemap = self.client.get("/sitemap.xml")
+        self.assertNotContains(sitemap, "/galleri/")
+
+    def test_published_gallery_stays_out_of_the_main_menu(self):
+        SitePage.objects.create(
+            key=SitePage.PageKey.GALLERY,
+            title="Galleri",
+            is_published=True,
+        )
+        home = self.client.get("/")
+        nav = home.content.decode().split('id="site-nav"', 1)[1].split("</nav>", 1)[0]
+        self.assertNotIn("Galleri", nav)
+        self.assertContains(home, 'href="/galleri/"')
+        self.assertEqual(self.client.get("/galleri/").status_code, 200)
 
     def test_private_paths_send_noindex_header(self):
         response = self.client.get("/dashboard/")

@@ -49,7 +49,19 @@ class StaticViewSitemap(Sitemap):
     }
 
     def items(self):
-        return [name for name, _priority in self.PAGES]
+        """Skip a CMS page whose Is published box is unchecked."""
+        from cms.models import SitePage
+
+        unpublished = set(
+            SitePage.objects.filter(is_published=False).values_list("key", flat=True)
+        )
+        names = []
+        for name, _priority in self.PAGES:
+            key = self.PAGE_KEYS.get(name)
+            if key and key in unpublished:
+                continue
+            names.append(name)
+        return names
 
     def location(self, item):
         return reverse(item)

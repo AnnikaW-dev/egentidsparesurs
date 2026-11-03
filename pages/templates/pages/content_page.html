@@ -65,7 +65,9 @@
     {% if page.key == "service" %}
     <a class="btn" href="{% url 'contact' %}">{% firstof page.cta_primary "Kontakta mig" %}</a>
     {% elif page.key == "salon" %}
+    {% if gallery_is_published %}
     <a class="btn btn-ghost" href="{% url 'gallery' %}">Bilder från salongen</a>
+    {% endif %}
     <a class="btn" href="{% url 'booking' %}">{% firstof page.cta_primary "Boka din behandling" %}</a>
     {% elif page.key == "warming" %}
     {% if page.cta_secondary %}

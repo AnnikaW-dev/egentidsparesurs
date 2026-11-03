@@ -121,9 +121,6 @@
             <a href="{% url 'about' %}" {% if request.resolver_match.url_name == 'about' or request.resolver_match.url_name == 'salon' %}aria-current="page"{% endif %}>Om</a>
           </li>
           <li>
-            <a href="{% url 'gallery' %}" {% if request.resolver_match.url_name == 'gallery' %}aria-current="page"{% endif %}>Galleri</a>
-          </li>
-          <li>
             <a href="{% url 'contact' %}" {% if request.resolver_match.url_name == 'contact' %}aria-current="page"{% endif %}>Kontakt</a>
           </li>
           <li>
@@ -171,7 +168,9 @@
       <div class="footer-contact">
         <p class="footer-label">Kontakt</p>
         <p><a href="{% url 'contact' %}">Kontaktformulär</a></p>
+        {% if gallery_is_published %}
         <p><a href="{% url 'gallery' %}">Galleri</a></p>
+        {% endif %}
         {% if site.email %}
         <p class="footer-email">
           <span class="footer-contact-term">Mail:</span>
