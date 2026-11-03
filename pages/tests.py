@@ -346,3 +346,70 @@ class ContactNotificationEmailTests(TestCase):
             from pages.emails import contact_inbox
 
             self.assertEqual(contact_inbox(), "egentidspaservice@gmail.com")
+
+
+class PublicSeoTests(TestCase):
+    """Canonical host, one Om URL, crawl files, and private noindex."""
+
+    def test_salongen_redirects_to_om(self):
+        response = self.client.get("/salongen/")
+        self.assertRedirects(response, "/om/", status_code=301)
+
+    def test_contact_head_is_indexable_local_business(self):
+        response = self.client.get("/kontakt/")
+        self.assertContains(
+            response,
+            '<link rel="canonical" href="http://testserver/kontakt/">',
+            html=False,
+        )
+        self.assertContains(response, 'hreflang="sv"')
+        self.assertContains(response, "BeautySalon")
+        self.assertContains(response, "Linköping")
+        self.assertContains(response, 'aria-label="Brödsmulor"')
+        self.assertContains(response, 'href="/galleri/"')
+        self.assertContains(response, "max-image-preview:large")
+
+    def test_www_sitemap_and_robots_use_apex(self):
+        response = self.client.get(
+            "/sitemap.xml",
+            HTTP_HOST="www.egentidspaservice.se",
+        )
+        self.assertContains(response, "https://egentidspaservice.se/om/")
+        self.assertContains(response, "https://egentidspaservice.se/galleri/")
+        self.assertNotContains(response, "salongen")
+        self.assertNotContains(response, "www.egentidspaservice.se")
+        robots = self.client.get(
+            "/robots.txt",
+            HTTP_HOST="www.egentidspaservice.se",
+        )
+        self.assertContains(
+            robots,
+            "Sitemap: https://egentidspaservice.se/sitemap.xml",
+        )
+
+    def test_sitemap_lists_gallery_images_and_lastmod(self):
+        from django.utils import timezone
+
+        from cms.models import GalleryImage
+
+        page = SitePage.objects.create(
+            key=SitePage.PageKey.GALLERY,
+            title="Galleri",
+            is_published=True,
+        )
+        GalleryImage.objects.create(
+            title="Fotbad",
+            caption="Fotbad i salongen",
+            image=_png("foot-bath.png"),
+            is_visible=True,
+        )
+        response = self.client.get("/sitemap.xml")
+        self.assertContains(response, "<image:loc>")
+        self.assertContains(response, "foot-bath")
+        self.assertContains(response, "Fotbad i salongen")
+        stamp = timezone.localtime(page.updated_at).date().isoformat()
+        self.assertContains(response, f"<lastmod>{stamp}</lastmod>")
+
+    def test_private_paths_send_noindex_header(self):
+        response = self.client.get("/dashboard/")
+        self.assertEqual(response["X-Robots-Tag"], "noindex, nofollow")

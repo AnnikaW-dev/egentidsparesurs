@@ -348,6 +348,40 @@ h1 {
   padding: 1.75rem 1.25rem 3rem;
 }
 
+/* Breadcrumbs — visible trail; JSON-LD BreadcrumbList is in the page head */
+.breadcrumbs {
+  margin: 0 0 1rem;
+  font-size: 0.9rem;
+}
+
+.breadcrumbs ol {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.2rem 0.35rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.breadcrumbs li {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.breadcrumbs a {
+  color: var(--ink-strong);
+}
+
+.breadcrumbs [aria-current="page"] {
+  color: var(--ink);
+}
+
+.breadcrumbs-sep {
+  color: var(--ink-muted);
+}
+
 .hero {
   text-align: center;
 }

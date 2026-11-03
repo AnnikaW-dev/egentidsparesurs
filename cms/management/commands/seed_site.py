@@ -23,6 +23,13 @@ from cms.brand import (
     CONTACT_EMAIL,
     is_legacy_contact_email,
 )
+from cms.seo import (
+    DEFAULT_META_DESCRIPTION,
+    DEFAULT_META_DESCRIPTION_PREVIOUS,
+    TREATMENTS_META_DESCRIPTION,
+    TREATMENTS_META_DESCRIPTION_PREVIOUS,
+)
+from config.hosts import PRODUCTION_HOSTS
 from cms.gallery_defaults import GALLERY_IMAGES
 from cms.month_hook_defaults import MONTH_HOOK_DEFAULTS
 from cms.salon_defaults import (
@@ -54,29 +61,20 @@ from cms.warming_defaults import (
 CONTACT_PHONE = "072-3170120"
 CONTACT_ADDRESS = "Egen ingång en trappa ner"
 CONTACT_ADDRESS_LEGACY = "Egen ingång på nedervåningen"
-DEFAULT_META_DESCRIPTION = (
-    "Fotvård, spa-pedikyr och värmande manikyr. Boka egentid hos EGentid Spa & Service."
-)
-DEFAULT_META_DESCRIPTION_LEGACY = (
-    "Fotvård, spa-pedikyr och värmande manikyr. Boka egentid hos EGentid Spa & Resurs."
-)
-TREATMENTS_META_DESCRIPTION = (
-    "Fotvård, handvård och massage med priser hos EGentid Spa & Service."
-)
-TREATMENTS_META_DESCRIPTION_LEGACY = (
-    "Fotvård, handvård och massage med priser hos EGentid Spa & Resurs."
-)
 
 
 def _env_public_site_url() -> str:
     """Production base URL from env (no trailing slash). Empty if unset.
 
-    Adjust: PUBLIC_SITE_URL on Render, or custom domain in admin SEO field.
+    PUBLIC_SITE_URL wins. On Render, fall back to the public domain — never
+    the *.onrender.com host, which must not become the canonical URL.
+    Adjust: PUBLIC_SITE_URL on Render, or the SEO field in admin.
     """
-    for name in ("PUBLIC_SITE_URL", "RENDER_EXTERNAL_URL"):
-        raw = os.environ.get(name, "").strip().rstrip("/")
-        if raw:
-            return raw
+    raw = os.environ.get("PUBLIC_SITE_URL", "").strip().rstrip("/")
+    if raw and "onrender.com" not in raw.lower():
+        return raw
+    if os.environ.get("RENDER", "").strip():
+        return "https://" + PRODUCTION_HOSTS[0]
     return ""
 
 
@@ -205,12 +203,16 @@ class Command(BaseCommand):
             if (settings.site_name or "").strip() == BRAND_NAME_LEGACY:
                 settings.site_name = BRAND_NAME
                 settings_updates.append("site_name")
-            if (
-                (settings.default_meta_description or "").strip()
-                == DEFAULT_META_DESCRIPTION_LEGACY
-            ):
+            if (settings.default_meta_description or "").strip() in DEFAULT_META_DESCRIPTION_PREVIOUS:
                 settings.default_meta_description = DEFAULT_META_DESCRIPTION
                 settings_updates.append("default_meta_description")
+            stored_url = (settings.public_site_url or "").strip().rstrip("/")
+            stored_host = stored_url.lower()
+            if "onrender.com" in stored_host or "egentidsparesurs" in stored_host:
+                settings.public_site_url = (
+                    _env_public_site_url() or ("https://" + PRODUCTION_HOSTS[0])
+                )
+                settings_updates.append("public_site_url")
             if (settings.address or "").strip() == CONTACT_ADDRESS_LEGACY:
                 settings.address = CONTACT_ADDRESS
                 settings_updates.append("address")
@@ -451,7 +453,7 @@ class Command(BaseCommand):
         if (
             not force
             and (treatments.meta_description or "").strip()
-            == TREATMENTS_META_DESCRIPTION_LEGACY
+            in TREATMENTS_META_DESCRIPTION_PREVIOUS
         ):
             treatments.meta_description = TREATMENTS_META_DESCRIPTION
             treatments.save(update_fields=["meta_description"])

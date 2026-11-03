@@ -19,8 +19,13 @@ sitemaps = {
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("", page_views.home, name="home"),
-    path("salongen/", page_views.salon, name="salon"),
-    path("om/", page_views.salon, name="about"),  # Same CMS page as salongen
+    # Old Om URL — one canonical path so /salongen/ and /om/ are not duplicates.
+    path(
+        "salongen/",
+        RedirectView.as_view(pattern_name="about", permanent=True),
+        name="salon",
+    ),
+    path("om/", page_views.salon, name="about"),
     path("behandlingar/", page_views.treatments, name="treatments"),
     path("varmande-behandlingar/", page_views.warming, name="warming"),
     # Prislista removed — old URL redirects to Behandlingar

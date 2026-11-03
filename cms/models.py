@@ -4,6 +4,7 @@ from django.db import models
 from django.utils import timezone
 
 from .a11y import plain_cms_text, resolve_image_alt
+from .seo import DEFAULT_META_DESCRIPTION
 from .text_format import BOLD_MARKUP_HINT, normalize_newlines, parse_body_sections
 
 
@@ -32,7 +33,14 @@ class SiteSettings(models.Model):
         verbose_name="Telefonnummer",
         help_text="Visas i sidfoten under Kontakt. Lämna tomt för att dölja raden.",
     )
-    address = models.TextField(blank=True, help_text=BOLD_MARKUP_HINT)
+    address = models.TextField(
+        blank=True,
+        help_text=(
+            BOLD_MARKUP_HINT
+            + " För lokala träffar: gatuadress och postnummer, "
+            "t.ex. Storgatan 1, 582 20 Linköping."
+        ),
+    )
     opening_hours = models.TextField(
         blank=True,
         help_text=(
@@ -57,14 +65,15 @@ class SiteSettings(models.Model):
     # SEO — Adjust: set production URL and default description in admin.
     public_site_url = models.URLField(
         blank=True,
-        help_text="Publik bas-URL utan avslutande snedstreck, t.ex. https://egentidsparesurs.se",
+        help_text=(
+            "Kanonisk adress utan avslutande snedstreck, "
+            "t.ex. https://egentidspaservice.se. Inte Render-adressen."
+        ),
     )
     default_meta_description = models.CharField(
         max_length=160,
         blank=True,
-        default=(
-            "Fotvård, spa-pedikyr och värmande manikyr. Boka egentid hos EGentid Spa & Service."
-        ),
+        default=DEFAULT_META_DESCRIPTION,
         help_text="Standard meta description (ca 150–160 tecken) om sidan saknar egen.",
     )
     og_image = models.ImageField(
@@ -214,11 +223,12 @@ class SitePage(models.Model):
         from cms.brand import with_current_brand
 
         if self.meta_description.strip():
-            return with_current_brand(self.meta_description.strip())
-        paras = self.body_paragraphs()
-        if paras:
-            text = paras[0].replace("\n", " ")
-            text = with_current_brand(text)
+            text = plain_cms_text(self.meta_description)
+        else:
+            paras = self.body_paragraphs()
+            text = plain_cms_text(paras[0]) if paras else ""
+        text = " ".join(with_current_brand(text).split())
+        if text:
             return text[:157] + ("…" if len(text) > 157 else "")
         return with_current_brand(fallback)
 

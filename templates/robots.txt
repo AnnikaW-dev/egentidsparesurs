@@ -5,4 +5,4 @@ Disallow: /admin/
 Disallow: /dashboard/
 Disallow: /boka/bekraftelse/
 
-Sitemap: {{ request.scheme }}://{{ request.get_host }}/sitemap.xml
+Sitemap: {{ canonical_origin }}/sitemap.xml

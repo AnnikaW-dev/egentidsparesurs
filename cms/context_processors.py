@@ -3,23 +3,33 @@
 from django.urls import reverse
 
 from .models import SiteSettings
-from .seo import absolute_url, local_business_json_ld
+from .seo import (
+    canonical_url,
+    local_business_json_ld,
+    page_structured_data,
+    public_absolute_url,
+    public_base_url,
+)
 
 
 def site_settings(request):
-    """Inject site branding and default SEO into every template."""
+    """Inject site branding and canonical SEO into every template."""
     site = SiteSettings.load()
     og_image_url = ""
     if site.og_image:
-        og_image_url = absolute_url(request, site.og_image.url)
+        og_image_url = public_absolute_url(request, site, site.og_image.url)
     elif site.logo:
-        og_image_url = absolute_url(request, site.logo.url)
+        og_image_url = public_absolute_url(request, site, site.logo.url)
+    json_ld_page, breadcrumbs = page_structured_data(request, site)
 
     return {
         "site": site,
-        "canonical_url": absolute_url(request),
+        "canonical_url": canonical_url(request, site),
+        "canonical_origin": public_base_url(request, site),
         "seo_description": site.default_meta_description,
         "og_image_url": og_image_url,
         "json_ld_business": local_business_json_ld(request, site),
-        "home_url": absolute_url(request, reverse("home")),
+        "json_ld_page": json_ld_page,
+        "breadcrumbs": breadcrumbs,
+        "home_url": canonical_url(request, site, reverse("home")),
     }

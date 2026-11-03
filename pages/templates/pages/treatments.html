@@ -9,6 +9,21 @@
 {% block twitter_title %}{% if page %}{{ page.seo_title }}{% else %}Behandlingar &amp; priser{% endif %}{% endblock %}
 {% block twitter_description %}{% if page %}{% firstof page.seo_description seo_description %}{% else %}Fotvård, handvård och massage med priser hos {{ site.site_name }}.{% endif %}{% endblock %}
 
+{% block og_image_tags %}
+  {% if page and page.resolved_hero_image %}
+  {% public_media_url page.resolved_hero_image as hero_share %}
+  <meta property="og:image" content="{{ hero_share }}">
+  <meta property="og:image:alt" content="{% firstof page.resolved_hero_alt site.site_name %}">
+  <meta name="twitter:image" content="{{ hero_share }}">
+  <meta name="twitter:image:alt" content="{% firstof page.resolved_hero_alt site.site_name %}">
+  {% elif og_image_url %}
+  <meta property="og:image" content="{{ og_image_url }}">
+  <meta property="og:image:alt" content="{{ site.site_name }}">
+  <meta name="twitter:image" content="{{ og_image_url }}">
+  <meta name="twitter:image:alt" content="{{ site.site_name }}">
+  {% endif %}
+{% endblock %}
+
 {% block content %}
 <article class="page-article treatments-page">
   <header class="page-header">

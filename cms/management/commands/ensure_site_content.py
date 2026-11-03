@@ -8,6 +8,7 @@ from django.core.management import call_command
 from django.core.management.base import BaseCommand, CommandError
 
 from cms.brand import replace_legacy_brand_in_db
+from cms.seo import upgrade_stock_seo
 from cms.models import SitePage, SiteSettings
 from cms.snapshot import ensure_snapshot_media
 
@@ -92,6 +93,9 @@ class Command(BaseCommand):
         renamed = replace_legacy_brand_in_db()
         if renamed:
             self.stdout.write(f"Updated leftover Spa & Resurs brand text on {renamed} row(s).")
+        seo_rows = upgrade_stock_seo()
+        if seo_rows:
+            self.stdout.write(f"Updated stock SEO text or canonical URL on {seo_rows} row(s).")
         media_copied = ensure_snapshot_media(stdout=self.stdout)
         if not media_copied:
             self.stdout.write("Snapshot media already present on disk.")

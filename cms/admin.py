@@ -91,7 +91,11 @@ class SiteSettingsAdmin(admin.ModelAdmin):
             "SEO",
             {
                 "fields": ("public_site_url", "default_meta_description", "og_image"),
-                "description": "Sökmotorer och delning. Sätt publik URL när sajten är live.",
+                "description": (
+                    "Kanonisk adress (https://egentidspaservice.se, inte Render), "
+                    "standardbeskrivning på ca 150 tecken och delningsbild. "
+                    "Gatuadress med postnummer under Kontakt stärker lokala träffar."
+                ),
             },
         ),
     )

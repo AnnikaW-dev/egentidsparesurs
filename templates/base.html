@@ -9,8 +9,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}{{ site.site_name }} – {{ site.tagline }}{% endblock %}</title>
   <meta name="description" content="{% block meta_description %}{{ seo_description }}{% endblock %}">
-  <meta name="robots" content="{% block robots %}index, follow{% endblock %}">
+  <meta name="robots" content="{% block robots %}index, follow, max-image-preview:large, max-snippet:-1{% endblock %}">
   <link rel="canonical" href="{% block canonical %}{{ canonical_url }}{% endblock %}">
+  <link rel="alternate" hreflang="sv" href="{{ canonical_url }}">
+  <link rel="alternate" hreflang="x-default" href="{{ canonical_url }}">
+  <link rel="sitemap" type="application/xml" title="Webbplatskarta" href="{{ canonical_origin }}/sitemap.xml">
   <link rel="icon" href="{% static 'img/logo.png' %}" type="image/png">
   <link rel="apple-touch-icon" href="{% static 'img/logo.png' %}">
 
@@ -24,6 +27,9 @@
   {% block og_image_tags %}
   {% if og_image_url %}
   <meta property="og:image" content="{{ og_image_url }}">
+  <meta property="og:image:alt" content="{{ site.site_name }}">
+  <meta name="twitter:image" content="{{ og_image_url }}">
+  <meta name="twitter:image:alt" content="{{ site.site_name }}">
   {% endif %}
   {% endblock %}
 
@@ -32,6 +38,9 @@
   <meta name="twitter:description" content="{% block twitter_description %}{{ seo_description }}{% endblock %}">
 
   <script type="application/ld+json">{{ json_ld_business|safe }}</script>
+  {% if json_ld_page %}
+  <script type="application/ld+json">{{ json_ld_page|safe }}</script>
+  {% endif %}
   {% block structured_data %}{% endblock %}
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -112,6 +121,9 @@
             <a href="{% url 'about' %}" {% if request.resolver_match.url_name == 'about' or request.resolver_match.url_name == 'salon' %}aria-current="page"{% endif %}>Om</a>
           </li>
           <li>
+            <a href="{% url 'gallery' %}" {% if request.resolver_match.url_name == 'gallery' %}aria-current="page"{% endif %}>Galleri</a>
+          </li>
+          <li>
             <a href="{% url 'contact' %}" {% if request.resolver_match.url_name == 'contact' %}aria-current="page"{% endif %}>Kontakt</a>
           </li>
           <li>
@@ -131,6 +143,22 @@
   {% endif %}
 
   <main id="main" class="site-main" tabindex="-1">
+    {% if breadcrumbs %}
+    <nav class="breadcrumbs" aria-label="Brödsmulor">
+      <ol>
+        {% for crumb in breadcrumbs %}
+        <li>
+          {% if forloop.last %}
+          <span aria-current="page">{{ crumb.name }}</span>
+          {% else %}
+          <a href="{{ crumb.url }}">{{ crumb.name }}</a>
+          {% endif %}
+          {% if not forloop.last %}<span class="breadcrumbs-sep" aria-hidden="true">/</span>{% endif %}
+        </li>
+        {% endfor %}
+      </ol>
+    </nav>
+    {% endif %}
     {% block content %}{% endblock %}
   </main>
 
@@ -143,6 +171,7 @@
       <div class="footer-contact">
         <p class="footer-label">Kontakt</p>
         <p><a href="{% url 'contact' %}">Kontaktformulär</a></p>
+        <p><a href="{% url 'gallery' %}">Galleri</a></p>
         {% if site.email %}
         <p class="footer-email">
           <span class="footer-contact-term">Mail:</span>

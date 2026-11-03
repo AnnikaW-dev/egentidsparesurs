@@ -25,6 +25,19 @@ def cms_richtext_br(value):
     return format_inline_markup(value, newlines=True)
 
 
+@register.simple_tag(takes_context=True)
+def public_media_url(context, image):
+    """Absolute image URL on the canonical host (Open Graph and Twitter)."""
+    if not image:
+        return ""
+    url = getattr(image, "url", "") or ""
+    if not url:
+        return ""
+    from cms.seo import public_absolute_url
+
+    return public_absolute_url(context["request"], context.get("site"), url)
+
+
 @register.filter(name="document_title")
 def document_title_filter(page, site_name):
     """Browser <title> for a CMS page: current brand, no duplicated site name."""

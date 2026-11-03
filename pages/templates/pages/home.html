@@ -13,9 +13,16 @@
 
 {% block og_image_tags %}
   {% if page.resolved_hero_image %}
-  <meta property="og:image" content="{{ request.scheme }}://{{ request.get_host }}{{ page.resolved_hero_image.url }}">
+  {% public_media_url page.resolved_hero_image as hero_share %}
+  <meta property="og:image" content="{{ hero_share }}">
+  <meta property="og:image:alt" content="{% firstof page.resolved_hero_alt site.site_name %}">
+  <meta name="twitter:image" content="{{ hero_share }}">
+  <meta name="twitter:image:alt" content="{% firstof page.resolved_hero_alt site.site_name %}">
   {% elif og_image_url %}
   <meta property="og:image" content="{{ og_image_url }}">
+  <meta property="og:image:alt" content="{{ site.site_name }}">
+  <meta name="twitter:image" content="{{ og_image_url }}">
+  <meta name="twitter:image:alt" content="{{ site.site_name }}">
   {% endif %}
 {% endblock %}
 
@@ -59,7 +66,7 @@
   {# Why-choose checklist — above CTAs; Adjust copy here or later move to CMS ContentBlock #}
   <section class="why-choose" aria-labelledby="why-choose-heading">
     <h2 id="why-choose-heading" class="why-choose-title">
-      Varför välja Egentid spa &amp; Service
+      Varför välja {{ site.site_name }}
     </h2>
     <ul class="why-choose-list">
       <li>Lugn hemmasalong med egen ingång</li>

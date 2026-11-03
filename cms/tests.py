@@ -8,7 +8,16 @@ from django.test import RequestFactory, TestCase
 
 from cms.a11y import plain_cms_text, resolve_image_alt
 from cms.models import ContentBlock, GalleryImage, PageHeroSlide, SitePage, SiteSettings
-from cms.seo import public_base_url
+from cms.seo import (
+    DEFAULT_META_DESCRIPTION,
+    DEFAULT_META_DESCRIPTION_PREVIOUS,
+    TREATMENTS_META_DESCRIPTION,
+    canonical_url,
+    local_business_json_ld,
+    postal_address,
+    public_base_url,
+    upgrade_stock_seo,
+)
 
 # 1×1 PNG — enough for ImageField without a real photo.
 _PNG = (
@@ -75,7 +84,7 @@ class ContentBlockBodyTests(TestCase):
 
 
 class PublicBaseUrlTests(TestCase):
-    """Canonical URL for JSON-LD: CMS field, then env, then request host."""
+    """Canonical URL: CMS field, then PUBLIC_SITE_URL, then the public domain."""
 
     def setUp(self):
         self.site = SiteSettings.load()
@@ -96,6 +105,128 @@ class PublicBaseUrlTests(TestCase):
                 public_base_url(self.request, self.site),
                 "https://from-env.example",
             )
+
+    def test_render_hostname_is_not_canonical(self):
+        self.site.public_site_url = "https://egentid.onrender.com"
+        self.site.save()
+        request = RequestFactory().get("/", HTTP_HOST="egentid.onrender.com")
+        with patch.dict(os.environ, {"PUBLIC_SITE_URL": ""}, clear=False):
+            os.environ.pop("PUBLIC_SITE_URL", None)
+            self.assertEqual(
+                public_base_url(request, self.site),
+                "https://egentidspaservice.se",
+            )
+            self.assertEqual(
+                canonical_url(request, self.site, "/om/"),
+                "https://egentidspaservice.se/om/",
+            )
+
+    def test_www_request_uses_apex(self):
+        self.site.public_site_url = ""
+        self.site.save()
+        request = RequestFactory().get("/", HTTP_HOST="www.egentidspaservice.se")
+        with patch.dict(os.environ, {}, clear=False):
+            os.environ.pop("PUBLIC_SITE_URL", None)
+            self.assertEqual(
+                public_base_url(request, self.site),
+                "https://egentidspaservice.se",
+            )
+
+
+class LocalBusinessSchemaTests(TestCase):
+    """JSON-LD uses the city from the public copy and real bookable data."""
+
+    def setUp(self):
+        self.site = SiteSettings.load()
+        self.site.public_site_url = "https://egentidspaservice.se"
+        self.site.address = "Egen ingång en trappa ner"
+        self.site.phone = "072-3170120"
+        self.site.save()
+        self.request = RequestFactory().get("/", HTTP_HOST="egentidspaservice.se")
+
+    def test_stock_snippets_fit_and_name_the_city(self):
+        self.assertLessEqual(len(DEFAULT_META_DESCRIPTION), 160)
+        self.assertLessEqual(len(TREATMENTS_META_DESCRIPTION), 160)
+        self.assertIn("Linköping", DEFAULT_META_DESCRIPTION)
+        self.assertIn(
+            "Boka egentid hos EGentid Spa & Service.",
+            DEFAULT_META_DESCRIPTION_PREVIOUS[0],
+        )
+
+    def test_entrance_note_is_not_a_street_address(self):
+        address = postal_address("Egen ingång en trappa ner")
+        self.assertEqual(address["addressLocality"], "Linköping")
+        self.assertNotIn("streetAddress", address)
+
+    def test_postal_line_becomes_street_and_city(self):
+        address = postal_address("Storgatan 1, 582 20 Linköping")
+        self.assertEqual(address["streetAddress"], "Storgatan 1")
+        self.assertEqual(address["postalCode"], "582 20")
+        self.assertEqual(address["addressLocality"], "Linköping")
+
+    def test_json_ld_includes_hours_offer_and_phone(self):
+        from datetime import time
+
+        from booking.models import WeeklyAvailability
+
+        WeeklyAvailability.objects.create(
+            weekday=0,
+            start_time=time(9, 0),
+            end_time=time(16, 0),
+            is_active=True,
+        )
+        page = SitePage.objects.create(
+            key=SitePage.PageKey.TREATMENTS,
+            title="Behandlingar",
+            is_published=True,
+        )
+        ContentBlock.objects.create(
+            page=page,
+            title="**Spa-pedikyr**",
+            body="425 kr · ca 60 min\n\nEn lugn fotvård.",
+            sort_order=1,
+            is_visible=True,
+        )
+        payload = local_business_json_ld(self.request, self.site)
+        self.assertIn("BeautySalon", payload)
+        self.assertIn("Linköping", payload)
+        self.assertIn("+46723170120", payload)
+        self.assertIn("Monday", payload)
+        self.assertIn("09:00", payload)
+        self.assertIn("Spa-pedikyr", payload)
+        self.assertNotIn("**", payload)
+        self.assertIn('"price": "425"', payload)
+        self.assertNotIn("Egen ingång", payload)
+
+    def test_upgrade_stock_seo_rewrites_only_known_sentences(self):
+        self.site.default_meta_description = DEFAULT_META_DESCRIPTION_PREVIOUS[0]
+        self.site.public_site_url = "https://egentid.onrender.com"
+        self.site.save()
+        SitePage.objects.create(
+            key=SitePage.PageKey.TREATMENTS,
+            title="Behandlingar",
+            meta_description=TREATMENTS_META_DESCRIPTION,
+            is_published=True,
+        )
+        # Custom treatments text must survive; the constant above is already current.
+        custom = SitePage.objects.get(key=SitePage.PageKey.TREATMENTS)
+        custom.meta_description = "Egen text om priser."
+        custom.save(update_fields=["meta_description"])
+        self.assertGreaterEqual(upgrade_stock_seo(), 1)
+        self.site.refresh_from_db()
+        custom.refresh_from_db()
+        self.assertEqual(self.site.default_meta_description, DEFAULT_META_DESCRIPTION)
+        self.assertEqual(self.site.public_site_url, "https://egentidspaservice.se")
+        self.assertEqual(custom.meta_description, "Egen text om priser.")
+
+    def test_meta_description_strips_bold_markup(self):
+        page = SitePage.objects.create(
+            key=SitePage.PageKey.HOME,
+            title="Hem",
+            body="**Fotvård** i lugn miljö.\n\nMer text.",
+            is_published=True,
+        )
+        self.assertEqual(page.seo_description(), "Fotvård i lugn miljö.")
 
 
 class HeroCarouselItemsTests(TestCase):

@@ -11,9 +11,16 @@
 
 {% block og_image_tags %}
   {% if page.resolved_hero_image %}
-  <meta property="og:image" content="{{ request.scheme }}://{{ request.get_host }}{{ page.resolved_hero_image.url }}">
+  {% public_media_url page.resolved_hero_image as hero_share %}
+  <meta property="og:image" content="{{ hero_share }}">
+  <meta property="og:image:alt" content="{% firstof page.resolved_hero_alt site.site_name %}">
+  <meta name="twitter:image" content="{{ hero_share }}">
+  <meta name="twitter:image:alt" content="{% firstof page.resolved_hero_alt site.site_name %}">
   {% elif og_image_url %}
   <meta property="og:image" content="{{ og_image_url }}">
+  <meta property="og:image:alt" content="{{ site.site_name }}">
+  <meta name="twitter:image" content="{{ og_image_url }}">
+  <meta name="twitter:image:alt" content="{{ site.site_name }}">
   {% endif %}
 {% endblock %}
 
@@ -57,6 +64,9 @@
   <p class="hero-actions">
     {% if page.key == "service" %}
     <a class="btn" href="{% url 'contact' %}">{% firstof page.cta_primary "Kontakta mig" %}</a>
+    {% elif page.key == "salon" %}
+    <a class="btn btn-ghost" href="{% url 'gallery' %}">Bilder från salongen</a>
+    <a class="btn" href="{% url 'booking' %}">{% firstof page.cta_primary "Boka din behandling" %}</a>
     {% elif page.key == "warming" %}
     {% if page.cta_secondary %}
     <a class="btn btn-ghost" href="{% url 'treatments' %}">{{ page.cta_secondary|cms_richtext }}</a>
