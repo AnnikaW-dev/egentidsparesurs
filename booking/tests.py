@@ -714,6 +714,43 @@ class AdminStaffBookingTests(TestCase):
             f"{reverse('admin:booking_booking_add')}?slot={self.slot_a.pk}",
         )
 
+    def test_booked_timeslot_links_to_avboka_and_cancels(self):
+        from booking.models import create_confirmed_booking
+
+        booking = create_confirmed_booking(
+            service=self.service,
+            start_slot=self.slot_a,
+            customer_name="Britt",
+            customer_email="britt@example.com",
+            customer_phone="0701234567",
+            notify_email=False,
+            notify_sms=False,
+        )
+        listing = self.client.get(reverse("admin:booking_timeslot_changelist"))
+        avboka_start = reverse("admin:booking_timeslot_avboka", args=[self.slot_a.pk])
+        avboka_held = reverse("admin:booking_timeslot_avboka", args=[self.slot_b.pk])
+        self.assertContains(listing, "Avboka")
+        self.assertContains(listing, avboka_start)
+        self.assertContains(listing, avboka_held)
+        self.assertContains(
+            listing,
+            f"{reverse('admin:booking_booking_add')}?slot={self.slot_c.pk}",
+        )
+        confirm = self.client.get(avboka_start)
+        self.assertContains(confirm, "Britt")
+        self.assertContains(confirm, "Avboka")
+        cancelled = self.client.post(avboka_held)
+        self.assertRedirects(cancelled, reverse("admin:booking_timeslot_changelist"))
+        booking.refresh_from_db()
+        self.slot_b.refresh_from_db()
+        self.assertEqual(booking.status, Booking.Status.CANCELLED)
+        self.assertIsNone(self.slot_b.held_by_id)
+        freed = self.client.get(reverse("admin:booking_timeslot_changelist"))
+        self.assertContains(
+            freed,
+            f"{reverse('admin:booking_booking_add')}?slot={self.slot_a.pk}",
+        )
+
     def test_admin_add_holds_the_buffer_and_hides_public_starts(self):
         local = timezone.localtime(self.slot_a.start)
         response = self.client.post(

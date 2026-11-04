@@ -2,8 +2,9 @@
 
 from django.contrib import admin, messages
 from django.core.exceptions import ValidationError
-from django.http import HttpResponseRedirect
-from django.urls import reverse
+from django.http import Http404, HttpResponseRedirect
+from django.template.response import TemplateResponse
+from django.urls import path, reverse
 from django.utils import timezone
 from django.utils.html import format_html
 
@@ -163,9 +164,23 @@ class UpcomingSlotFilter(admin.SimpleListFilter):
             }
 
 
+def _confirmed_booking_for_slot(slot):
+    """Confirmed booking on this lucka, or the longer booking that holds it."""
+    try:
+        booking = slot.booking
+    except Booking.DoesNotExist:
+        booking = None
+    if booking is not None and booking.status == Booking.Status.CONFIRMED:
+        return booking
+    holder = slot.held_by
+    if holder is not None and holder.status == Booking.Status.CONFIRMED:
+        return holder
+    return None
+
+
 @admin.register(TimeSlot)
 class TimeSlotAdmin(admin.ModelAdmin):
-    """Calendar slots; use Boka kund on an open row instead of editing raw fields."""
+    """Calendar slots. Open rows link to Boka kund; booked rows link to Avboka."""
 
     list_display = (
         "start",
@@ -194,6 +209,60 @@ class TimeSlotAdmin(admin.ModelAdmin):
             },
         ),
     )
+
+    def get_queryset(self, request):
+        """Join the booking so the list can show Avboka without one query per row."""
+        return (
+            super()
+            .get_queryset(request)
+            .select_related("held_by", "booking", "booking__service", "held_by__service")
+        )
+
+    def get_urls(self):
+        """Confirm-and-cancel page linked from Avboka on a booked row."""
+        urls = super().get_urls()
+        custom = [
+            path(
+                "<int:object_id>/avboka/",
+                self.admin_site.admin_view(self.avboka_view),
+                name="booking_timeslot_avboka",
+            ),
+        ]
+        return custom + urls
+
+    def avboka_view(self, request, object_id):
+        """Cancel the customer on this lucka after a confirmation click.
+
+        Staff reach it from Tidsluckor → Avboka. The start lucka stays bookable.
+        """
+        slot = self.get_object(request, str(object_id))
+        if slot is None:
+            raise Http404("Tidsluckan finns inte.")
+        booking = _confirmed_booking_for_slot(slot)
+        if booking is None:
+            self.message_user(
+                request,
+                "Den tiden är inte bokad.",
+                level=messages.ERROR,
+            )
+            return HttpResponseRedirect(reverse("admin:booking_timeslot_changelist"))
+        if request.method == "POST":
+            name = booking.customer_name
+            when = timezone.localtime(booking.slot.start)
+            cancel_booking(booking)
+            self.message_user(
+                request,
+                f"Avbokad: {name}, {when:%Y-%m-%d %H:%M}. Tiden är ledig igen.",
+            )
+            return HttpResponseRedirect(reverse("admin:booking_timeslot_changelist"))
+        context = {
+            **self.admin_site.each_context(request),
+            "title": "Avboka",
+            "slot": slot,
+            "booking": booking,
+            "opts": self.model._meta,
+        }
+        return TemplateResponse(request, "admin/booking/timeslot/avboka.html", context)
 
     def get_actions(self, request):
         """Use Ta bort valda luckor so a booked row is skipped with a clear message."""
@@ -242,15 +311,25 @@ class TimeSlotAdmin(admin.ModelAdmin):
 
     @admin.display(boolean=True, description="Bokad")
     def booked_display(self, obj):
-        return Booking.objects.filter(slot=obj, status=Booking.Status.CONFIRMED).exists()
+        try:
+            booking = obj.booking
+        except Booking.DoesNotExist:
+            return False
+        return booking.status == Booking.Status.CONFIRMED
 
     @admin.display(description="Boka")
     def book_customer(self, obj):
-        """Link to the staff booking form with this slot pre-selected."""
-        if obj.held_by_id:
-            return "Upptagen"
-        if Booking.objects.filter(slot=obj, status=Booking.Status.CONFIRMED).exists():
-            return "Bokad"
+        """Boka kund when the lucka is free. Avboka when a customer already has it."""
+        booking = _confirmed_booking_for_slot(obj)
+        if booking is not None:
+            url = reverse("admin:booking_timeslot_avboka", args=[obj.pk])
+            when = timezone.localtime(booking.slot.start)
+            label = f"Avboka {booking.customer_name}, {when:%Y-%m-%d %H:%M}"
+            return format_html(
+                '<a href="{}" aria-label="{}">Avboka</a>',
+                url,
+                label,
+            )
         if obj.is_blocked or obj.start <= timezone.now():
             return "—"
         url = reverse("admin:booking_booking_add") + f"?slot={obj.pk}"

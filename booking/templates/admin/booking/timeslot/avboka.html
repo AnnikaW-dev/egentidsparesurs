@@ -1,0 +1,21 @@
+{# admin/booking/timeslot/avboka.html — confirm cancel from Tidsluckor → Avboka #}
+{% extends "admin/base_site.html" %}
+
+{% block content %}
+<div id="content-main">
+  <p>
+    Avboka {{ booking.customer_name }}, {{ booking.service.name }},
+    {{ booking.slot }}?
+    Tiden blir ledig att boka igen.
+  </p>
+  <form method="post">
+    {% csrf_token %}
+    <button type="submit" class="button avboka-submit">Avboka</button>
+    <a href="{% url 'admin:booking_timeslot_changelist' %}">Tillbaka till tidsluckor</a>
+  </form>
+</div>
+<style>
+  /* Adjust: keep the confirm button easy to tap in admin */
+  .avboka-submit { min-height: 44px; min-width: 8rem; margin-right: 1rem; }
+</style>
+{% endblock %}
