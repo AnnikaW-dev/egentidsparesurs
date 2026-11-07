@@ -187,7 +187,7 @@ class TimeSlotAdmin(admin.ModelAdmin):
         "end",
         "is_blocked",
         "booked_display",
-        "held_by",
+        "occupancy_display",
         "book_customer",
     )
     list_filter = (UpcomingSlotFilter, "is_blocked")
@@ -317,6 +317,14 @@ class TimeSlotAdmin(admin.ModelAdmin):
             return False
         return booking.status == Booking.Status.CONFIRMED
 
+    @admin.display(description="Bokad tid")
+    def occupancy_display(self, obj):
+        """Show the treatment and the 30 minutes booked after it."""
+        booking = _confirmed_booking_for_slot(obj)
+        if booking is None:
+            return "—"
+        return booking.slot_occupancy_text(obj)
+
     @admin.display(description="Boka")
     def book_customer(self, obj):
         """Boka kund when the lucka is free. Avboka when a customer already has it."""
@@ -382,7 +390,7 @@ class BookingAdmin(admin.ModelAdmin):
     list_display = (
         "customer_name",
         "service",
-        "slot",
+        "reserved_window_display",
         "customer_email",
         "customer_phone",
         "notify_email",
@@ -411,8 +419,8 @@ class BookingAdmin(admin.ModelAdmin):
                 "description": (
                     "Enklare: öppna Admin-översikt och klicka på Boka samtal. "
                     "Här kan du också boka in en kund som ringer. "
-                    "Välj datum och klockslag. Samma regler som på Boka: behandlingstiden plus 30 minuter reserveras, "
-                    "och tiden försvinner från hemsidan. "
+                    "Välj datum och klockslag. Efter behandlingen bokas 30 minuter till, "
+                    "och den tiden försvinner från hemsidan. "
                     "E-post kan lämnas tom. Kryssa i bekräftelse bara om kunden ska ha mejl."
                 ),
             },
@@ -434,7 +442,7 @@ class BookingAdmin(admin.ModelAdmin):
         ),
         (
             "Tid (ändras inte här — avboka och skapa en ny bokning i stället)",
-            {"fields": ("service", "slot", "created_at")},
+            {"fields": ("service", "slot", "reserved_window_display", "created_at")},
         ),
     )
 
@@ -465,8 +473,13 @@ class BookingAdmin(admin.ModelAdmin):
 
     def get_readonly_fields(self, request, obj=None):
         if obj:
-            return ("service", "slot", "created_at")
+            return ("service", "slot", "reserved_window_display", "created_at")
         return ()
+
+    @admin.display(description="Upptagen tid")
+    def reserved_window_display(self, obj):
+        """Treatment clock times, then the 30 minutes booked after it."""
+        return obj.reserved_window_text()
 
     def get_changeform_initial_data(self, request):
         """Pre-select a slot when arriving from Tidsluckor → Boka kund."""
@@ -505,8 +518,8 @@ class BookingAdmin(admin.ModelAdmin):
             self.message_user(
                 request,
                 (
-                    f"Bokningen är sparad: {obj.service.name} {obj.slot} "
-                    f"för {obj.customer_name}. Behandling + 30 minuter är reserverade."
+                    f"Bokningen är sparad: {obj.service.name} för {obj.customer_name}. "
+                    f"{obj.reserved_window_text()}."
                 ),
             )
             return

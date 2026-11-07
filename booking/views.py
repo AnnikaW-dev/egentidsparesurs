@@ -418,8 +418,10 @@ def _slot_rows(day):
         if confirmed:
             status = (
                 f"Bokad: {confirmed.customer_name}, {confirmed.service.name}, "
-                f"{confirmed.customer_phone}"
+                f"{confirmed.customer_phone}. {confirmed.slot_occupancy_text(slot)}"
             )
+        elif held and held.status == Booking.Status.CONFIRMED:
+            status = held.slot_occupancy_text(slot)
         elif held:
             status = (
                 f"Upptagen av {held.customer_name}, {held.service.name} "

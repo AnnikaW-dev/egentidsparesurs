@@ -463,17 +463,28 @@ class BookingDurationBufferTests(TestCase):
         self.assertIsNone(self.slot_c.held_by_id)
         self.assertFalse(self.slot_b.is_open)
 
+    def _week(self):
+        """Monday of the week that holds these luckor."""
+        day = timezone.localtime(self.slot_a.start).date()
+        return (day - timedelta(days=day.weekday())).isoformat()
+
     def test_hides_start_times_that_cannot_fit_the_buffer(self):
         self.slot_b.delete()
         self.slot_c.delete()
-        response = self.client.get(reverse("booking"), {"service": self.service.slug})
+        response = self.client.get(
+            reverse("booking"),
+            {"service": self.service.slug, "week": self._week()},
+        )
         self.assertNotContains(response, f"slot={self.slot_a.pk}")
         self.assertContains(response, "Inga lediga tider den här veckan")
 
     def test_short_treatment_fits_in_one_slot(self):
         self.service.duration_minutes = 30
         self.service.save()
-        response = self.client.get(reverse("booking"), {"service": self.service.slug})
+        response = self.client.get(
+            reverse("booking"),
+            {"service": self.service.slug, "week": self._week()},
+        )
         self.assertContains(response, f"slot={self.slot_a.pk}")
 
     def test_public_page_does_not_mention_the_buffer(self):
@@ -685,7 +696,7 @@ class AdminStaffBookingTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Boka in kund")
         self.assertContains(response, "Behandling")
-        self.assertContains(response, "behandlingstiden plus 30 minuter")
+        self.assertContains(response, "Efter behandlingen bokas 30 minuter till")
         self.assertContains(response, "Datum")
         self.assertContains(response, "Klockslag")
         self.assertContains(response, 'type="date"')
@@ -777,7 +788,20 @@ class AdminStaffBookingTests(TestCase):
         self.slot_c.refresh_from_db()
         self.assertEqual(self.slot_b.held_by_id, booking.pk)
         self.assertIsNone(self.slot_c.held_by_id)
-        public = self.client.get(reverse("booking"), {"service": self.service.slug})
+        slots = self.client.get(reverse("admin:booking_timeslot_changelist"))
+        self.assertContains(slots, "sedan 30 min till")
+        self.assertContains(slots, "30 min efter Britt")
+        bookings = self.client.get(reverse("admin:booking_booking_changelist"))
+        self.assertContains(bookings, "sedan 30 min till")
+        detail = self.client.get(reverse("admin:booking_booking_change", args=[booking.pk]))
+        self.assertContains(detail, "Upptagen tid")
+        self.assertContains(detail, "sedan 30 min till")
+        day = timezone.localtime(self.slot_a.start).date()
+        week = (day - timedelta(days=day.weekday())).isoformat()
+        public = self.client.get(
+            reverse("booking"),
+            {"service": self.service.slug, "week": week},
+        )
         self.assertNotContains(public, f"slot={self.slot_a.pk}")
         self.assertNotContains(public, f"slot={self.slot_b.pk}")
         self.assertContains(public, f"slot={self.slot_c.pk}")
@@ -916,7 +940,12 @@ class PhoneBookingTests(TestCase):
         self.assertEqual(self.slot_b.held_by_id, booking.pk)
         self.assertContains(response, "syns inte längre på hemsidan")
         self.assertNotContains(response, f"slot={self.slot_a.pk}")
-        public = self.client.get(reverse("booking"), {"service": self.service.slug})
+        day = timezone.localtime(self.slot_a.start).date()
+        week = (day - timedelta(days=day.weekday())).isoformat()
+        public = self.client.get(
+            reverse("booking"),
+            {"service": self.service.slug, "week": week},
+        )
         self.assertNotContains(public, f"slot={self.slot_a.pk}")
         self.assertNotContains(public, f"slot={self.slot_b.pk}")
         self.assertContains(public, f"slot={self.slot_c.pk}")

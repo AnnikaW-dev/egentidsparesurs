@@ -362,9 +362,43 @@ class Booking(models.Model):
     def __str__(self):
         return f"{self.customer_name} – {self.slot}"
 
+    def treatment_end(self):
+        """When the treatment itself ends. The next 30 minutes stay reserved."""
+        return self.slot.start + timedelta(minutes=self.service.duration_minutes)
+
     def reserved_until(self):
-        """End of the reserved window (treatment + buffer)."""
+        """End of the reserved window: treatment end plus 30 minutes."""
         return self.slot.start + timedelta(minutes=self.service.calendar_minutes())
+
+    def reserved_window_text(self):
+        """Staff text: treatment clock times, then the 30 minutes after it."""
+        start = timezone.localtime(self.slot.start)
+        treat_end = timezone.localtime(self.treatment_end())
+        until = timezone.localtime(self.reserved_until())
+        text = (
+            f"{start:%Y-%m-%d %H:%M}–{treat_end:%H:%M}, "
+            f"sedan 30 min till {until:%H:%M}"
+        )
+        if self.status != self.Status.CONFIRMED:
+            return text + " (avbokad, tiden är ledig)"
+        return text
+
+    def slot_occupancy_text(self, slot):
+        """Why this lucka is taken: the treatment, or the 30 minutes after it."""
+        treat_end = self.treatment_end()
+        until = timezone.localtime(self.reserved_until())
+        treat_local = timezone.localtime(treat_end)
+        if slot.pk == self.slot_id:
+            return (
+                f"Behandling till {treat_local:%H:%M}, "
+                f"sedan 30 min till {until:%H:%M}"
+            )
+        if slot.start >= treat_end:
+            return f"30 min efter {self.customer_name}, till {until:%H:%M}"
+        return (
+            f"Ingår i behandlingen för {self.customer_name}, "
+            f"till {treat_local:%H:%M}"
+        )
 
 
 def reserved_window_fits_hours(
